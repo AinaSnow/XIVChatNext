@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>XIVChat for Windows</value>
+  </data>
+  <data name="Menu.XIVChat" xml:space="preserve">
+    <value>XIVChat</value>
+  </data>
+  <data name="Menu.Connect" xml:space="preserve">
+    <value>连接</value>
+  </data>
+  <data name="Menu.Disconnect" xml:space="preserve">
+    <value>断开</value>
+  </data>
+  <data name="Menu.Scan" xml:space="preserve">
+    <value>扫描</value>
+  </data>
+  <data name="Menu.Export" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="Menu.Config" xml:space="preserve">
+    <value>配置</value>
+  </data>
+  <data name="Menu.Exit" xml:space="preserve">
+    <value>退出</value>
+  </data>
+  <data name="Menu.Player" xml:space="preserve">
+    <value>玩家</value>
+  </data>
+  <data name="Menu.FriendList" xml:space="preserve">
+    <value>好友名单</value>
+  </data>
+  <data name="Channel.Tell" xml:space="preserve">
+    <value>悄悄话</value>
+  </data>
+  <data name="Channel.Say" xml:space="preserve">
+    <value>说话</value>
+  </data>
+  <data name="Channel.Party" xml:space="preserve">
+    <value>小队</value>
+  </data>
+  <data name="Channel.Alliance" xml:space="preserve">
+    <value>团队</value>
+  </data>
+  <data name="Channel.Yell" xml:space="preserve">
+    <value>呼喊</value>
+  </data>
+  <data name="Channel.Shout" xml:space="preserve">
+    <value>喊话</value>
+  </data>
+  <data name="Channel.FreeCompany" xml:space="preserve">
+    <value>部队</value>
+  </data>
+  <data name="Channel.PvpTeam" xml:space="preserve">
+    <value>战队</value>
+  </data>
+  <data name="Channel.NoviceNetwork" xml:space="preserve">
+    <value>新人频道</value>
+  </data>
+  <data name="Channel.CrossLinkshell" xml:space="preserve">
+    <value>跨服贝频道 [{0}]</value>
+  </data>
+  <data name="Channel.Linkshell" xml:space="preserve">
+    <value>通讯贝 [{0}]</value>
+  </data>
+  <data name="Status.NotLoggedIn" xml:space="preserve">
+    <value>未登录</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>已连接</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>已断开</value>
+  </data>
+  <data name="Dialog.Connect" xml:space="preserve">
+    <value>连接</value>
+  </data>
+  <data name="Dialog.Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Dialog.Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Dialog.Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Dialog.Add" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Dialog.Edit" xml:space="preserve">
+    <value>编辑</value>
+  </data>
+  <data name="Dialog.Yes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="Dialog.No" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="Config.Servers" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="Config.Window" xml:space="preserve">
+    <value>窗口</value>
+  </data>
+  <data name="Config.Connection" xml:space="preserve">
+    <value>连接</value>
+  </data>
+  <data name="Config.Notifications" xml:space="preserve">
+    <value>通知</value>
+  </data>
+  <data name="Config.AlwaysOnTop" xml:space="preserve">
+    <value>窗口置顶</value>
+  </data>
+  <data name="Config.CompactMode" xml:space="preserve">
+    <value>精简模式</value>
+  </data>
+  <data name="Config.Theme" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="Config.Opacity" xml:space="preserve">
+    <value>不透明度</value>
+  </data>
+  <data name="Config.FontSize" xml:space="preserve">
+    <value>日志字体大小</value>
+  </data>
+  <data name="Config.LocalBacklogMessages" xml:space="preserve">
+    <value>本地存储的消息</value>
+  </data>
+  <data name="Config.BacklogMessages" xml:space="preserve">
+    <value>请求的积压消息数量</value>
+  </data>
+  <data name="ManageServer.Name" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="ManageServer.Host" xml:space="preserve">
+    <value>IP 地址</value>
+  </data>
+  <data name="ManageServer.Port" xml:space="preserve">
+    <value>端口号</value>
+  </data>
+  <data name="ManageTab.Name" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="ManageTab.ProcessMarkdown" xml:space="preserve">
+    <value>将消息处理为 Markdown</value>
+  </data>
+  <data name="ManageNotification.Regexes" xml:space="preserve">
+    <value>正则表达式</value>
+  </data>
+  <data name="ManageNotification.Substrings" xml:space="preserve">
+    <value>子字符串</value>
+  </data>
+  <data name="ManageNotification.MatchAll" xml:space="preserve">
+    <value>匹配来自选定频道的所有消息</value>
+  </data>
+  <data name="ManageNotification.Channels" xml:space="preserve">
+    <value>频道</value>
+  </data>
+  <data name="Export.Title" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="Export.ProcessMarkdown" xml:space="preserve">
+    <value>将消息处理为 Markdown</value>
+  </data>
+  <data name="Export.ShowTimestamps" xml:space="preserve">
+    <value>显示时间戳</value>
+  </data>
+  <data name="Export.From" xml:space="preserve">
+    <value>从</value>
+  </data>
+  <data name="Export.To" xml:space="preserve">
+    <value>到</value>
+  </data>
+  <data name="Export.Clear" xml:space="preserve">
+    <value>清除</value>
+  </data>
+  <data name="Export.FilterMessages" xml:space="preserve">
+    <value>过滤消息</value>
+  </data>
+  <data name="Export.SelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="Export.DeselectAll" xml:space="preserve">
+    <value>取消全选</value>
+  </data>
+  <data name="TrustDialog.Title" xml:space="preserve">
+    <value>密钥验证</value>
+  </data>
+  <data name="TrustDialog.Description" xml:space="preserve">
+    <value>您正在尝试连接到以前从未连接过的服务器。 请检查服务器并确保以下两个键匹配。</value>
+  </data>
+  <data name="TrustDialog.Server" xml:space="preserve">
+    <value>服务器:</value>
+  </data>
+  <data name="TrustDialog.Client" xml:space="preserve">
+    <value>客户端:</value>
+  </data>
+  <data name="TrustDialog.KeyName" xml:space="preserve">
+    <value>给这个key起个名</value>
+  </data>
+  <data name="TrustDialog.Question" xml:space="preserve">
+    <value>两个键是否匹配?</value>
+  </data>
+  <data name="FriendList.Title" xml:space="preserve">
+    <value>好友列表</value>
+  </data>
+  <data name="FriendList.Refresh" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="ServerScan.Title" xml:space="preserve">
+    <value>服务扫描</value>
+  </data>
+</root>

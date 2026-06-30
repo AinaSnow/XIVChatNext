@@ -1,16 +1,20 @@
-﻿using System.Linq;
-using System.Windows;
-using System.Windows.Data;
-using System.Windows.Media;
+using System.Linq;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 using XIVChatCommon.Message.Server;
 
 namespace XIVChat_Desktop.Controls {
     public class MessageTextBlock : SelectableTextBlock {
         public MessageTextBlock() {
-            this.SetBinding(FontSizeProperty, new Binding("Config.FontSize") {
+            this.SetBinding(FontSizeProperty, new Binding {
+                Path = new PropertyPath("Config.FontSize"),
                 Source = (App)Application.Current,
             });
-            this.TextWrapping = TextWrapping.Wrap;
+            this.FontFamily = new FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK");
+            this.TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap;
         }
 
         public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(
@@ -50,7 +54,6 @@ namespace XIVChat_Desktop.Controls {
         }
 
         private static void PropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) {
-            // Clear current textBlock
             if (!(d is MessageTextBlock textBlock)) {
                 return;
             }
@@ -65,20 +68,22 @@ namespace XIVChat_Desktop.Controls {
                 textBlock.Background = new SolidColorBrush(Color.FromArgb(128, 200, 100, 100));
             }
 
-            textBlock.ClearValue(TextProperty);
-            textBlock.Inlines.Clear();
+            textBlock.Blocks.Clear();
 
             // Create new formatted text
-            var lineHeight = textBlock.FontFamily.LineSpacing * textBlock.FontSize;
             var inlines = MessageFormatter.ChunksToTextBlock(
                 message,
-                lineHeight,
+                textBlock.FontSize,
                 textBlock.ProcessMarkdown,
                 textBlock.ShowTimestamps
             );
+            
+            var paragraph = new Microsoft.UI.Xaml.Documents.Paragraph();
             foreach (var inline in inlines) {
-                textBlock.Inlines.Add(inline);
+                inline.FontFamily = textBlock.FontFamily;
+                paragraph.Inlines.Add(inline);
             }
+            textBlock.Blocks.Add(paragraph);
         }
     }
 }

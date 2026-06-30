@@ -1,32 +1,20 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Markup;
-using System.Windows.Media.Imaging;
-using Windows.UI.Notifications;
-using Hardcodet.Wpf.TaskbarNotification;
-using Microsoft.Toolkit.Uwp.Notifications;
-using ModernWpf;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
 
-// TODO: search messages
-// TODO: notifications for targeted messages (like emote targeting you)
-
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : INotifyPropertyChanged {
         public MainWindow Window { get; private set; } = null!;
         public Configuration Config { get; private set; } = null!;
-
-        private Lazy<TaskbarIcon> TaskbarIcon { get; } = new Lazy<TaskbarIcon>(() => new TaskbarIcon {
-            IconSource = new BitmapImage(new Uri("pack://application:,,,/Resources/logo.ico")),
-        });
 
         public string? LastHost { get; set; }
 
@@ -45,79 +33,84 @@ namespace XIVChat_Desktop {
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        [Obsolete]
-        private async void Application_Startup(object sender, StartupEventArgs e) {
-            Notifications.Initialise();
+        public App() {
+            this.UnhandledException += (s, e) => {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "app_unhandled_crash.log"), e.Exception?.ToString() + "\nMessage: " + e.Message); } catch { }
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "appdomain_crash.log"), e.ExceptionObject?.ToString()); } catch { }
+            };
+            try {
+                this.InitializeComponent();
+            } catch (Exception ex) {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "app_init_crash.log"), ex.ToString()); } catch { }
+                throw;
+            }
+        }
+
+        private Exception? configLoadException;
+
+        protected override void OnLaunched(LaunchActivatedEventArgs args) {
+            base.OnLaunched(args);
 
             try {
                 this.Config = Configuration.Load() ?? new Configuration();
             } catch (Exception ex) {
-                var result = MessageBox.Show(
-                    $"Could not load the configuration file: {ex.Message}. Do you want to create a new configuration file and overwrite the old one?",
-                    "Error loading config",
-                    MessageBoxButton.YesNo
-                );
-
-                if (result == MessageBoxResult.Yes) {
-                    this.Config = new Configuration();
-                } else {
-                    this.Shutdown(1);
-                    return;
-                }
+                this.configLoadException = ex;
+                this.Config = new Configuration();
             }
 
             try {
                 this.Config.Save();
-            } catch (Exception ex) {
-                MessageBox.Show($"Could not save configuration file. {ex.Message}");
+            } catch {
+                // Ignore save error on launch
             }
-
-            this.Config.PropertyChanged += (o, args) => {
-                if (args.PropertyName != nameof(Configuration.Theme)) {
-                    return;
-                }
-
-                this.UpdateTheme();
-            };
-
-            this.UpdateTheme();
-
-            LocaliseAllElements();
-
-            // I guess this gets initialised where you call it the first time, so initialise it on the UI thread
-            this.Dispatcher.Invoke(() => { });
-
-
 
             this.InitialiseWindow();
         }
 
-        private static void LocaliseAllElements() {
-            FrameworkElement.LanguageProperty.OverrideMetadata(
-                typeof(FrameworkElement),
-                new FrameworkPropertyMetadata(
-                    XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)
-                )
-            );
+        public async void InitialiseWindow() {
+            try {
+                var wnd = new MainWindow();
+                this.Window = wnd;
+                ApplyTheme(this.Config.Theme);
+                ApplyAlwaysOnTop(this.Config.AlwaysOnTop);
+                wnd.Activate();
+
+                if (this.configLoadException != null) {
+                    var dialog = new ContentDialog {
+                        Title = "Error loading config",
+                        Content = $"Could not load the configuration file: {this.configLoadException.Message}. A new default configuration has been created.",
+                        CloseButtonText = "OK",
+                        XamlRoot = wnd.Content.XamlRoot
+                    };
+                    try {
+                        await dialog.ShowAsync();
+                    } catch { }
+                    this.configLoadException = null;
+                }
+            } catch (Exception ex) {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "initwindow_crash.log"), ex.ToString()); } catch { }
+                throw;
+            }
         }
 
-        public void InitialiseWindow() {
-            var wnd = new MainWindow();
-            this.Window = wnd;
-
-            wnd.Show();
-
-            // initialise a config window to apply all our settings
-            _ = new ConfigWindow(wnd, this.Config);
+        public static void ApplyTheme(Theme theme) {
+            ThemeHelper.ApplyTheme(theme);
         }
 
-        private void UpdateTheme() {
-            ThemeManager.Current.ApplicationTheme = this.Config.Theme switch {
-                Theme.System => null,
-                Theme.Dark => ApplicationTheme.Dark,
-                Theme.Light => ApplicationTheme.Light,
-                _ => null,
-            };
+        public static void ApplyAlwaysOnTop(bool onTop) {
+            if (((App)Application.Current).Window?.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter) {
+                presenter.IsAlwaysOnTop = onTop;
+            }
+        }
+
+        public void Dispatch(Action action) {
+            if (this.Window?.DispatcherQueue != null) {
+                this.Window.DispatcherQueue.TryEnqueue(() => action());
+            } else {
+                action();
+            }
         }
 
         private void ConnectionStatusChanged() {
@@ -143,26 +136,6 @@ namespace XIVChat_Desktop {
             this.Connection = null;
         }
 
-        private static void Win10Notify(string title, string text, string? attribution) {
-            var builder = new ToastContentBuilder()
-                .AddText(title)
-                .AddText(text);
-
-            if (attribution != null) {
-                builder.AddAttributionText(attribution);
-            }
-
-            var content = builder.GetToastContent();
-
-            var toast = new ToastNotification(content.GetXml());
-
-            DesktopNotificationManagerCompat.CreateToastNotifier().Show(toast);
-        }
-
-        private void Notify(string title, string text) {
-            this.TaskbarIcon.Value.ShowBalloonTip(title, text, BalloonIcon.None);
-        }
-
         private void OnReceiveMessage(ServerMessage message) {
             if (!this.Config.Notifications.Any(notif => notif.Matches(message))) {
                 return;
@@ -186,11 +159,20 @@ namespace XIVChat_Desktop {
             var text = message.ContentText;
             var attribution = message.Channel.Name();
 
-            if (Environment.OSVersion.Version.Major < 10) {
-                this.Notify(title, text);
-            } else {
-                Win10Notify(title, text, attribution);
+            Win10Notify(title, text, attribution);
+        }
+
+        private static void Win10Notify(string title, string text, string? attribution) {
+            var builder = new AppNotificationBuilder()
+                .AddText(title)
+                .AddText(text);
+
+            if (attribution != null) {
+                builder.AddText(attribution);
             }
+
+            var notification = builder.BuildNotification();
+            AppNotificationManager.Default.Show(notification);
         }
     }
 }

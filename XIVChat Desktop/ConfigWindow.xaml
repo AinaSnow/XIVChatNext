@@ -1,26 +1,20 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.ConfigWindow"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:cc="clr-namespace:XIVChat_Desktop.Controls"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     mc:Ignorable="d"
-                     MinWidth="450"
-                     MinHeight="350"
-                     WindowStartupLocation="CenterOwner"
-                     SizeToContent="WidthAndHeight"
-                     Title="配置"
-                     d:DataContext="{d:DesignInstance local:ConfigWindow}">
-    <TabControl>
-        <TabItem Header="服务器">
-            <cc:SavedServers ItemsSource="{Binding Config.Servers}"
+<Window x:Class="XIVChat_Desktop.ConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:XIVChat_Desktop"
+        xmlns:cc="using:XIVChat_Desktop.Controls"
+        mc:Ignorable="d"
+        Title="配置"
+        d:DataContext="{d:DesignInstance local:ConfigWindow}">
+    <TabView IsAddTabButtonVisible="False">
+        <TabViewItem Header="服务器" IsClosable="False">
+            <cc:SavedServers ItemsSource="{x:Bind Config.Servers, Mode=OneWay}"
                              ItemDoubleClick="SavedServers_ItemDoubleClick"
                              ControlsVisibility="Visible" />
-        </TabItem>
-        <TabItem Header="窗口">
+        </TabViewItem>
+        <TabViewItem Header="窗口" IsClosable="False">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="153*"/>
@@ -32,39 +26,48 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.ColumnSpan="2">
-                    <CheckBox Content="窗口置顶"
-                              IsChecked="{Binding Config.AlwaysOnTop}"
-                              Checked="AlwaysOnTop_Checked"
-                              Unchecked="AlwaysOnTop_Unchecked" />
-                    <CheckBox Content="精简模式"
-                              IsChecked="{Binding Config.CompactMode}" />
-                    <ComboBox x:Name="ThemeChooser"
-                              ui:ControlHelper.Header="主题"
-                              SelectedItem="{Binding Config.Theme}" />
-                    <Slider ui:ControlHelper.Header="不透明度"
-                            Value="{Binding Config.Opacity}"
-                            Minimum=".3"
-                            Maximum="1" />
-                    <TextBox HorizontalAlignment="Left"
-                             PreviewTextInput="NumericInputFilter"
-                             Text="{Binding Config.FontSize, Converter={StaticResource DoubleConverter}}"
-                             ui:ControlHelper.Header="日志字体大小"
-                             Width="200" />
-                    <TextBox ui:ControlHelper.Header="本地存储的消息"
-                             HorizontalAlignment="Left"
-                             PreviewTextInput="NumericInputFilter"
-                             Text="{Binding Config.LocalBacklogMessages, Converter={StaticResource UIntConverter}}"
-                             Width="200" />
-                </StackPanel>
+                <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="14" Padding="4,4,4,16">
+                        <CheckBox Content="窗口置顶"
+                                  IsChecked="{x:Bind Config.AlwaysOnTop, Mode=TwoWay}"
+                                  Checked="AlwaysOnTop_Checked"
+                                  Unchecked="AlwaysOnTop_Unchecked" />
+                        <CheckBox Content="精简模式"
+                                  IsChecked="{x:Bind Config.CompactMode, Mode=TwoWay}" />
+                        <ComboBox x:Name="ThemeChooser"
+                                  Header="主题"
+                                  Width="200"
+                                  SelectedItem="{x:Bind Config.Theme, Mode=OneWay}"
+                                  SelectionChanged="ThemeChooser_SelectionChanged" />
+                        <Slider Header="不透明度"
+                                Width="300"
+                                HorizontalAlignment="Left"
+                                Value="{x:Bind Config.Opacity, Mode=TwoWay}"
+                                Minimum=".3"
+                                Maximum="1" />
+                        <TextBox HorizontalAlignment="Left"
+                                 TextChanged="FontSize_TextChanged"
+                                 Text="{x:Bind Config.FontSize, Mode=OneWay}"
+                                 Header="日志字体大小"
+                                 Width="200" />
+                        <TextBox Header="本地存储的消息"
+                                 HorizontalAlignment="Left"
+                                 TextChanged="LocalBacklog_TextChanged"
+                                 Text="{x:Bind Config.LocalBacklogMessages, Mode=OneWay}"
+                                 Width="200" />
+                    </StackPanel>
+                </ScrollViewer>
 
                 <Button Grid.Row="2"
-                        Click="Save_Click" Grid.Column="1" Margin="235,0,0,0">
+                        Grid.ColumnSpan="2"
+                        HorizontalAlignment="Right"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Click="Save_Click">
                     保存
                 </Button>
             </Grid>
-        </TabItem>
-        <TabItem Header="Connection">
+        </TabViewItem>
+        <TabViewItem Header="连接" IsClosable="False">
             <Grid Margin="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -74,20 +77,20 @@
 
                 <TextBox Grid.Row="0"
                          Grid.Column="0"
-                         ui:ControlHelper.Header="Backlog messages to request"
+                         Header="请求的积压消息数量"
                          HorizontalAlignment="Left"
-                         PreviewTextInput="NumericInputFilter"
-                         Text="{Binding Config.BacklogMessages, Converter={StaticResource UShortConverter}}"
+                         TextChanged="Backlog_TextChanged"
+                         Text="{x:Bind Config.BacklogMessages, Mode=OneWay}"
                          Width="200" />
 
                 <Button Grid.Row="2"
                         HorizontalAlignment="Right"
                         Click="Save_Click">
-                    Save
+                    保存
                 </Button>
             </Grid>
-        </TabItem>
-        <TabItem Header="Notifications">
+        </TabViewItem>
+        <TabViewItem Header="通知" IsClosable="False">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -96,14 +99,13 @@
 
                 <ListView Grid.Column="0"
                           x:Name="Notifications"
-                          ItemsSource="{Binding Config.Notifications}"
-                          MouseDoubleClick="Notifications_DoubleClick">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Name"
-                                            DisplayMemberBinding="{Binding Name}" />
-                        </GridView>
-                    </ListView.View>
+                          ItemsSource="{x:Bind Config.Notifications, Mode=OneWay}"
+                          DoubleTapped="Notifications_DoubleTapped">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="local:Notification">
+                            <TextBlock Text="{x:Bind Name}" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
                 </ListView>
 
                 <StackPanel Grid.Column="1"
@@ -111,17 +113,17 @@
                             Orientation="Vertical">
                     <Button Margin="0,0,0,4"
                             HorizontalAlignment="Stretch"
-                            Content="Add"
+                            Content="添加"
                             Click="Notifications_Add_Click" />
                     <Button Margin="0,0,0,4"
                             HorizontalAlignment="Stretch"
-                            Content="Edit"
+                            Content="编辑"
                             Click="Notifications_Edit_Click" />
                     <Button HorizontalAlignment="Stretch"
-                            Content="Delete"
+                            Content="删除"
                             Click="Notifications_Delete_Click" />
                 </StackPanel>
             </Grid>
-        </TabItem>
-    </TabControl>
-</local:XivChatWindow>
+        </TabViewItem>
+    </TabView>
+</Window>

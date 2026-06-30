@@ -1,18 +1,13 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.ManageTab"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     WindowStartupLocation="CenterOwner"
-                     mc:Ignorable="d"
-                     Title="管理选项卡"
-                     Height="450"
-                     Width="400"
-                     d:DataContext="{d:DesignInstance local:ManageTab}">
-    <Grid Margin="8">
+﻿<Window x:Class="XIVChat_Desktop.ManageTab"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:XIVChat_Desktop"
+        mc:Ignorable="d"
+        Title="管理选项卡"
+        d:DataContext="{d:DesignInstance local:ManageTab}">
+    <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -23,19 +18,19 @@
         <TextBox Grid.Row="0"
                  x:Name="TabName"
                  Margin="0,0,0,8"
-                 ui:ControlHelper.PlaceholderText="Name"
-                 ui:ControlHelper.Header="名称"
-                 Text="{Binding Tab.Name, Mode=OneTime}" />
+                 PlaceholderText="Name"
+                 Header="名称"
+                 Text="{x:Bind Tab.Name, Mode=OneWay}" />
         <CheckBox Grid.Row="1"
                   x:Name="MarkdownToggle"
                   Margin="0,0,0,8"
                   Content="将消息处理为 Markdown"
-                  IsChecked="{Binding Tab.ProcessMarkdown, Mode=OneTime}" />
-        <TabControl Grid.Row="2"
-                    x:Name="Tabs" />
+                  IsChecked="{x:Bind Tab.ProcessMarkdown, Mode=OneWay}" />
+        <TabView Grid.Row="2"
+                     x:Name="Tabs" />
         <Button Margin="0,8,0,0"
                 Grid.Row="3"
                 Content="保存"
                 Click="Save_Click" />
     </Grid>
-</local:XivChatWindow>
+</Window>

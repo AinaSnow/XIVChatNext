@@ -1,14 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Windows;
+using System.Collections.Generic;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace XIVChat_Desktop.Controls {
-    /// <summary>
-    /// Interaction logic for SavedServers.xaml
-    /// </summary>
-    public partial class SavedServers {
+    public partial class SavedServers : UserControl {
         public App App => (App)Application.Current;
         private Configuration Config => this.App.Config;
-        private Window Window => Window.GetWindow(this)!;
 
         public IEnumerable<SavedServer> ItemsSource {
             get { return (IEnumerable<SavedServer>)this.GetValue(ItemsSourceProperty); }
@@ -23,7 +21,6 @@ namespace XIVChat_Desktop.Controls {
         public SavedServer? SelectedServer {
             get {
                 var item = this.Servers.SelectedItem;
-
                 return item as SavedServer;
             }
         }
@@ -31,13 +28,15 @@ namespace XIVChat_Desktop.Controls {
         public static readonly DependencyProperty ItemsSourceProperty = DependencyProperty.Register(
             "ItemsSource",
             typeof(IEnumerable<SavedServer>),
-            typeof(SavedServers)
+            typeof(SavedServers),
+            new PropertyMetadata(null)
         );
 
         public static readonly DependencyProperty ControlsVisibilityProperty = DependencyProperty.Register(
             "ControlsVisibility",
             typeof(Visibility),
-            typeof(SavedServers)
+            typeof(SavedServers),
+            new PropertyMetadata(Visibility.Visible)
         );
 
         public SavedServers() {
@@ -45,7 +44,8 @@ namespace XIVChat_Desktop.Controls {
         }
 
         private void AddServer_Click(object sender, RoutedEventArgs e) {
-            new ManageServer(this.Window, null).ShowDialog();
+            var window = new ManageServer(null);
+            window.Activate();
         }
 
         private void DeleteServer_Click(object sender, RoutedEventArgs e) {
@@ -64,10 +64,11 @@ namespace XIVChat_Desktop.Controls {
                 return;
             }
 
-            new ManageServer(this.Window, server).ShowDialog();
+            var window = new ManageServer(server);
+            window.Activate();
         }
 
-        private void Item_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) {
+        private void Item_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e) {
             var server = ((FrameworkElement)e.OriginalSource).DataContext;
             if (!(server is SavedServer)) {
                 return;
@@ -76,8 +77,8 @@ namespace XIVChat_Desktop.Controls {
             this.ItemDoubleClick?.Invoke((SavedServer)server);
         }
 
-        public delegate void MouseDoubleClickHandler(SavedServer server);
+        public delegate void DoubleTapHandler(SavedServer server);
 
-        public event MouseDoubleClickHandler? ItemDoubleClick;
+        public event DoubleTapHandler? ItemDoubleClick;
     }
 }

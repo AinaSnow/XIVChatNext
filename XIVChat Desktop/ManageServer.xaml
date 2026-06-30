@@ -1,17 +1,13 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.ManageServer"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     mc:Ignorable="d"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     WindowStartupLocation="CenterOwner"
-                     SizeToContent="WidthAndHeight"
-                     Title="管理服务器"
-                     d:DataContext="{d:DesignInstance local:ManageServer}">
-    <Grid Margin="8">
+﻿<Window x:Class="XIVChat_Desktop.ManageServer"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:XIVChat_Desktop"
+        mc:Ignorable="d"
+        Title="管理服务器"
+        d:DataContext="{d:DesignInstance local:ManageServer}">
+    <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -24,54 +20,50 @@
             <ColumnDefinition MinWidth="200" />
         </Grid.ColumnDefinitions>
 
-        <Label VerticalAlignment="Center"
-               Grid.Row="0"
-               Grid.Column="0">
-            名称
-        </Label>
+        <TextBlock VerticalAlignment="Center"
+                   Grid.Row="0"
+                   Grid.Column="0"
+                   Text="名称" />
         <TextBox Margin="4,0,0,0"
                  Grid.Row="0"
                  Grid.Column="1"
                  x:Name="ServerName"
-                 Text="{Binding Server.Name, Mode=OneTime}" />
+                 Text="{x:Bind Server.Name, Mode=OneWay}" />
 
-        <Label VerticalAlignment="Center"
-               Grid.Row="1"
-               Grid.Column="0">
-            IP 地址
-        </Label>
+        <TextBlock VerticalAlignment="Center"
+                   Grid.Row="1"
+                   Grid.Column="0"
+                   Text="IP 地址" />
         <TextBox Margin="4,4,0,0"
                  Grid.Row="1"
                  Grid.Column="1"
                  x:Name="ServerHost"
-                 Text="{Binding Server.Host, Mode=OneTime}" />
+                 Text="{x:Bind Server.Host, Mode=OneWay}" />
 
-        <Label VerticalAlignment="Center"
-               Grid.Row="2"
-               Grid.Column="0">
-            端口号
-        </Label>
+        <TextBlock VerticalAlignment="Center"
+                   Grid.Row="2"
+                   Grid.Column="0"
+                   Text="端口号" />
         <TextBox Margin="4,4,0,0"
                  Grid.Row="2"
                  Grid.Column="1"
                  x:Name="ServerPort"
-                 Text="{Binding Server.Port, Mode=OneTime}"
-                 ui:ControlHelper.PlaceholderText="14777" />
+                 Text="{x:Bind Server.Port, Mode=OneWay}"
+                 PlaceholderText="14777" />
 
-        <WrapPanel Margin="0,8,0,0"
+        <StackPanel Margin="0,8,0,0"
                    Grid.Row="3"
                    Grid.ColumnSpan="2"
                    Grid.Column="0"
-                   HorizontalAlignment="Right">
-            <Button IsCancel="True"
-                    Click="Cancel_Click">
+                   HorizontalAlignment="Right"
+                   Orientation="Horizontal">
+            <Button Click="Cancel_Click">
                 取消
             </Button>
             <Button Margin="4,0,0,0"
-                    IsDefault="True"
                     Click="Save_Click">
                 保存
             </Button>
-        </WrapPanel>
+        </StackPanel>
     </Grid>
-</local:XivChatWindow>
+</Window>

@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Windows;
-using System.Windows.Documents;
+using Microsoft.UI.Xaml.Documents;
 
 namespace XIVChat_Desktop {
     public static class Markdown {
@@ -277,7 +276,7 @@ namespace XIVChat_Desktop {
             this.Text = text;
         }
 
-        public override Inline ToInline() => new Run(this.Text);
+        public override Inline ToInline() => new Run { Text = this.Text };
     }
 
     public class DelimiterNode : MarkdownNode {
@@ -309,7 +308,7 @@ namespace XIVChat_Desktop {
                 text.Append(this.character);
             }
 
-            return new Run(text.ToString());
+            return new Run { Text = text.ToString() };
         }
 
         private bool CalcCanOpen() {
@@ -374,9 +373,11 @@ namespace XIVChat_Desktop {
 
         public override Inline ToInline() {
             var span = new Span {
-                FontStyle = FontStyles.Italic,
+                FontStyle = global::Windows.UI.Text.FontStyle.Italic,
             };
-            span.Inlines.AddRange(this.Children.Select(child => child.ToInline()));
+            foreach (var child in this.Children) {
+                span.Inlines.Add(child.ToInline());
+            }
             return span;
         }
     }
@@ -386,9 +387,11 @@ namespace XIVChat_Desktop {
 
         public override Inline ToInline() {
             var span = new Span {
-                FontWeight = FontWeights.Bold,
+                FontWeight = global::Microsoft.UI.Text.FontWeights.Bold,
             };
-            span.Inlines.AddRange(this.Children.Select(child => child.ToInline()));
+            foreach (var child in this.Children) {
+                span.Inlines.Add(child.ToInline());
+            }
             return span;
         }
     }
@@ -398,8 +401,9 @@ namespace XIVChat_Desktop {
 
         public override Inline ToInline() {
             var span = new Span();
-            span.TextDecorations.Add(TextDecorations.Strikethrough);
-            span.Inlines.AddRange(this.Children.Select(child => child.ToInline()));
+            foreach (var child in this.Children) {
+                span.Inlines.Add(child.ToInline());
+            }
             return span;
         }
     }
@@ -441,7 +445,9 @@ namespace XIVChat_Desktop {
 
         public override Inline ToInline() {
             var span = new Span();
-            span.Inlines.AddRange(this.Children.Select(child => child.ToInline()));
+            foreach (var child in this.Children) {
+                span.Inlines.Add(child.ToInline());
+            }
             return span;
         }
     }

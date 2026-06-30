@@ -1,29 +1,26 @@
-﻿using System.Windows;
-using System.Windows.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for ManageTabs.xaml
-    /// </summary>
-    public partial class ManageTabs {
+    public partial class ManageTabs : Window {
         public App App => (App)Application.Current;
 
         private Tab? SelectedTab {
             get {
                 var item = this.Tabs.SelectedItem;
-
                 return item as Tab;
             }
         }
 
-        public ManageTabs(Window owner) {
-            this.Owner = owner;
+        public ManageTabs() {
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
         }
 
         private void AddTab_Click(object sender, RoutedEventArgs e) {
-            new ManageTab(this, null).ShowDialog();
+            var dialog = new ManageTab(null);
+            dialog.Activate();
         }
 
         private void EditTab_Click(object sender, RoutedEventArgs e) {
@@ -31,7 +28,8 @@ namespace XIVChat_Desktop {
             if (tab == null) {
                 return;
             }
-            new ManageTab(this, tab).ShowDialog();
+            var dialog = new ManageTab(tab);
+            dialog.Activate();
         }
 
         private void DeleteTab_Click(object sender, RoutedEventArgs e) {
@@ -42,18 +40,16 @@ namespace XIVChat_Desktop {
 
             this.App.Config.Tabs.Remove(tab);
             this.App.Config.Save();
-
         }
 
-        private void Tab_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+        private void Tab_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e) {
             var item = ((FrameworkElement)e.OriginalSource).DataContext;
-            if (!(item is Tab)) {
+            if (!(item is Tab tab)) {
                 return;
             }
 
-            var tab = item as Tab;
-
-            new ManageTab(this, tab).ShowDialog();
+            var dialog = new ManageTab(tab);
+            dialog.Activate();
         }
     }
 }

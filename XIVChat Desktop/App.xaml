@@ -1,11 +1,15 @@
-﻿<Application x:Class="XIVChat_Desktop.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:XIVChat_Desktop"
-             xmlns:ui="http://schemas.modernwpf.com/2019"
-             Startup="Application_Startup">
+﻿<Application
+    x:Class="XIVChat_Desktop.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:XIVChat_Desktop">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Converters -->
             <local:DoubleConverter x:Key="DoubleConverter" />
             <local:UShortConverter x:Key="UShortConverter" />
             <local:UIntConverter x:Key="UIntConverter" />
@@ -18,13 +22,6 @@
                                     TrueValue="Collapsed"
                                     FalseValue="Visible" />
             <local:TitleCaseConverter x:Key="TitleCaseConverter" />
-
-            <ResourceDictionary.MergedDictionaries>
-                <ui:ThemeResources AccentColor="#a59aca" />
-                <ui:XamlControlsResources />
-                <!-- Other merged dictionaries here -->
-            </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

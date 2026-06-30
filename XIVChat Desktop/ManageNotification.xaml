@@ -1,23 +1,14 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.ManageNotification"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     Closed="ManageNotification_OnClosed"
-                     mc:Ignorable="d"
-                     Title="管理通知"
-                     Height="800"
-                     Width="450"
-                     d:DataContext="{d:DesignInstance local:ManageNotification}">
-    <local:XivChatWindow.CommandBindings>
-        <CommandBinding Command="local:ManageNotification.AddEmpty"
-                        Executed="AddEmpty_Execute"
-                        CanExecute="AddEmpty_CanExecute" />
-    </local:XivChatWindow.CommandBindings>
-    <Grid Margin="8">
+<Window x:Class="XIVChat_Desktop.ManageNotification"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="using:XIVChat_Desktop"
+        mc:Ignorable="d"
+        Title="管理通知"
+        Closed="ManageNotification_OnClosed"
+        d:DataContext="{d:DesignInstance local:ManageNotification}">
+    <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -37,28 +28,21 @@
 
         <TextBox Grid.Row="0"
                  Margin="0,0,0,8"
-                 ui:ControlHelper.PlaceholderText="Name"
-                 ui:ControlHelper.Header="名称"
-                 Text="{Binding Notification.Name}" />
+                 PlaceholderText="Name"
+                 Header="名称"
+                 Text="{x:Bind Notification.Name, Mode=TwoWay}" />
 
-        <Label Grid.Row="1"
-               Margin="0,0,0,8"
-               Content="常用表达" />
+        <TextBlock Grid.Row="1"
+                   Margin="0,0,0,8"
+                   Text="正则表达式" />
 
         <ScrollViewer Height="100"
                       Grid.Row="2">
-            <ItemsControl ItemsSource="{Binding Regexes}">
+            <ItemsControl ItemsSource="{x:Bind Regexes, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBox Margin="0,0,0,8">
-                            <TextBox.Text>
-                                <Binding Path="Value">
-                                    <Binding.ValidationRules>
-                                        <local:RegexValidator />
-                                    </Binding.ValidationRules>
-                                </Binding>
-                            </TextBox.Text>
-                        </TextBox>
+                    <DataTemplate x:DataType="local:StringWrapper">
+                        <TextBox Margin="0,0,0,8"
+                                 Text="{x:Bind Value, Mode=TwoWay}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -67,20 +51,19 @@
         <Button Grid.Row="3"
                 Margin="0,0,0,8"
                 Content="添加"
-                Command="local:ManageNotification.AddEmpty"
-                CommandParameter="{Binding Regexes}" />
+                Click="AddRegex_Click" />
 
-        <Label Grid.Row="4"
-               Margin="0,0,0,8"
-               Content="Substrings" />
+        <TextBlock Grid.Row="4"
+                   Margin="0,0,0,8"
+                   Text="子字符串" />
 
         <ScrollViewer Height="100"
                       Grid.Row="5">
-            <ItemsControl ItemsSource="{Binding Substrings}">
+            <ItemsControl ItemsSource="{x:Bind Substrings, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="local:StringWrapper">
                         <TextBox Margin="0,0,0,8"
-                                 Text="{Binding Value}" />
+                                 Text="{x:Bind Value, Mode=TwoWay}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -89,20 +72,19 @@
         <Button Grid.Row="6"
                 Margin="0,0,0,8"
                 Content="添加"
-                Command="local:ManageNotification.AddEmpty"
-                CommandParameter="{Binding Substrings}" />
+                Click="AddSubstring_Click" />
 
         <CheckBox Grid.Row="7"
-                  IsChecked="{Binding Notification.MatchAll}"
+                  IsChecked="{x:Bind Notification.MatchAll, Mode=TwoWay}"
                   Content="匹配来自选定频道的所有消息" />
 
-        <Label Grid.Row="8"
-               Margin="0,0,0,8"
-               Content="频道" />
+        <TextBlock Grid.Row="8"
+                   Margin="0,0,0,8"
+                   Text="频道" />
 
         <ScrollViewer Grid.Row="9">
-            <WrapPanel x:Name="Channels"
+            <StackPanel x:Name="Channels"
                        Orientation="Vertical" />
         </ScrollViewer>
     </Grid>
-</local:XivChatWindow>
+</Window>

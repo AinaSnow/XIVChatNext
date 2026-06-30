@@ -1,24 +1,21 @@
-﻿using System.Windows;
+using Microsoft.UI.Xaml;
+using XIVChat_Desktop.Controls;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for ConnectDialog.xaml
-    /// </summary>
-    public partial class ConnectDialog {
+    public partial class ConnectDialog : Window {
         public App App => (App)Application.Current;
 
-        public ConnectDialog(Window owner) {
-            this.Owner = owner;
-
+        public ConnectDialog() {
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
+            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 400));
         }
 
-        private void Connect_Clicked(object? sender, RoutedEventArgs e) {
+        private void Connect_Clicked(object sender, RoutedEventArgs e) {
             this.ConnectTo(this.Servers.SelectedServer);
         }
 
-        private void Cancel_Click(object? sender, RoutedEventArgs e) {
+        private void Cancel_Click(object sender, RoutedEventArgs e) {
             this.Close();
         }
 
@@ -32,13 +29,7 @@ namespace XIVChat_Desktop {
             }
 
             this.App.Connect(server.Host, server.Port);
-
             this.Close();
-        }
-
-        private void Servers_Loaded(object sender, RoutedEventArgs e)
-        {
-
         }
     }
 }

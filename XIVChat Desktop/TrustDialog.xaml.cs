@@ -1,26 +1,26 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Channels;
-using System.Windows;
-using System.Windows.Media;
-using System.Windows.Shapes;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Shapes;
+using Windows.UI;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for TrustDialog.xaml
-    /// </summary>
-    public partial class TrustDialog {
+    public partial class TrustDialog : Window {
         private readonly ChannelWriter<bool> trustChannel;
         private readonly byte[] remoteKey;
 
         private App App => (App)Application.Current;
 
-        public TrustDialog(Window owner, ChannelWriter<bool> trustChannel, byte[] remoteKey) {
-            this.Owner = owner;
+        public TrustDialog(ChannelWriter<bool> trustChannel, byte[] remoteKey) {
             this.trustChannel = trustChannel;
             this.remoteKey = remoteKey;
 
             this.InitializeComponent();
+            ThemeHelper.InitializeWindow(this);
 
             this.ClientPublicKey.Text = ToHexString(this.App.Config.KeyPair.PublicKey);
             var clientColours = BreakIntoColours(this.App.Config.KeyPair.PublicKey);
@@ -40,13 +40,12 @@ namespace XIVChat_Desktop {
         private static List<Color> BreakIntoColours(IEnumerable<byte> key) {
             var colours = new List<Color>();
 
-            // ReSharper disable once LoopCanBeConvertedToQuery
             foreach (var chunk in key.ToList().Chunks(3)) {
                 var r = chunk[0];
                 var g = chunk.Count > 1 ? chunk[1] : (byte)0;
                 var b = chunk.Count > 2 ? chunk[2] : (byte)0;
 
-                colours.Add(Color.FromRgb(r, g, b));
+                colours.Add(Color.FromArgb(255, r, g, b));
             }
 
             return colours;
@@ -59,7 +58,7 @@ namespace XIVChat_Desktop {
         private async void Yes_Click(object sender, RoutedEventArgs e) {
             var keyName = this.KeyName.Text;
             if (keyName.Length == 0) {
-                MessageBox.Show("You must give this key a name.");
+                // TODO: Show error dialog
                 return;
             }
 

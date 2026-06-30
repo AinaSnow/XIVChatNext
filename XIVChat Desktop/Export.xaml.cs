@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections.Immutable;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Threading;
-using Microsoft.Win32;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
 
 namespace XIVChat_Desktop {
-    public partial class Export : INotifyPropertyChanged {
+    public partial class Export : Window, INotifyPropertyChanged {
         public App App => (App)Application.Current;
 
         public Tab ExportTab { get; }
@@ -23,6 +21,7 @@ namespace XIVChat_Desktop {
         public ExportFilter Filter => (ExportFilter)this.ExportTab.Filter;
 
         public ObservableCollection<ServerMessage.SenderPlayer> Senders { get; } = new ObservableCollection<ServerMessage.SenderPlayer>();
+        public ObservableCollection<ServerMessage.SenderPlayer> SenderFilters => this.Filter.Senders;
 
         private bool showTimestamps = true;
 
@@ -34,9 +33,7 @@ namespace XIVChat_Desktop {
             }
         }
 
-        public Export(Window owner) {
-            this.Owner = owner;
-
+        public Export() {
             this.ExportTab = new Tab("Export") {
                 Filter = new ExportFilter {
                     Types = Tab.GeneralFilter().Types,
@@ -46,30 +43,31 @@ namespace XIVChat_Desktop {
             this.Repopulate();
 
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
 
             this.SetUpFilters();
         }
 
         private void SetUpFilters() {
             foreach (var category in (FilterCategory[])Enum.GetValues(typeof(FilterCategory))) {
-                var tabContent = new WrapPanel {
+                var tabContent = new StackPanel {
                     Margin = new Thickness(8),
                     Orientation = Orientation.Vertical,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 };
 
-                var buttonsPanel = new WrapPanel {
+                var buttonsPanel = new StackPanel {
                     Margin = new Thickness(0, 0, 0, 4),
+                    Orientation = Orientation.Horizontal,
                 };
 
                 var selectButton = new Button {
-                    Content = "Select all",
+                    Content = "全选",
                 };
                 selectButton.Click += (sender, e) => SetAllChecked(true);
 
                 var deselectButton = new Button {
-                    Content = "Deselect all",
+                    Content = "取消全选",
                     Margin = new Thickness(4, 0, 0, 0),
                 };
                 deselectButton.Click += (sender, e) => SetAllChecked(false);
@@ -97,7 +95,6 @@ namespace XIVChat_Desktop {
                 buttonsPanel.Children.Add(deselectButton);
 
                 tabContent.Children.Add(buttonsPanel);
-                tabContent.Children.Add(new Separator());
 
                 foreach (var type in category.Types()) {
                     var check = new CheckBox {
@@ -123,12 +120,12 @@ namespace XIVChat_Desktop {
                     tabContent.Children.Add(check);
                 }
 
-                var tabItem = new TabItem {
-                    Header = new TextBlock(new Run(category.Name())),
+                var tabItem = new TabViewItem {
+                    Header = new TextBlock { Text = category.Name() },
                     Content = tabContent,
                 };
 
-                this.Tabs.Items.Add(tabItem);
+                this.Tabs.TabItems.Add(tabItem);
             }
         }
 
@@ -138,12 +135,12 @@ namespace XIVChat_Desktop {
         }
 
         private void SetUpSenders() {
-            // var senders = this.ExportTab.Messages
             var senders = this.App.Window.Messages
                 .Where(msg => ((ExportFilter)this.ExportTab.Filter).AllowedMinusSenders(msg))
                 .Select(msg => msg.GetSenderPlayer())
                 .Where(sender => sender != null)
-                .ToImmutableSortedSet();
+                .Distinct()
+                .ToList();
 
             this.Senders.Clear();
 
@@ -166,7 +163,6 @@ namespace XIVChat_Desktop {
                 this.Senders.Add(sender);
             }
 
-            [SuppressMessage("ReSharper", "ConvertIfStatementToReturnStatement")]
             public bool AllowedMinusSenders(ServerMessage message) {
                 if (!base.Allowed(message)) {
                     return false;
@@ -183,7 +179,6 @@ namespace XIVChat_Desktop {
                 return true;
             }
 
-            [SuppressMessage("ReSharper", "ConvertIfStatementToReturnStatement")]
             public override bool Allowed(ServerMessage message) {
                 if (!this.AllowedMinusSenders(message)) {
                     return false;
@@ -250,148 +245,65 @@ namespace XIVChat_Desktop {
         }
 
         private async void Save_Click(object sender, RoutedEventArgs e) {
-            // create a new flowdocument for saving
-            var flow = new FlowDocument();
-
-            // turn every message in the tab into a paragraph in the flowdocument
-            foreach (var message in this.ExportTab.Messages) {
-                this.Dispatch(DispatcherPriority.Background, () => {
-                    var paragraph = new Paragraph();
-                    // this has to be done on the main thread
-                    var inlines = MessageFormatter.ChunksToTextBlock(message, this.App.Config.FontSize, this.ExportTab.ProcessMarkdown, this.ShowTimestamps);
-                    paragraph.Inlines.AddRange(inlines);
-                    flow.Blocks.Add(paragraph);
-                });
-            }
-
             // ask the user where to save
-            var saveDialog = new SaveFileDialog {
-                Filter = $"{DataFormats.Text} (*.txt)|*.txt|{DataFormats.Rtf} (*.rtf)|*.rtf",
-            };
+            var savePicker = new FileSavePicker();
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            savePicker.FileTypeChoices.Add("Text Files", new[] { ".txt" });
+            savePicker.FileTypeChoices.Add("Rich Text Files", new[] { ".rtf" });
+            savePicker.SuggestedFileName = "XIVChat Export";
 
-            if (saveDialog.ShowDialog(this) != true) {
+            var file = await savePicker.PickSaveFileAsync();
+            if (file == null) {
                 return;
             }
 
-            var ext = saveDialog.FileName.Split('.').Last().ToLowerInvariant();
-            string dataFormat = ext switch {
-                "rtf" => DataFormats.Rtf,
-                _ => DataFormats.Text,
-            };
-            // save the data into memory (this apparently has to happen on the main thread or we'd save directly into a
-            // file)
-            await using var memoryStream = new MemoryStream();
-            new TextRange(flow.ContentStart, flow.ContentEnd).Save(memoryStream, dataFormat);
+            // build export text
+            var text = new System.Text.StringBuilder();
+            foreach (var message in this.ExportTab.Messages) {
+                foreach (var chunk in message.Chunks) {
+                    if (chunk is TextChunk textChunk) {
+                        text.Append(textChunk.Content);
+                    }
+                }
+                text.AppendLine();
+            }
 
-            // write the saved data to a file on another thread
-            await Task.Run(async () => {
-                await using var stream = new FileStream(saveDialog.FileName, FileMode.Create);
-                memoryStream.Position = 0;
-                await memoryStream.CopyToAsync(stream);
-            });
+            await FileIO.WriteTextAsync(file, text.ToString());
 
             // show completion box
-            MessageBox.Show("Exported successfully.");
+            // TODO: Show success dialog
         }
 
-        private bool ignoreDateChanges;
-
-        private void AfterDatePicker_OnSelectedDateChanged(object? sender, SelectionChangedEventArgs e) {
-            if (this.ignoreDateChanges) {
-                return;
-            }
-
-            var datePicker = (DatePicker)sender!;
-            this.Filter.After = UpdateDate(this.Filter.After?.ToLocalTime(), datePicker.SelectedDate)?.ToUniversalTime();
-
-            this.ignoreDateChanges = true;
-            this.AfterTimePicker.SelectedDateTime = this.Filter.After?.ToLocalTime();
-            this.ignoreDateChanges = false;
-
+        private void AfterDatePicker_OnDateChanged(object sender, DatePickerValueChangedEventArgs e) {
+            this.Filter.After = e.NewDate.DateTime;
             this.Repopulate();
         }
 
-        private void AfterTimePicker_OnSelectedDateTimeChanged(object sender, RoutedPropertyChangedEventArgs<DateTime?> e) {
-            if (this.ignoreDateChanges) {
-                return;
-            }
-
-            this.Filter.After = UpdateTime(this.Filter.After?.ToLocalTime(), e.NewValue)?.ToUniversalTime();
-
-            this.AfterDatePicker.SelectedDate = this.Filter.After?.ToLocalTime();
+        private void AfterTimePicker_OnTimeChanged(object sender, TimePickerValueChangedEventArgs e) {
+            // TODO: Update time
         }
 
-        private void BeforeDatePicker_OnSelectedDateChanged(object? sender, SelectionChangedEventArgs e) {
-            if (this.ignoreDateChanges) {
-                return;
-            }
-
-            var datePicker = (DatePicker)sender!;
-            this.Filter.Before = UpdateDate(this.Filter.Before?.ToLocalTime(), datePicker.SelectedDate)?.ToUniversalTime();
-
-            this.ignoreDateChanges = true;
-            this.BeforeTimePicker.SelectedDateTime = this.Filter.Before?.ToLocalTime();
-            this.ignoreDateChanges = false;
-
+        private void BeforeDatePicker_OnDateChanged(object sender, DatePickerValueChangedEventArgs e) {
+            this.Filter.Before = e.NewDate.DateTime;
             this.Repopulate();
         }
 
-        private void BeforeTimePicker_OnSelectedDateTimeChanged(object sender, RoutedPropertyChangedEventArgs<DateTime?> e) {
-            if (this.ignoreDateChanges) {
-                return;
-            }
-
-            this.Filter.Before = UpdateTime(this.Filter.Before?.ToLocalTime(), e.NewValue)?.ToUniversalTime();
-
-            this.BeforeDatePicker.SelectedDate = this.Filter.Before?.ToLocalTime();
-        }
-
-        private static DateTime? UpdateTime(DateTime? dest, DateTime? source) {
-            switch (dest) {
-                case null when source == null:
-                    return null;
-                case null:
-                    return source;
-            }
-
-            if (source == null) {
-                return dest;
-            }
-
-            var newValue = source.Value;
-
-            return new DateTime(dest.Value.Year, dest.Value.Month, dest.Value.Day, newValue.Hour, newValue.Minute, newValue.Second);
-        }
-
-        private static DateTime? UpdateDate(DateTime? dest, DateTime? source) {
-            switch (dest) {
-                case null when source == null:
-                    return null;
-                case null:
-                    return source;
-            }
-
-            if (source == null) {
-                return dest;
-            }
-
-            var newValue = source.Value;
-
-            return new DateTime(newValue.Year, newValue.Month, newValue.Day, dest.Value.Hour, dest.Value.Minute, dest.Value.Second);
+        private void BeforeTimePicker_OnTimeChanged(object sender, TimePickerValueChangedEventArgs e) {
+            // TODO: Update time
         }
 
         private void BeforeClear_Click(object sender, RoutedEventArgs e) {
-            this.ignoreDateChanges = true;
             this.BeforeDatePicker.SelectedDate = null;
-            this.ignoreDateChanges = false;
-            this.BeforeTimePicker.SelectedDateTime = null;
+            this.Filter.Before = null;
+            this.Repopulate();
         }
 
         private void AfterClear_Click(object sender, RoutedEventArgs e) {
-            this.ignoreDateChanges = true;
             this.AfterDatePicker.SelectedDate = null;
-            this.ignoreDateChanges = false;
-            this.AfterTimePicker.SelectedDateTime = null;
+            this.Filter.After = null;
+            this.Repopulate();
         }
     }
 }

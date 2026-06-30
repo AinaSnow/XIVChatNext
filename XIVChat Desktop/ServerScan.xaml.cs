@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,22 +8,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Windows;
+using Microsoft.UI.Xaml;
 using Sodium;
 
 namespace XIVChat_Desktop {
-    public partial class ServerScan {
+    public partial class ServerScan : Window {
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
         private Task? udpThread;
 
         public ObservableCollection<SavedServer> Servers { get; } = new ObservableCollection<SavedServer>();
 
-        public ServerScan(Window owner) {
-            this.Owner = owner;
-
+        public ServerScan() {
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
         }
 
         private async Task Scanner() {
@@ -77,14 +74,14 @@ namespace XIVChat_Desktop {
                         continue;
                     }
 
-                    this.Dispatch(() => {
+                    this.DispatcherQueue.TryEnqueue(() => {
                         this.Servers.Add(saved);
                     });
                 }
             }
         }
 
-        private async void ServerScan_OnClosing(object sender, CancelEventArgs e) {
+        private async void ServerScan_OnClosed(object sender, WindowEventArgs args) {
             this.cts.Cancel();
             await this.cancelChannel.Writer.WriteAsync(1);
             var task = this.udpThread;
@@ -93,7 +90,7 @@ namespace XIVChat_Desktop {
             }
         }
 
-        private void ServerScan_OnContentRendered(object? sender, EventArgs e) {
+        private void ServerScan_OnLoaded(object sender, RoutedEventArgs e) {
             this.udpThread ??= Task.Run(this.Scanner);
         }
 
@@ -111,8 +108,8 @@ namespace XIVChat_Desktop {
         }
 
         private void AddServer(SavedServer server) {
-            var dialog = new ManageServer(this, server, true);
-            dialog.ShowDialog();
+            var dialog = new ManageServer(server);
+            dialog.Activate();
         }
     }
 

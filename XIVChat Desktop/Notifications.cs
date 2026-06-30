@@ -1,23 +1,29 @@
-﻿using System.Runtime.InteropServices;
-using Microsoft.Toolkit.Uwp.Notifications;
+﻿using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 
 namespace XIVChat_Desktop {
     public static class Notifications {
-        [System.Obsolete]
         public static void Initialise() {
-            DesktopNotificationManagerCompat.RegisterAumidAndComServer<XivChatNotificationActivator>("XIVChat.XIVChat_Desktop");
-            DesktopNotificationManagerCompat.RegisterActivator<XivChatNotificationActivator>();
+            // WinUI 3 notifications are initialized through AppNotificationManager
+            AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
+            AppNotificationManager.Default.Register();
         }
-    }
 
+        private static void OnNotificationInvoked(AppNotificationManager sender, AppNotificationActivatedEventArgs args) {
+            // TODO: Handle notification activation
+        }
 
-    [ClassInterface(ClassInterfaceType.None)]
-    [ComSourceInterfaces(typeof(INotificationActivationCallback))]
-    [Guid("F12BCC85-6FEE-4A9A-BBB8-08DFAA7BE1A8"), ComVisible(true)]
-    [System.Obsolete]
-    public class XivChatNotificationActivator : NotificationActivator {
-        public override void OnActivated(string invokedArgs, NotificationUserInput userInput, string appUserModelId) {
-            // TODO: Handle activation
+        public static void ShowNotification(string title, string text, string? attribution = null) {
+            var builder = new AppNotificationBuilder()
+                .AddText(title)
+                .AddText(text);
+
+            if (attribution != null) {
+                builder.AddText(attribution);
+            }
+
+            var notification = builder.BuildNotification();
+            AppNotificationManager.Default.Show(notification);
         }
     }
 }

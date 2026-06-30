@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Sodium;
 using System;
 using System.Collections;
@@ -35,6 +35,7 @@ namespace XIVChat_Desktop {
         public double FontSize {
             get => this.fontSize;
             set {
+                if (Math.Abs(this.fontSize - value) < 0.001) return;
                 this.fontSize = value;
                 this.OnPropertyChanged(nameof(this.FontSize));
             }
@@ -49,6 +50,7 @@ namespace XIVChat_Desktop {
         public double Opacity {
             get => this.opacity;
             set {
+                if (Math.Abs(this.opacity - value) < 0.001) return;
                 this.opacity = value;
                 this.OnPropertyChanged(nameof(this.Opacity));
             }
@@ -59,6 +61,7 @@ namespace XIVChat_Desktop {
         public bool CompactMode {
             get => this.compactMode;
             set {
+                if (this.compactMode == value) return;
                 this.compactMode = value;
                 this.OnPropertyChanged(nameof(this.CompactMode));
             }
@@ -69,6 +72,7 @@ namespace XIVChat_Desktop {
         public Theme Theme {
             get => this.theme;
             set {
+                if (this.theme == value) return;
                 this.theme = value;
                 this.OnPropertyChanged(nameof(this.Theme));
             }

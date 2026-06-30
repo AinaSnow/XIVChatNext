@@ -1,19 +1,15 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.Export"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:cc="clr-namespace:XIVChat_Desktop.Controls"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     mc:Ignorable="d"
-                     Title="Export"
-                     x:Name="Main"
-                     d:DataContext="{d:DesignInstance local:Export}"
-                     Height="600"
-                     Width="800">
-    <Grid Margin="8">
+﻿<Window x:Class="XIVChat_Desktop.Export"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="using:XIVChat_Desktop"
+        xmlns:cc="using:XIVChat_Desktop.Controls"
+        mc:Ignorable="d"
+        Title="导出"
+        x:Name="Main"
+        d:DataContext="{d:DesignInstance local:Export}">
+    <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -22,32 +18,19 @@
         <ItemsControl Grid.Row="0"
                       Grid.Column="0"
                       Padding="4"
-                      VirtualizingPanel.ScrollUnit="Pixel"
-                      ItemsSource="{Binding ExportTab}">
-            <ItemsControl.Template>
-                <ControlTemplate TargetType="ItemsControl">
-                    <ScrollViewer x:Name="scroller"
-                                  CanContentScroll="True"
-                                  Background="#333">
-                        <ItemsPresenter Margin="0,0,16,0" />
-                    </ScrollViewer>
-                </ControlTemplate>
-            </ItemsControl.Template>
-
+                      ItemsSource="{x:Bind ExportTab, Mode=OneWay}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <VirtualizingStackPanel IsVirtualizing="True"
-                                            VirtualizationMode="Recycling"
-                                            VerticalAlignment="Bottom" />
+                    <StackPanel VerticalAlignment="Bottom" />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <cc:MessageTextBlock FontFamily="Global User Interface, /Resources/fonts/#XIV AXIS Std ATK"
-                                         ProcessMarkdown="{Binding ExportTab.ProcessMarkdown, ElementName=Main}"
-                                         Message="{Binding .}"
-                                         ShowTimestamps="{Binding ShowTimestamps, ElementName=Main}" />
+                    <cc:MessageTextBlock
+                        ProcessMarkdown="{Binding ExportTab.ProcessMarkdown, ElementName=Main, Mode=OneWay}"
+                        Message="{Binding}"
+                        ShowTimestamps="{Binding ShowTimestamps, ElementName=Main, Mode=OneWay}" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -66,33 +49,33 @@
                     <CheckBox Content="将消息处理为 Markdown"
                               Checked="Markdown_Checked"
                               Unchecked="Markdown_Unchecked"
-                              IsChecked="{Binding ExportTab.ProcessMarkdown}" />
+                              IsChecked="{x:Bind ExportTab.ProcessMarkdown, Mode=TwoWay}" />
 
                     <CheckBox Content="显示时间戳"
-                              IsChecked="{Binding ShowTimestamps}" />
+                              IsChecked="{x:Bind ShowTimestamps, Mode=TwoWay}" />
 
                     <DatePicker x:Name="AfterDatePicker"
-                                ui:ControlHelper.Header="从"
-                                SelectedDateChanged="AfterDatePicker_OnSelectedDateChanged" />
-                    <ui:SimpleTimePicker x:Name="AfterTimePicker"
-                                         SelectedDateTimeChanged="AfterTimePicker_OnSelectedDateTimeChanged" />
+                                Header="从"
+                                DateChanged="AfterDatePicker_OnDateChanged" />
+                    <TimePicker x:Name="AfterTimePicker"
+                                TimeChanged="AfterTimePicker_OnTimeChanged" />
                     <Button Margin="0,4,0,8"
                             Content="清除"
                             Click="AfterClear_Click" />
 
                     <DatePicker x:Name="BeforeDatePicker"
-                                ui:ControlHelper.Header="到"
-                                SelectedDateChanged="BeforeDatePicker_OnSelectedDateChanged" />
-                    <ui:SimpleTimePicker x:Name="BeforeTimePicker"
-                                         SelectedDateTimeChanged="BeforeTimePicker_OnSelectedDateTimeChanged" />
+                                Header="到"
+                                DateChanged="BeforeDatePicker_OnDateChanged" />
+                    <TimePicker x:Name="BeforeTimePicker"
+                                TimeChanged="BeforeTimePicker_OnTimeChanged" />
                     <Button Margin="0,4,0,8"
                             Content="清除"
                             Click="BeforeClear_Click" />
 
                     <Button Margin="0,8,0,8"
                             Content="过滤消息">
-                        <ui:FlyoutService.Flyout>
-                            <ui:Flyout>
+                        <Button.Flyout>
+                            <Flyout>
                                 <Grid Height="300">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -103,11 +86,11 @@
                                     <ListBox MinWidth="100"
                                              ScrollViewer.VerticalScrollBarVisibility="Visible"
                                              x:Name="SendersFilterSource"
-                                             ItemsSource="{Binding Senders, Mode=OneWay}">
+                                             ItemsSource="{x:Bind Senders, Mode=OneWay}">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Margin="0,0,16,0"
-                                                           Text="{Binding ., Converter={StaticResource SenderPlayerConverter}}" />
+                                                           Text="{Binding Name}" />
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
@@ -124,24 +107,20 @@
                                              MinWidth="100"
                                              ScrollViewer.VerticalScrollBarVisibility="Visible"
                                              x:Name="SenderFiltersDest"
-                                             ItemsSource="{Binding ExportTab.Filter.Senders, Mode=OneWay}">
+                                             ItemsSource="{x:Bind SenderFilters, Mode=OneWay}">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <TextBlock Margin="0,0,16,0"
-                                                           Text="{Binding ., Converter={StaticResource SenderPlayerConverter}}" />
+                                                           Text="{Binding Name}" />
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
                                 </Grid>
-                            </ui:Flyout>
-                        </ui:FlyoutService.Flyout>
+                            </Flyout>
+                        </Button.Flyout>
                     </Button>
 
-                    <TabControl x:Name="Tabs" />
-                    <CheckBox Content="将消息处理为 Markdown"
-                        Checked="Markdown_Checked"
-                        Unchecked="Markdown_Unchecked"
-                        IsChecked="{Binding ExportTab.ProcessMarkdown}" />
+                    <TabView x:Name="Tabs" />
                 </StackPanel>
             </ScrollViewer>
 
@@ -151,4 +130,4 @@
                     HorizontalAlignment="Right" />
         </Grid>
     </Grid>
-</local:XivChatWindow>
+</Window>

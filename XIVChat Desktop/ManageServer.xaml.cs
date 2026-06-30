@@ -1,35 +1,24 @@
-﻿using System.Windows;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for ManageServer.xaml
-    /// </summary>
-    public partial class ManageServer {
+    public partial class ManageServer : Window {
         public App App => (App)Application.Current;
         public SavedServer? Server { get; private set; }
 
         private readonly bool isNewServer;
 
-        public ManageServer(Window owner, SavedServer? server) {
-            this.Owner = owner;
+        public ManageServer(SavedServer? server) {
             this.Server = server;
             this.isNewServer = server == null;
 
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
+            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(400, 320));
 
             if (this.isNewServer) {
-                this.Title = "Add server";
+                this.Title = "添加服务器";
             }
-        }
-
-        public ManageServer(Window owner, SavedServer server, bool isNewServer) {
-            this.Owner = owner;
-            this.Server = server;
-            this.isNewServer = isNewServer;
-
-            this.InitializeComponent();
-            this.DataContext = this;
         }
 
         private void Save_Click(object sender, RoutedEventArgs e) {
@@ -37,7 +26,7 @@ namespace XIVChat_Desktop {
             var serverHost = this.ServerHost.Text;
 
             if (serverName.Length == 0 || serverHost.Length == 0) {
-                MessageBox.Show("Server must have a name and host.");
+                // TODO: Show error dialog
                 return;
             }
 
@@ -46,7 +35,7 @@ namespace XIVChat_Desktop {
                 port = 14777;
             } else {
                 if (!ushort.TryParse(this.ServerPort.Text, out port) || port < 1) {
-                    MessageBox.Show("Port was not valid. It must be a number between 1 and 65535.");
+                    // TODO: Show error dialog
                     return;
                 }
             }
@@ -65,7 +54,6 @@ namespace XIVChat_Desktop {
             }
 
             this.App.Config.Save();
-
             this.Close();
         }
 

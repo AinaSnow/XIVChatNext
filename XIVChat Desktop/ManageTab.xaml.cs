@@ -1,14 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for FiltersSelection.xaml
-    /// </summary>
-    public partial class ManageTab {
+    public partial class ManageTab : Window {
         public App App => (App)Application.Current;
 
         public Tab Tab { get; }
@@ -16,8 +12,7 @@ namespace XIVChat_Desktop {
         private readonly bool isNewTab;
         private readonly IImmutableSet<FilterType> oldFilters;
 
-        public ManageTab(Window owner, Tab? tab) {
-            this.Owner = owner;
+        public ManageTab(Tab? tab) {
             this.isNewTab = tab == null;
             this.Tab = tab ?? new Tab("") {
                 Filter = Tab.GeneralFilter(),
@@ -25,14 +20,14 @@ namespace XIVChat_Desktop {
             this.oldFilters = this.Tab.Filter.Types.ToImmutableHashSet();
 
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
 
             if (this.isNewTab) {
-                this.Title = "Add tab";
+                this.Title = "添加选项卡";
             }
 
             foreach (var category in (FilterCategory[])Enum.GetValues(typeof(FilterCategory))) {
-                var panel = new WrapPanel {
+                var panel = new StackPanel {
                     Margin = new Thickness(8),
                     Orientation = Orientation.Vertical,
                 };
@@ -42,17 +37,18 @@ namespace XIVChat_Desktop {
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 };
 
-                var buttonsPanel = new WrapPanel {
+                var buttonsPanel = new StackPanel {
                     Margin = new Thickness(0, 0, 0, 4),
+                    Orientation = Orientation.Horizontal,
                 };
 
                 var selectButton = new Button {
-                    Content = "Select all",
+                    Content = "全选",
                 };
                 selectButton.Click += (sender, e) => SetAllChecked(true);
 
                 var deselectButton = new Button {
-                    Content = "Deselect all",
+                    Content = "取消全选",
                     Margin = new Thickness(4, 0, 0, 0),
                 };
                 deselectButton.Click += (sender, e) => SetAllChecked(false);
@@ -72,7 +68,7 @@ namespace XIVChat_Desktop {
                 buttonsPanel.Children.Add(deselectButton);
 
                 panel.Children.Add(buttonsPanel);
-                panel.Children.Add(new Separator());
+                panel.Children.Add(new Border { Height = 1, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray), Margin = new Thickness(0, 4, 0, 4) });
 
                 foreach (var type in category.Types()) {
                     var check = new CheckBox {
@@ -90,18 +86,18 @@ namespace XIVChat_Desktop {
                     panel.Children.Add(check);
                 }
 
-                var tabItem = new TabItem {
-                    Header = new TextBlock(new Run(category.Name())),
+                var tabItem = new TabViewItem {
+                    Header = new TextBlock { Text = category.Name() },
                     Content = tabContent,
                 };
 
-                this.Tabs.Items.Add(tabItem);
+                this.Tabs.TabItems.Add(tabItem);
             }
         }
 
         private void Save_Click(object sender, RoutedEventArgs e) {
             if (this.TabName.Text.Length == 0) {
-                MessageBox.Show("Tab must have a name.");
+                // TODO: Show error dialog
                 return;
             }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -7,8 +7,8 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Threading;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using XIVChatCommon;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Client;
@@ -58,13 +58,6 @@ namespace XIVChat_Desktop {
             this.outgoing.Writer.TryWrite(message);
         }
 
-        public void RequestFriendList() {
-            var msg = new ClientPlayerList {
-                Type = PlayerListType.Friend,
-            };
-            this.outgoingMessages.Writer.TryWrite(msg.Encode());
-        }
-
         public void ChangeChannel(InputChannel channel) {
             var msg = new ClientChannel {
                 Channel = channel,
@@ -80,8 +73,10 @@ namespace XIVChat_Desktop {
         }
 
         public async Task Connect() {
-            this.client = new TcpClient(this.host, this.port);
-            var stream = this.client.GetStream();
+            try {
+                this.client = new TcpClient();
+                await this.client.ConnectAsync(this.host, this.port, this.cancel.Token);
+                var stream = this.client.GetStream();
 
             // write the magic bytes
             await stream.WriteAsync(new byte[] {
@@ -96,7 +91,7 @@ namespace XIVChat_Desktop {
                 var trustChannel = Channel.CreateBounded<bool>(1);
 
                 this.app.Dispatch(() => {
-                    new TrustDialog(this.app.Window, trustChannel.Writer, handshake.RemotePublicKey).Show();
+                    new TrustDialog(trustChannel.Writer, handshake.RemotePublicKey).Activate();
                 });
 
                 var trusted = await trustChannel.Reader.ReadAsync(this.cancel.Token);
@@ -160,7 +155,6 @@ namespace XIVChat_Desktop {
                         if (ex != null) {
                             this.app.Dispatch(() => {
                                 this.app.Window.AddSystemMessage("Error reading incoming message.");
-                                // ReSharper disable once LocalizableElement
                                 Console.WriteLine($"Error reading incoming message: {ex.Message}");
                                 foreach (var inner in ex.InnerExceptions) {
                                     Console.WriteLine(inner.StackTrace);
@@ -208,7 +202,6 @@ namespace XIVChat_Desktop {
                     } catch (Exception ex) {
                         this.app.Dispatch(() => {
                             this.app.Window.AddSystemMessage("Error sending message.");
-                            // ReSharper disable once LocalizableElement
                             Console.WriteLine($"Error sending message: {ex.Message}");
                             Console.WriteLine(ex.StackTrace);
                         });
@@ -223,7 +216,6 @@ namespace XIVChat_Desktop {
                     } catch (Exception ex) {
                         this.app.Dispatch(() => {
                             this.app.Window.AddSystemMessage("Error sending message.");
-                            // ReSharper disable once LocalizableElement
                             Console.WriteLine($"Error sending message: {ex.Message}");
                             Console.WriteLine(ex.StackTrace);
                         });
@@ -231,13 +223,10 @@ namespace XIVChat_Desktop {
                     }
                 } else if (result == cancel) {
                     try {
-                        // NOTE: purposely not including cancellation token because it will already be cancelled here
-                        //       and we need to send this message
                         await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance);
                     } catch (Exception ex) {
                         this.app.Dispatch(() => {
                             this.app.Window.AddSystemMessage("Error sending message.");
-                            // ReSharper disable once LocalizableElement
                             Console.WriteLine($"Error sending message: {ex.Message}");
                             Console.WriteLine(ex.StackTrace);
                         });
@@ -261,10 +250,16 @@ namespace XIVChat_Desktop {
             // wait up to a second to send the shutdown packet
             await Task.WhenAny(Task.Delay(1_000), SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance));
 
-            Close:
+        Close:
             try {
-                this.client.Close();
-            } catch (ObjectDisposedException) { 
+                this.client?.Close();
+            } catch (ObjectDisposedException) {
+            }
+            } catch (Exception ex) {
+                this.app.Dispatch(() => {
+                    this.app.Window.AddSystemMessage($"连接或通信中断: {ex.Message}");
+                    this.app.Disconnect();
+                });
             }
         }
 
@@ -314,26 +309,13 @@ namespace XIVChat_Desktop {
                     foreach (var msg in backlog.messages.ToList().Chunks(100)) {
                         msg.Reverse();
                         var array = msg.ToArray();
-                        this.app.Dispatch(DispatcherPriority.Background, () => {
+                        this.app.Dispatch(() => {
                             this.app.Window.AddReversedChunk(array, seq);
                         });
                     }
 
                     break;
                 case ServerOperation.PlayerList:
-                    var playerList = ServerPlayerList.Decode(payload);
-                    if (playerList.Type == PlayerListType.Friend) {
-                        var players = playerList.Players
-                            .OrderBy(player => !player.HasStatus(PlayerStatus.Online));
-
-                        this.app.Dispatch(() => {
-                            this.app.Window.FriendList.Clear();
-                            foreach (var player in players) {
-                                this.app.Window.FriendList.Add(player);
-                            }
-                        });
-                    }
-
                     break;
                 case ServerOperation.LinkshellList:
                     break;
@@ -348,17 +330,17 @@ namespace XIVChat_Desktop {
             this.app.Dispatch(() => {
                 var window = this.app.Window;
 
-                window.LoggedInAs.Content = playerData?.name ?? "Not logged in";
+                window.LoggedInAsText.Text = playerData?.name ?? "Not logged in";
 
-                window.LoggedInAsSeparator.Visibility = visibility;
+                window.LoggedInAsSeparatorText.Visibility = visibility;
 
-                window.CurrentWorld.Content = playerData?.currentWorld;
-                window.CurrentWorld.Visibility = visibility;
+                window.CurrentWorldText.Text = playerData?.currentWorld;
+                window.CurrentWorldText.Visibility = visibility;
 
-                window.CurrentWorldSeparator.Visibility = visibility;
+                window.CurrentWorldSeparatorText.Visibility = visibility;
 
-                window.Location.Content = playerData?.location;
-                window.Location.Visibility = visibility;
+                window.LocationText.Text = playerData?.location;
+                window.LocationText.Visibility = visibility;
             });
         }
 

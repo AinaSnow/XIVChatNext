@@ -1,15 +1,11 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.TrustDialog"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     SizeToContent="WidthAndHeight"
-                     WindowStartupLocation="CenterOwner"
-                     mc:Ignorable="d"
-                     Title="Key verification">
+﻿<Window x:Class="XIVChat_Desktop.TrustDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:XIVChat_Desktop"
+        mc:Ignorable="d"
+        Title="密钥验证">
     <Grid Margin="8">
 
         <Grid.RowDefinitions>
@@ -22,9 +18,8 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Column="0"
-                   Grid.Row="0">
-            您正在尝试连接到以前从未连接过的服务器。 请检查服务器并确保以下两个键匹配。                                        
-        </TextBlock>
+                   Grid.Row="0"
+                   Text="您正在尝试连接到以前从未连接过的服务器。 请检查服务器并确保以下两个键匹配。" />
 
         <Grid Grid.Column="0"
               Grid.Row="1">
@@ -35,9 +30,8 @@
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0"
-                       Grid.Column="0">
-                Server:
-            </TextBlock>
+                       Grid.Column="0"
+                       Text="服务器:" />
             <TextBlock x:Name="ServerPublicKey"
                        Grid.Row="1"
                        Grid.Column="0" />
@@ -82,9 +76,8 @@
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0"
-                       Grid.Column="0">
-                Client:
-            </TextBlock>
+                       Grid.Column="0"
+                       Text="客户端:" />
             <TextBlock x:Name="ClientPublicKey"
                        Grid.Row="1"
                        Grid.Column="0" />
@@ -120,22 +113,22 @@
             </Grid>
         </Grid>
 
-        <WrapPanel Grid.Row="3"
+        <StackPanel Grid.Row="3"
                    Grid.Column="0"
                    Orientation="Vertical">
-            <TextBlock>给这个key起个名</TextBlock>
-            <TextBox x:Name="KeyName"></TextBox>
-        </WrapPanel>
+            <TextBlock Text="给这个key起个名" />
+            <TextBox x:Name="KeyName" />
+        </StackPanel>
 
         <TextBlock Grid.Row="4"
-                   Grid.Column="0">
-            Do both keys match?
-        </TextBlock>
+                   Grid.Column="0"
+                   Text="两个键是否匹配?" />
 
-        <WrapPanel Grid.Row="5"
-                   Grid.Column="0">
-            <Button Click="Yes_Click"> 是 </Button>
-            <Button Click="No_Click"> 否 </Button>
-        </WrapPanel>
+        <StackPanel Grid.Row="5"
+                   Grid.Column="0"
+                   Orientation="Horizontal">
+            <Button Click="Yes_Click" Content="是" />
+            <Button Click="No_Click" Content="否" />
+        </StackPanel>
     </Grid>
-</local:XivChatWindow>
+</Window>

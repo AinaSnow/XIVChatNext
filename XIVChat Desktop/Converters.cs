@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using System.Windows;
-using System.Windows.Data;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Data;
 using XIVChatCommon.Message.Server;
 
 namespace XIVChat_Desktop {
     public class DoubleConverter : IValueConverter {
-        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object value, Type targetType, object parameter, string language) {
             return value.ToString();
         }
 
-        public object? ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? ConvertBack(object value, Type targetType, object parameter, string language) {
             if (double.TryParse(value.ToString(), out var res)) {
                 return res;
             }
@@ -22,11 +22,11 @@ namespace XIVChat_Desktop {
     }
 
     public class UShortConverter : IValueConverter {
-        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object value, Type targetType, object parameter, string language) {
             return value.ToString();
         }
 
-        public object? ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? ConvertBack(object value, Type targetType, object parameter, string language) {
             if (ushort.TryParse(value.ToString(), out var res)) {
                 return res;
             }
@@ -36,11 +36,11 @@ namespace XIVChat_Desktop {
     }
 
     public class UIntConverter : IValueConverter {
-        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object value, Type targetType, object parameter, string language) {
             return value.ToString();
         }
 
-        public object? ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? ConvertBack(object value, Type targetType, object parameter, string language) {
             if (uint.TryParse(value.ToString(), out var res)) {
                 return res;
             }
@@ -50,7 +50,7 @@ namespace XIVChat_Desktop {
     }
 
     public class SenderPlayerConverter : IValueConverter {
-        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object value, Type targetType, object parameter, string language) {
             if (!(value is ServerMessage.SenderPlayer sender)) {
                 return null;
             }
@@ -69,13 +69,13 @@ namespace XIVChat_Desktop {
             return s.ToString();
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object ConvertBack(object value, Type targetType, object parameter, string language) {
             throw new NotImplementedException();
         }
     }
 
     public class TitleCaseConverter : IValueConverter {
-        public object? Convert(object? value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object? value, Type targetType, object parameter, string language) {
             var s = value?.ToString();
             if (s == null) {
                 return null;
@@ -93,17 +93,17 @@ namespace XIVChat_Desktop {
             return newString.ToString();
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object ConvertBack(object value, Type targetType, object parameter, string language) {
             throw new NotImplementedException();
         }
     }
 
     public class NotConverter : IValueConverter {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object Convert(object value, Type targetType, object parameter, string language) {
             return !((bool)value);
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object ConvertBack(object value, Type targetType, object parameter, string language) {
             return !((bool)value);
         }
     }
@@ -112,11 +112,11 @@ namespace XIVChat_Desktop {
         public T TrueValue { get; set; } = default!;
         public T FalseValue { get; set; } = default!;
 
-        public object? Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object? Convert(object value, Type targetType, object parameter, string language) {
             return (bool)value ? this.TrueValue : this.FalseValue;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+        public object ConvertBack(object value, Type targetType, object parameter, string language) {
             var val = (T)value;
             return EqualityComparer<T>.Default.Equals(val, this.TrueValue);
         }

@@ -1,134 +1,28 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
 
 namespace XIVChat_Desktop {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : INotifyPropertyChanged {
-        #region commands
-
-        private void AlwaysTrue_CanExecute(object sender, CanExecuteRoutedEventArgs e) {
-            e.CanExecute = true;
-        }
-
-        public static readonly RoutedUICommand EditTab = new RoutedUICommand(
-            "EditTab",
-            "EditTab",
-            typeof(MainWindow)
-        );
-
-        private void EditTab_OnExecuted(object sender, ExecutedRoutedEventArgs e) {
-            if (!(e.Parameter is Tab tab)) {
-                return;
-            }
-
-            new ManageTab(this, tab).Show();
-        }
-
-        public static readonly RoutedUICommand DeleteTab = new RoutedUICommand(
-            "DeleteTab",
-            "DeleteTab",
-            typeof(MainWindow)
-        );
-
-        private void DeleteTab_OnExecuted(object sender, ExecutedRoutedEventArgs e) {
-            if (!(e.Parameter is Tab tab)) {
-                return;
-            }
-
-            this.App.Config.Tabs.Remove(tab);
-            this.App.Config.Save();
-        }
-
-        public static readonly RoutedUICommand AddTab = new RoutedUICommand(
-            "AddTab",
-            "AddTab",
-            typeof(MainWindow)
-        );
-
-        private void AddTab_OnExecuted(object sender, ExecutedRoutedEventArgs e) {
-            new ManageTab(this, null).Show();
-        }
-
-        public static readonly RoutedUICommand ManageTabs = new RoutedUICommand(
-            "ManageTabs",
-            "ManageTabs",
-            typeof(MainWindow)
-        );
-
-        private void ManageTabs_OnExecuted(object sender, ExecutedRoutedEventArgs e) {
-            new ManageTabs(this).Show();
-        }
-
-        public static readonly RoutedUICommand MessageSendTell = new RoutedUICommand(
-            "MessageSendTell",
-            "MessageSendTell",
-            typeof(MainWindow)
-        );
-
-        private void MessageSendTell_CanExecute(object sender, CanExecuteRoutedEventArgs e) {
-            if (!(e.Parameter is ServerMessage message)) {
-                return;
-            }
-
-            e.CanExecute = message.GetSenderPlayer() != null;
-        }
-
-        private void MessageSendTell_OnExecuted(object eventSender, ExecutedRoutedEventArgs e) {
-            if (!(e.Parameter is ServerMessage message)) {
-                return;
-            }
-
-            var sender = message.GetSenderPlayer();
-            if (sender == null) {
-                return;
-            }
-
-            var worldName = Util.WorldName(sender.Server);
-            if (worldName == null) {
-                return;
-            }
-
-            this.InsertTellCommand(sender.Name, worldName);
-        }
-
-
-        public static readonly RoutedUICommand ChangeChannel = new RoutedUICommand(
-            "ChangeChannel",
-            "ChangeChannel",
-            typeof(MainWindow)
-        );
-
-        private void ChangeChannel_CanExecute(object sender, CanExecuteRoutedEventArgs e) {
-            e.CanExecute = this.App.Connected;
-        }
-
-        private void ChangeChannel_Execute(object sender, ExecutedRoutedEventArgs e) {
-            if (!(e.Parameter is InputChannel)) {
-                return;
-            }
-
-            var param = (InputChannel) e.Parameter;
-            this.App.Connection?.ChangeChannel(param);
-        }
-
-        #endregion
-
-        public App App => (App) Application.Current;
+        public App App => (App)Application.Current;
 
         public List<ServerMessage> Messages { get; } = new List<ServerMessage>();
-        public ObservableCollection<Player> FriendList { get; } = new ObservableCollection<Player>();
+
+        public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsText => this.LoggedInAs;
+        public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsSeparatorText => this.LoggedInAsSeparator;
+        public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldText => this.CurrentWorld;
+        public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldSeparatorText => this.CurrentWorldSeparator;
+        public Microsoft.UI.Xaml.Controls.TextBlock LocationText => this.Location;
 
         private int historyIndex = -1;
 
@@ -150,30 +44,183 @@ namespace XIVChat_Desktop {
 
         public MainWindow() {
             this.InitializeComponent();
-            this.DataContext = this;
+            ThemeHelper.InitializeWindow(this);
+            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(850, 600));
+            this.Title = "XIVChat for Windows";
+            this.PopulateTabs();
         }
 
-        private T? FindElementByName<T>(DependencyObject element, string sChildName) where T : FrameworkElement {
-            T? childElement = null;
-            var nChildCount = VisualTreeHelper.GetChildrenCount(element);
-            for (var i = 0; i < nChildCount; i++) {
-                if (!(VisualTreeHelper.GetChild(element, i) is FrameworkElement child)) {
-                    continue;
-                }
-
-                if (child is T t && child.Name.Equals(sChildName)) {
-                    childElement = t;
-                    break;
-                }
-
-                childElement = this.FindElementByName<T>(child, sChildName);
-
-                if (childElement != null) {
-                    break;
-                }
+        private void PopulateTabs() {
+            this.Tabs.TabItems.Clear();
+            foreach (var tab in this.App.Config.Tabs) {
+                this.AddTab(tab);
             }
+            this.App.Config.Tabs.CollectionChanged -= this.OnTabsCollectionChanged;
+            this.App.Config.Tabs.CollectionChanged += this.OnTabsCollectionChanged;
+        }
 
-            return childElement;
+        private void OnTabsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
+            this.App.Dispatch(() => {
+                this.Tabs.TabItems.Clear();
+                foreach (var tab in this.App.Config.Tabs) {
+                    this.AddTab(tab);
+                }
+            });
+        }
+
+        private void AddTab(Tab tab) {
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var messagePanel = new StackPanel {
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Padding = new Thickness(4),
+            };
+            foreach (var msg in tab.Messages) {
+                var block = new Controls.MessageTextBlock();
+                block.Message = msg;
+                block.ProcessMarkdown = tab.ProcessMarkdown;
+                messagePanel.Children.Add(block);
+            }
+            var scrollViewer = new ScrollViewer {
+                Content = messagePanel,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+            var chatCard = new Border {
+                Child = scrollViewer,
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(1),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(35, 255, 255, 255)),
+                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(210, 24, 26, 32)),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            Grid.SetRow(chatCard, 0);
+            grid.Children.Add(chatCard);
+
+            tab.CollectionChanged += (s, e) => {
+                this.App.Dispatch(() => {
+                    if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null) {
+                        int index = e.NewStartingIndex;
+                        foreach (var item in e.NewItems) {
+                            if (item is ServerMessage msg) {
+                                var block = new Controls.MessageTextBlock();
+                                block.Message = msg;
+                                block.ProcessMarkdown = tab.ProcessMarkdown;
+                                if (index >= 0 && index <= messagePanel.Children.Count) {
+                                    messagePanel.Children.Insert(index, block);
+                                    index++;
+                                } else {
+                                    messagePanel.Children.Add(block);
+                                }
+                            }
+                        }
+                        messagePanel.DispatcherQueue?.TryEnqueue(() => {
+                            _ = scrollViewer.ChangeView(null, scrollViewer.ScrollableHeight, null);
+                        });
+                    } else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null) {
+                        int index = e.OldStartingIndex;
+                        for (int i = 0; i < e.OldItems.Count; i++) {
+                            if (index >= 0 && index < messagePanel.Children.Count) {
+                                messagePanel.Children.RemoveAt(index);
+                            } else if (messagePanel.Children.Count > 0) {
+                                messagePanel.Children.RemoveAt(0);
+                            }
+                        }
+                    } else if (e.Action == NotifyCollectionChangedAction.Reset) {
+                        messagePanel.Children.Clear();
+                        foreach (var msg in tab.Messages) {
+                            var block = new Controls.MessageTextBlock();
+                            block.Message = msg;
+                            block.ProcessMarkdown = tab.ProcessMarkdown;
+                            messagePanel.Children.Add(block);
+                        }
+                    }
+                });
+            };
+
+            var channelText = new TextBlock {
+                Margin = new Thickness(8, 4, 0, 0),
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK"),
+            };
+            channelText.Tapped += this.Channel_Tapped;
+            channelText.SetBinding(
+                TextBlock.TextProperty,
+                new Binding {
+                    Path = new PropertyPath("App.Connection.CurrentChannel"),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                }
+            );
+            channelText.ContextFlyout = this.CreateChannelFlyout();
+            Grid.SetRow(channelText, 1);
+            grid.Children.Add(channelText);
+
+            var inputBox = new TextBox {
+                Margin = new Thickness(0, 0, 0, 8),
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK"),
+            };
+            inputBox.SetBinding(
+                TextBox.PlaceholderTextProperty,
+                new Binding {
+                    Path = new PropertyPath("InputPlaceholder"),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                }
+            );
+            inputBox.SetBinding(
+                TextBox.IsEnabledProperty,
+                new Binding {
+                    Path = new PropertyPath("App.Connection.Available"),
+                    Source = this,
+                    Mode = BindingMode.OneWay,
+                }
+            );
+            inputBox.KeyDown += this.Input_Submit;
+            Grid.SetRow(inputBox, 2);
+            grid.Children.Add(inputBox);
+
+            var tabViewItem = new TabViewItem {
+                Header = new TextBlock {
+                    Text = tab.Name,
+                    FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK")
+                },
+                Content = grid,
+            };
+
+            this.Tabs.TabItems.Add(tabViewItem);
+        }
+
+        private MenuFlyout CreateChannelFlyout() {
+            var flyout = new MenuFlyout();
+            flyout.Items.Add(CreateMenuItem("悄悄话", this.Channel_Tell));
+            flyout.Items.Add(CreateMenuItem("说话", this.Channel_Say));
+            flyout.Items.Add(CreateMenuItem("小队", this.Channel_Party));
+            flyout.Items.Add(CreateMenuItem("团队", this.Channel_Alliance));
+            flyout.Items.Add(CreateMenuItem("呼喊", this.Channel_Yell));
+            flyout.Items.Add(CreateMenuItem("喊话", this.Channel_Shout));
+            flyout.Items.Add(CreateMenuItem("部队", this.Channel_FreeCompany));
+            flyout.Items.Add(CreateMenuItem("战队", this.Channel_PvpTeam));
+            flyout.Items.Add(CreateMenuItem("新人频道", this.Channel_NoviceNetwork));
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            for (int i = 1; i <= 8; i++) {
+                var idx = i;
+                flyout.Items.Add(CreateMenuItem($"跨服贝频道 [{i}]", (s, e) => this.App.Connection?.ChangeChannel((InputChannel)((int)InputChannel.CrossLinkshell1 + idx - 1))));
+            }
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            for (int i = 1; i <= 8; i++) {
+                var idx = i;
+                flyout.Items.Add(CreateMenuItem($"通讯贝 [{i}]", (s, e) => this.App.Connection?.ChangeChannel((InputChannel)((int)InputChannel.Linkshell1 + idx - 1))));
+            }
+            return flyout;
+        }
+
+        private static MenuFlyoutItem CreateMenuItem(string text, RoutedEventHandler handler) {
+            var item = new MenuFlyoutItem { Text = text };
+            item.Click += handler;
+            return item;
         }
 
         public void ClearAllMessages() {
@@ -207,12 +254,6 @@ namespace XIVChat_Desktop {
                 this.insertAt = this.Messages.Count;
             }
 
-            // detect if scroller is at the bottom
-            var scroller = this.FindElementByName<ScrollViewer>(this.Tabs, "scroller");
-            var scrollerOffset = scroller!.VerticalOffset;
-            var scrollerHeight = scroller.ScrollableHeight;
-            var wasAtBottom = Math.Abs(scroller.VerticalOffset - scrollerHeight) < .0001;
-
             // add messages to main list
             this.Messages.InsertRange(this.insertAt, messages);
             // add message to each tab if the filter allows for it
@@ -222,25 +263,11 @@ namespace XIVChat_Desktop {
 
             var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
             if (diff > 0) {
-                this.Messages.RemoveRange(0, (int) diff);
-            }
-
-            // scroll to the bottom if previously at the bottom
-            if (wasAtBottom) {
-                scroller.ScrollToBottom();
-            } else {
-                scroller.UpdateLayout();
-                var scrollDiff = scroller.ScrollableHeight - scrollerHeight;
-                scroller.ScrollToVerticalOffset(scrollerOffset + scrollDiff);
+                this.Messages.RemoveRange(0, (int)diff);
             }
         }
 
         public void AddMessage(ServerMessage message) {
-            // detect if scroller is at the bottom
-            var scroller = this.FindElementByName<ScrollViewer>(this.Tabs, "scroller");
-            var verticalOffset = scroller!.VerticalOffset;
-            var wasAtBottom = Math.Abs(verticalOffset - scroller.ScrollableHeight) < .0001;
-
             // add message to main list
             this.Messages.Add(message);
             // add message to each tab if the filter allows for it
@@ -250,19 +277,12 @@ namespace XIVChat_Desktop {
 
             var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
             if (diff > 0) {
-                this.Messages.RemoveRange(0, (int) diff);
-            }
-
-            // scroll to the bottom if previously at the bottom
-            if (wasAtBottom) {
-                scroller.ScrollToBottom();
-            } else {
-                scroller.ScrollToVerticalOffset(verticalOffset);
+                this.Messages.RemoveRange(0, (int)diff);
             }
         }
 
         public void InsertTellCommand(string name, string world, bool focus = true) {
-            var input = this.App.Window.GetCurrentInputBox();
+            var input = this.GetCurrentInputBox();
             if (input == null) {
                 return;
             }
@@ -274,31 +294,32 @@ namespace XIVChat_Desktop {
             input.SelectionLength = input.Text.Length - tell.Length;
 
             if (focus) {
-                input.Focus();
+                input.Focus(FocusState.Programmatic);
             }
         }
 
         private void Connect_Click(object sender, RoutedEventArgs e) {
-            new ConnectDialog(this).ShowDialog();
+            var dialog = new ConnectDialog();
+            dialog.Activate();
         }
 
         private void Disconnect_Click(object sender, RoutedEventArgs e) {
             this.App.Disconnect();
         }
 
-        private void Input_Submit(object sender, KeyEventArgs e) {
+        private void Input_Submit(object sender, KeyRoutedEventArgs e) {
             if (!(sender is TextBox textBox)) {
                 return;
             }
 
             switch (e.Key) {
-                case Key.Return:
+                case Windows.System.VirtualKey.Enter:
                     this.Submit(textBox);
                     break;
-                case Key.Up:
+                case Windows.System.VirtualKey.Up:
                     this.ArrowNavigate(textBox, true);
                     break;
-                case Key.Down:
+                case Windows.System.VirtualKey.Down:
                     this.ArrowNavigate(textBox, false);
                     break;
             }
@@ -324,19 +345,15 @@ namespace XIVChat_Desktop {
                 return;
             }
 
-            var caretLine = textBox.GetLineIndexFromCharacterIndex(textBox.CaretIndex);
-            var inFirstLine = caretLine == 0;
-            var inLastLine = caretLine == textBox.LineCount - 1;
-
             if (this.HistoryIndex == -1) {
                 this.HistoryBuffer = textBox.Text;
             }
 
-            if (up && inFirstLine) {
+            if (up) {
                 // go up in history
                 this.HistoryIndex += 1;
                 textBox.Text = this.History[this.ReverseHistoryIndex];
-            } else if (!up && inLastLine) {
+            } else {
                 // go down in history
                 this.HistoryIndex -= 1;
 
@@ -350,24 +367,28 @@ namespace XIVChat_Desktop {
         }
 
         private void Configuration_Click(object sender, RoutedEventArgs e) {
-            new ConfigWindow(this, this.App.Config).Show();
-        }
-
-        private void Tabs_Loaded(object sender, RoutedEventArgs e) {
-            this.Tabs.SelectedIndex = 0;
-        }
-
-        public TextBox? GetCurrentInputBox() {
-            return this.FindElementByName<TextBox>(this.Tabs, "InputBox");
+            var dialog = new ConfigWindow(this.App.Config);
+            dialog.Activate();
         }
 
         private void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e) {
-            var scroller = this.FindElementByName<ScrollViewer>(this.Tabs, "scroller");
-            scroller?.ScrollToBottom();
+            // Handle tab selection change
+        }
+
+        public TextBox? GetCurrentInputBox() {
+            if (this.Tabs.SelectedItem is TabViewItem tabViewItem && tabViewItem.Content is Grid grid) {
+                foreach (var child in grid.Children) {
+                    if (child is TextBox textBox) {
+                        return textBox;
+                    }
+                }
+            }
+            return null;
         }
 
         private void Scan_Click(object sender, RoutedEventArgs e) {
-            new ServerScan(this).Show();
+            var dialog = new ServerScan();
+            dialog.Activate();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -377,29 +398,118 @@ namespace XIVChat_Desktop {
         }
 
         private void Export_Click(object sender, RoutedEventArgs e) {
-            new Export(this).Show();
+            var dialog = new Export();
+            dialog.Activate();
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e) {
             this.Close();
-            this.App.Shutdown();
         }
 
-        private void FriendList_Click(object sender, RoutedEventArgs e) {
-            new FriendList(this).Show();
-        }
-
-        private void Channel_MouseDown(object sender, MouseButtonEventArgs e) {
+        private void Channel_Tapped(object sender, TappedRoutedEventArgs e) {
             e.Handled = true;
-
-            if (e.ChangedButton != MouseButton.Left) {
-                return;
-            }
-
-            var channel = (TextBlock) sender;
-            channel.ContextMenu!.PlacementTarget = channel;
-            channel.ContextMenu!.IsOpen = true;
         }
 
+        private void Channel_Tell(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Tell);
+        }
+
+        private void Channel_Say(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Say);
+        }
+
+        private void Channel_Party(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Party);
+        }
+
+        private void Channel_Alliance(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Alliance);
+        }
+
+        private void Channel_Yell(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Yell);
+        }
+
+        private void Channel_Shout(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Shout);
+        }
+
+        private void Channel_FreeCompany(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.FreeCompany);
+        }
+
+        private void Channel_PvpTeam(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.PvpTeam);
+        }
+
+        private void Channel_NoviceNetwork(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.NoviceNetwork);
+        }
+
+        private void Channel_CrossLinkshell1(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell1);
+        }
+
+        private void Channel_CrossLinkshell2(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell2);
+        }
+
+        private void Channel_CrossLinkshell3(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell3);
+        }
+
+        private void Channel_CrossLinkshell4(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell4);
+        }
+
+        private void Channel_CrossLinkshell5(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell5);
+        }
+
+        private void Channel_CrossLinkshell6(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell6);
+        }
+
+        private void Channel_CrossLinkshell7(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell7);
+        }
+
+        private void Channel_CrossLinkshell8(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell8);
+        }
+
+        private void Channel_Linkshell1(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell1);
+        }
+
+        private void Channel_Linkshell2(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell2);
+        }
+
+        private void Channel_Linkshell3(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell3);
+        }
+
+        private void Channel_Linkshell4(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell4);
+        }
+
+        private void Channel_Linkshell5(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell5);
+        }
+
+        private void Channel_Linkshell6(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell6);
+        }
+
+        private void Channel_Linkshell7(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell7);
+        }
+
+        private void Channel_Linkshell8(object sender, RoutedEventArgs e) {
+            this.App.Connection?.ChangeChannel(InputChannel.Linkshell8);
+        }
+
+        private bool Not(bool value) => !value;
     }
 }

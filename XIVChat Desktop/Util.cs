@@ -4,8 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using System.Windows.Controls;
-using System.Windows.Threading;
+using Microsoft.UI.Dispatching;
 
 namespace XIVChat_Desktop {
     public static class Util {
@@ -15,17 +14,11 @@ namespace XIVChat_Desktop {
             }
         }
 
-        public static void Dispatch(this DispatcherObject dispatcherObj, Action action) {
-            dispatcherObj.Dispatcher.BeginInvoke(action);
-        }
-
-        public static void Dispatch(this DispatcherObject dispatcherObj, DispatcherPriority priority, Action action) {
-            dispatcherObj.Dispatcher.BeginInvoke(priority, action);
+        public static void Dispatch(this DispatcherQueue dispatcher, Action action) {
+            dispatcher.TryEnqueue(() => action());
         }
 
         public static bool IsAsciiPunctuation(this char c) {
-            // 2.1 Characters and lines
-            // An ASCII punctuation character is !, ", #, $, %, &, ', (, ), *, +, ,, -, ., /, :, ;, <, =, >, ?, @, [, \, ], ^, _, `, {, |, }, or ~.
             switch (c) {
                 case '!':
                 case '"':
@@ -66,8 +59,6 @@ namespace XIVChat_Desktop {
         }
 
         public static bool IsWhitespace(this char c) {
-            // 2.1 Characters and lines
-            // A whitespace character is a space(U + 0020), tab(U + 0009), newline(U + 000A), line tabulation (U + 000B), form feed (U + 000C), or carriage return (U + 000D).
             return c <= ' ' && (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r');
         }
 
@@ -532,7 +523,7 @@ namespace XIVChat_Desktop {
                 1196 => "迷雾湿地",
                 1197 => "库尔札斯",
                 1198 => "执掌峡谷",
-                1199 => "珊瑚塔 ",
+                1199 => "珊瑚塔 ",
                 1200 => "亚马乌罗提",
                 1201 => "红茶川",
                 1202 => "萨雷安",
@@ -755,18 +746,6 @@ namespace XIVChat_Desktop {
                 exception = ex;
                 return false;
             }
-        }
-    }
-
-    public class RegexValidator : ValidationRule {
-        public override ValidationResult Validate(object value, CultureInfo cultureInfo) {
-            if (!(value is string text)) {
-                return new ValidationResult(false, "Value is not text.");
-            }
-
-            return text.IsValidRegex(out var ex)
-                ? ValidationResult.ValidResult
-                : new ValidationResult(false, $"Invalid regular expression: {ex.Message}");
         }
     }
 

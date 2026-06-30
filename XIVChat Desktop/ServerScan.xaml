@@ -1,24 +1,15 @@
-﻿<local:XivChatWindow x:Class="XIVChat_Desktop.ServerScan"
-                     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                     xmlns:local="clr-namespace:XIVChat_Desktop"
-                     xmlns:cc="clr-namespace:XIVChat_Desktop.Controls"
-                     mc:Ignorable="d"
-                     xmlns:ui="http://schemas.modernwpf.com/2019"
-                     ui:WindowHelper.UseModernWindowStyle="True"
-                     Title="服务扫描"
-                     Closing="ServerScan_OnClosing"
-                     ContentRendered="ServerScan_OnContentRendered"
-                     MinWidth="400"
-                     MinHeight="250"
-                     SizeToContent="WidthAndHeight"
-                     WindowStartupLocation="CenterOwner"
-                     ResizeMode="CanResizeWithGrip"
-                     ShowInTaskbar="False"
-                     d:DataContext="{d:DesignInstance local:ServerScan}">
-    <Grid Margin="8">
+<Window x:Class="XIVChat_Desktop.ServerScan"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="using:XIVChat_Desktop"
+        xmlns:cc="using:XIVChat_Desktop.Controls"
+        mc:Ignorable="d"
+        Title="服务扫描"
+        Closed="ServerScan_OnClosed"
+        d:DataContext="{d:DesignInstance local:ServerScan}">
+    <Grid Margin="8" DataContext="{x:Bind}" Loaded="ServerScan_OnLoaded">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -31,14 +22,13 @@
 
         <cc:SavedServers Grid.RowSpan="2"
                          x:Name="SavedServers"
-                         ItemsSource="{Binding Servers}"
+                         ItemsSource="{x:Bind Servers, Mode=OneWay}"
                          ItemDoubleClick="SavedServers_OnItemDoubleClick"
                          ControlsVisibility="Collapsed" />
 
-        <Button
-                Grid.Column="1"
-                Click="Add_Click" Margin="5,0,0,0" Width="41">
-            添加
-        </Button>
+        <Button Grid.Column="1"
+                Click="Add_Click"
+                Margin="5,0,0,0"
+                Content="添加" />
     </Grid>
-</local:XivChatWindow>
+</Window>
