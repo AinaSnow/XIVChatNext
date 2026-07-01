@@ -9,8 +9,9 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-        <DebugSymbols>true</DebugSymbols>
-        <DebugType>full</DebugType>
+        <DebugSymbols Condition="'$(Configuration)' == 'Debug'">true</DebugSymbols>
+        <DebugType Condition="'$(Configuration)' == 'Debug'">full</DebugType>
+        <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="MessagePack" Version="3.1.7" />
@@ -25,5 +26,12 @@
     <Target Name="CopyNativeLibraries" AfterTargets="AfterBuild">
         <Copy SourceFiles="Resources\lib\libsodium.dll" DestinationFolder="$(OutDir)" />
         <Copy SourceFiles="Resources\lib\xivchat_native_tools.dll" DestinationFolder="$(OutDir)" />
+    </Target>
+    <Target Name="CleanUnwantedOutputs" AfterTargets="CopyNativeLibraries" BeforeTargets="DefaultDalamudPackagerRelease;DefaultDalamudPackagerDebug">
+        <RemoveDir Directories="$(OutDir)runtimes;$(OutDir)XIVChat" />
+        <ItemGroup>
+            <UnwantedFiles Include="$(OutDir)*.config;$(OutDir)XIVChat.json;$(OutDir)*.pdb" />
+        </ItemGroup>
+        <Delete Files="@(UnwantedFiles)" />
     </Target>
 </Project>

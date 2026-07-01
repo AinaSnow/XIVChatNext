@@ -29,7 +29,9 @@ namespace XIVChat_Desktop {
                 rect.Fill = new SolidColorBrush(clientColours[i]);
             }
 
-            this.ServerPublicKey.Text = ToHexString(remoteKey);
+            var hexKey = ToHexString(remoteKey);
+            this.ServerPublicKey.Text = hexKey;
+            this.KeyName.Text = $"游戏端 ({hexKey.Substring(0, hexKey.Length >= 8 ? 8 : hexKey.Length)})";
             var serverColours = BreakIntoColours(remoteKey);
             for (int i = 0; i < this.ServerPublicKeyColours.Children.Count; i++) {
                 var rect = (Rectangle)this.ServerPublicKeyColours.Children[i];
@@ -56,10 +58,10 @@ namespace XIVChat_Desktop {
         }
 
         private async void Yes_Click(object sender, RoutedEventArgs e) {
-            var keyName = this.KeyName.Text;
+            var keyName = this.KeyName.Text?.Trim() ?? "";
             if (keyName.Length == 0) {
-                // TODO: Show error dialog
-                return;
+                var hex = ToHexString(this.remoteKey);
+                keyName = $"游戏端 ({hex.Substring(0, hex.Length >= 8 ? 8 : hex.Length)})";
             }
 
             var trustedKey = new TrustedKey(keyName, this.remoteKey);
