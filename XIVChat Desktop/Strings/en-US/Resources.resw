@@ -175,6 +175,9 @@
   <data name="Config.Theme" xml:space="preserve">
     <value>Theme</value>
   </data>
+  <data name="Config.Language" xml:space="preserve">
+    <value>Language / 语言</value>
+  </data>
   <data name="Config.Opacity" xml:space="preserve">
     <value>Opacity</value>
   </data>

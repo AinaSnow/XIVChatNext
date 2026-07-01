@@ -1,4 +1,4 @@
-﻿using Sodium;
+using Sodium;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -50,7 +50,7 @@ namespace XIVChatCommon {
         public static async Task<HandshakeInfo> ServerHandshake(KeyPair server, Stream stream) {
             // get client public key
             byte[] clientPublic = new byte[32];
-            await stream.ReadAsync(clientPublic, 0, clientPublic.Length);
+            await stream.ReadExactlyAsync(clientPublic, 0, clientPublic.Length);
 
             // send our public key
             await stream.WriteAsync(server.PublicKey, 0, server.PublicKey.Length);
@@ -68,7 +68,7 @@ namespace XIVChatCommon {
 
             // get server public key
             byte[] serverPublic = new byte[32];
-            await stream.ReadAsync(serverPublic, 0, serverPublic.Length);
+            await stream.ReadExactlyAsync(serverPublic, 0, serverPublic.Length);
 
             // get shared secret and derive keys
             var keys = ClientSessionKeys(client, serverPublic);

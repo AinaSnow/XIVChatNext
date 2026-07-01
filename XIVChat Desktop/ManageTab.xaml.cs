@@ -89,6 +89,7 @@ namespace XIVChat_Desktop {
                 var tabItem = new TabViewItem {
                     Header = new TextBlock { Text = category.Name() },
                     Content = tabContent,
+                    IsClosable = false,
                 };
 
                 this.Tabs.TabItems.Add(tabItem);

@@ -263,7 +263,7 @@ namespace XIVChat_Desktop {
             }
         }
 
-        private async Task HandleIncoming(byte[] rawMessage) {
+        private Task HandleIncoming(byte[] rawMessage) {
             var type = (ServerOperation) rawMessage[0];
             var payload = new byte[rawMessage.Length - 1];
             Array.Copy(rawMessage, 1, payload, 0, payload.Length);
@@ -320,6 +320,8 @@ namespace XIVChat_Desktop {
                 case ServerOperation.LinkshellList:
                     break;
             }
+
+            return Task.CompletedTask;
         }
 
         private static int _backlogSequence = -1;

@@ -78,6 +78,17 @@ namespace XIVChat_Desktop {
             }
         }
 
+        private AppLanguage language = AppLanguage.System;
+
+        public AppLanguage Language {
+            get => this.language;
+            set {
+                if (this.language == value) return;
+                this.language = value;
+                this.OnPropertyChanged(nameof(this.Language));
+            }
+        }
+
         public ObservableCollection<Notification> Notifications { get; set; } = new ObservableCollection<Notification>();
 
         private void OnPropertyChanged(string propName) {
@@ -111,7 +122,9 @@ namespace XIVChat_Desktop {
             var path = FilePath();
             if (!File.Exists(path)) {
                 var dir = Path.GetDirectoryName(path);
-                Directory.CreateDirectory(dir);
+                if (dir != null) {
+                    Directory.CreateDirectory(dir);
+                }
             }
 
             using var file = File.CreateText(path);

@@ -1,4 +1,4 @@
-﻿<Window x:Class="XIVChat_Desktop.ManageTab"
+<Window x:Class="XIVChat_Desktop.ManageTab"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -27,7 +27,8 @@
                   Content="将消息处理为 Markdown"
                   IsChecked="{x:Bind Tab.ProcessMarkdown, Mode=OneWay}" />
         <TabView Grid.Row="2"
-                     x:Name="Tabs" />
+                 x:Name="Tabs"
+                 IsAddTabButtonVisible="False" />
         <Button Margin="0,8,0,0"
                 Grid.Row="3"
                 Content="保存"

@@ -19,6 +19,38 @@ namespace XIVChat_Desktop {
             this.ThemeChooser.ItemsSource = (Theme[])Enum.GetValues(typeof(Theme));
             this.ThemeChooser.SelectedItem = this.Config.Theme;
             this.ThemeChooser.SelectionChanged += ThemeChooser_SelectionChanged;
+
+            this.LanguageChooser.SelectionChanged -= LanguageChooser_SelectionChanged;
+            this.LanguageChooser.ItemsSource = LocalizationHelper.AvailableLanguages.Select(LocalizationHelper.GetLanguageName).ToList();
+            this.LanguageChooser.SelectedIndex = Array.IndexOf(LocalizationHelper.AvailableLanguages, this.Config.Language);
+            this.LanguageChooser.SelectionChanged += LanguageChooser_SelectionChanged;
+
+            UpdateLocalizations();
+        }
+
+        public void UpdateLocalizations() {
+            try {
+                this.Title = LocalizationHelper.GetString("Menu.Config");
+                TabServers.Header = LocalizationHelper.GetString("Config.Servers");
+                TabWindow.Header = LocalizationHelper.GetString("Config.Window");
+                TabConnection.Header = LocalizationHelper.GetString("Config.Connection");
+                TabNotifications.Header = LocalizationHelper.GetString("Config.Notifications");
+
+                ChkAlwaysOnTop.Content = LocalizationHelper.GetString("Config.AlwaysOnTop");
+                ChkCompactMode.Content = LocalizationHelper.GetString("Config.CompactMode");
+                ThemeChooser.Header = LocalizationHelper.GetString("Config.Theme");
+                LanguageChooser.Header = LocalizationHelper.GetString("Config.Language");
+                SliderOpacity.Header = LocalizationHelper.GetString("Config.Opacity");
+                TxtFontSize.Header = LocalizationHelper.GetString("Config.FontSize");
+                TxtLocalBacklog.Header = LocalizationHelper.GetString("Config.LocalBacklogMessages");
+                TxtBacklog.Header = LocalizationHelper.GetString("Config.BacklogMessages");
+
+                BtnSaveWindow.Content = LocalizationHelper.GetString("Dialog.Save");
+                BtnSaveConnection.Content = LocalizationHelper.GetString("Dialog.Save");
+                BtnAddNotification.Content = LocalizationHelper.GetString("Dialog.Add");
+                BtnEditNotification.Content = LocalizationHelper.GetString("Dialog.Edit");
+                BtnDeleteNotification.Content = LocalizationHelper.GetString("Dialog.Delete");
+            } catch { }
         }
 
         private void AlwaysOnTop_Checked(object sender, RoutedEventArgs e) {
@@ -38,6 +70,21 @@ namespace XIVChat_Desktop {
             if (this.ThemeChooser.SelectedItem is Theme theme && this.Config.Theme != theme) {
                 this.Config.Theme = theme;
                 App.ApplyTheme(theme);
+            }
+        }
+
+        private void LanguageChooser_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+            int idx = this.LanguageChooser.SelectedIndex;
+            if (idx >= 0 && idx < LocalizationHelper.AvailableLanguages.Length) {
+                var lang = LocalizationHelper.AvailableLanguages[idx];
+                if (this.Config.Language != lang) {
+                    this.Config.Language = lang;
+                    LocalizationHelper.ApplyLanguage(lang);
+                    UpdateLocalizations();
+                    if (App.Current is App app && app.Window != null) {
+                        app.Window.UpdateLocalizations();
+                    }
+                }
             }
         }
 

@@ -43,7 +43,6 @@ namespace XIVChat_Desktop {
                     if (window.Content is FrameworkElement fe) {
                         fe.RequestedTheme = elementTheme;
                     }
-                    UpdateTitleBar(window, elementTheme);
                 }
             }
         }
@@ -60,23 +59,6 @@ namespace XIVChat_Desktop {
             if (window.Content is FrameworkElement fe) {
                 fe.RequestedTheme = elementTheme;
             }
-            UpdateTitleBar(window, elementTheme);
-        }
-
-        private static void UpdateTitleBar(Window window, ElementTheme theme) {
-            try {
-                var titleBar = window.AppWindow?.TitleBar;
-                if (titleBar != null) {
-                    bool isDark = theme == ElementTheme.Dark ||
-                                  (theme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark);
-
-                    titleBar.ButtonForegroundColor = isDark ? Colors.White : Colors.Black;
-                    titleBar.ButtonBackgroundColor = Colors.Transparent;
-                    titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                    titleBar.ButtonHoverBackgroundColor = isDark ? Color.FromArgb(30, 255, 255, 255) : Color.FromArgb(30, 0, 0, 0);
-                    titleBar.ButtonPressedBackgroundColor = isDark ? Color.FromArgb(50, 255, 255, 255) : Color.FromArgb(50, 0, 0, 0);
-                }
-            } catch { }
         }
     }
 }

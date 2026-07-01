@@ -16,29 +16,31 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <MenuBar Grid.Row="0">
-            <MenuBarItem Title="XIVChat">
-                <MenuFlyoutItem Text="连接"
+            <MenuBarItem x:Name="MenuMain" Title="XIVChat">
+                <MenuFlyoutItem x:Name="MenuConnect" Text="连接"
                                 Click="Connect_Click"
                                 IsEnabled="{Binding App.Connected, Converter={StaticResource NotConverter}, Mode=OneWay}" />
-                <MenuFlyoutItem Text="断开"
+                <MenuFlyoutItem x:Name="MenuDisconnect" Text="断开"
                                 Click="Disconnect_Click"
                                 IsEnabled="{x:Bind App.Connected, Mode=OneWay}" />
-                <MenuFlyoutItem Text="扫描"
+                <MenuFlyoutItem x:Name="MenuScan" Text="扫描"
                                 Click="Scan_Click" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="导出"
+                <MenuFlyoutItem x:Name="MenuExport" Text="导出"
                                 Click="Export_Click" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="配置"
+                <MenuFlyoutItem x:Name="MenuConfig" Text="配置"
                                 Click="Configuration_Click" />
-                <MenuFlyoutItem Text="退出"
+                <MenuFlyoutItem x:Name="MenuExit" Text="退出"
                                 Click="Exit_Click" />
             </MenuBarItem>
         </MenuBar>
         <TabView x:Name="Tabs"
-                     Margin="8,0,8,8"
-                     Grid.Row="1"
-                     SelectionChanged="Tabs_SelectionChanged" />
+                 Margin="8,0,8,8"
+                 Grid.Row="1"
+                 AddTabButtonClick="Tabs_AddTabButtonClick"
+                 TabCloseRequested="Tabs_TabCloseRequested"
+                 SelectionChanged="Tabs_SelectionChanged" />
         <InfoBar Grid.Row="2"
                  Margin="8,0,8,8"
                  IsOpen="True"

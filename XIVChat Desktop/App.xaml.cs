@@ -33,6 +33,13 @@ namespace XIVChat_Desktop {
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        [System.Runtime.CompilerServices.ModuleInitializer]
+        internal static void InitializeRuntime() {
+            try {
+                Environment.SetEnvironmentVariable("MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY", AppContext.BaseDirectory);
+            } catch { }
+        }
+
         public App() {
             this.UnhandledException += (s, e) => {
                 try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "app_unhandled_crash.log"), e.Exception?.ToString() + "\nMessage: " + e.Message); } catch { }
@@ -59,6 +66,8 @@ namespace XIVChat_Desktop {
                 this.configLoadException = ex;
                 this.Config = new Configuration();
             }
+
+            LocalizationHelper.Initialize(this.Config.Language);
 
             try {
                 this.Config.Save();

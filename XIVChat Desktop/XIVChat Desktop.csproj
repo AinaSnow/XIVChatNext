@@ -19,6 +19,11 @@
         <WindowsAppSDKBootstrapAutoInitializeOptions_Default>true</WindowsAppSDKBootstrapAutoInitializeOptions_Default>
         <AppxPackage>false</AppxPackage>
         <WindowsPackageType>None</WindowsPackageType>
+        <PublishSingleFile>true</PublishSingleFile>
+        <EnableMsixTooling>true</EnableMsixTooling>
+        <SelfContained>false</SelfContained>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <ItemGroup>

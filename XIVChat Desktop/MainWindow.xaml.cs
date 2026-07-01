@@ -40,14 +40,29 @@ namespace XIVChat_Desktop {
 
         private List<string> History { get; } = new List<string>();
 
-        public string InputPlaceholder => this.App.Connection?.Available == true ? "Typing words…" : "聊天当前不可用";
+        public string InputPlaceholder => this.App.Connection?.Available == true ? "Typing words…" : LocalizationHelper.GetString("Status.Disconnected");
 
         public MainWindow() {
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(850, 600));
-            this.Title = "XIVChat for Windows";
+            this.Title = LocalizationHelper.GetString("AppTitle");
             this.PopulateTabs();
+            UpdateLocalizations();
+        }
+
+        public void UpdateLocalizations() {
+            try {
+                this.Title = LocalizationHelper.GetString("AppTitle");
+                MenuMain.Title = LocalizationHelper.GetString("Menu.XIVChat");
+                MenuConnect.Text = LocalizationHelper.GetString("Menu.Connect");
+                MenuDisconnect.Text = LocalizationHelper.GetString("Menu.Disconnect");
+                MenuScan.Text = LocalizationHelper.GetString("Menu.Scan");
+                MenuExport.Text = LocalizationHelper.GetString("Menu.Export");
+                MenuConfig.Text = LocalizationHelper.GetString("Menu.Config");
+                MenuExit.Text = LocalizationHelper.GetString("Menu.Exit");
+                OnPropertyChanged(nameof(InputPlaceholder));
+            } catch { }
         }
 
         private void PopulateTabs() {
@@ -182,12 +197,44 @@ namespace XIVChat_Desktop {
             Grid.SetRow(inputBox, 2);
             grid.Children.Add(inputBox);
 
+            var editItem = new MenuFlyoutItem {
+                Text = "编辑选项卡与过滤规则...",
+                Icon = new FontIcon { Glyph = "\uE70F" }
+            };
+            editItem.Click += (s, e) => {
+                var dialog = new ManageTab(tab);
+                dialog.Activate();
+            };
+
+            var deleteItem = new MenuFlyoutItem {
+                Text = "删除当前选项卡",
+                Icon = new FontIcon { Glyph = "\uE74D" }
+            };
+            deleteItem.Click += (s, e) => {
+                if (this.App.Config.Tabs.Count > 1) {
+                    this.App.Config.Tabs.Remove(tab);
+                    this.App.Config.Save();
+                }
+            };
+
+            var flyout = new MenuFlyout();
+            flyout.Items.Add(editItem);
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            flyout.Items.Add(deleteItem);
+
             var tabViewItem = new TabViewItem {
                 Header = new TextBlock {
                     Text = tab.Name,
                     FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK")
                 },
                 Content = grid,
+                Tag = tab,
+                ContextFlyout = flyout,
+            };
+
+            tabViewItem.DoubleTapped += (s, e) => {
+                var dialog = new ManageTab(tab);
+                dialog.Activate();
             };
 
             this.Tabs.TabItems.Add(tabViewItem);
@@ -373,6 +420,21 @@ namespace XIVChat_Desktop {
 
         private void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e) {
             // Handle tab selection change
+        }
+
+        private void Tabs_AddTabButtonClick(TabView sender, object args) {
+            var dialog = new ManageTab(null);
+            dialog.Activate();
+        }
+
+        private void Tabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args) {
+            if (this.App.Config.Tabs.Count <= 1) {
+                return;
+            }
+            if (args.Tab.Tag is Tab tab) {
+                this.App.Config.Tabs.Remove(tab);
+                this.App.Config.Save();
+            }
         }
 
         public TextBox? GetCurrentInputBox() {

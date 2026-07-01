@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <LangVersion>latest</LangVersion>
@@ -6,6 +6,7 @@
         <AssemblyVersion>1.0.0</AssemblyVersion>
         <FileVersion>1.0.0</FileVersion>
         <TargetFramework>net9.0</TargetFramework>
+        <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
