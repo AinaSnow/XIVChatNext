@@ -22,10 +22,10 @@
                                 IsEnabled="{Binding App.Connected, Converter={StaticResource NotConverter}, Mode=OneWay}" />
                 <MenuFlyoutItem x:Name="MenuDisconnect" Text="断开"
                                 Click="Disconnect_Click"
-                                IsEnabled="{x:Bind App.Connected, Mode=OneWay}" />
-                <MenuFlyoutItem x:Name="MenuScan" Text="扫描"
-                                Click="Scan_Click" />
+                                IsEnabled="{Binding App.Connected, Mode=OneWay}" />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutItem x:Name="MenuMap" Text="悬浮窗地图"
+                                Click="Map_Click" />
                 <MenuFlyoutItem x:Name="MenuExport" Text="导出"
                                 Click="Export_Click" />
                 <MenuFlyoutSeparator />
@@ -38,6 +38,8 @@
         <TabView x:Name="Tabs"
                  Margin="8,0,8,8"
                  Grid.Row="1"
+                 HorizontalAlignment="Stretch"
+                 VerticalAlignment="Stretch"
                  AddTabButtonClick="Tabs_AddTabButtonClick"
                  TabCloseRequested="Tabs_TabCloseRequested"
                  SelectionChanged="Tabs_SelectionChanged" />
@@ -57,8 +59,15 @@
                 <TextBlock x:Name="CurrentWorldSeparator"
                            Visibility="Collapsed"
                            Text="|" />
-                <TextBlock x:Name="Location"
-                           Visibility="Collapsed" />
+                <HyperlinkButton x:Name="LocationBtn"
+                                 Visibility="Collapsed"
+                                 Padding="2,0"
+                                 Click="LocationBtn_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon Glyph="&#xE819;" FontSize="14" />
+                        <TextBlock x:Name="Location" />
+                    </StackPanel>
+                </HyperlinkButton>
             </StackPanel>
         </InfoBar>
     </Grid>

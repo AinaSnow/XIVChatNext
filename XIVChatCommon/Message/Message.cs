@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using MessagePack;
 using MessagePack.Formatters;
 
@@ -26,16 +27,75 @@ namespace XIVChatCommon.Message {
         [Key(4)]
         public string Content { get; set; }
 
+        [Key(5)]
+        public uint? MapId { get; set; }
+
+        [Key(6)]
+        public float? MapX { get; set; }
+
+        [Key(7)]
+        public float? MapY { get; set; }
+
+        [Key(8)]
+        public uint? ItemId { get; set; }
+
+        [Key(9)]
+        public bool? IsHq { get; set; }
+
+        [Key(10)]
+        public string? ItemName { get; set; }
+
+        [Key(11)]
+        public string? ItemDescription { get; set; }
+
+        [Key(12)]
+        public uint? ItemIconId { get; set; }
+
+        [Key(13)]
+        public ushort? ItemLevel { get; set; }
+
+        [Key(14)]
+        public byte? ItemRarity { get; set; }
+
+        [Key(15)]
+        public string? ItemCategory { get; set; }
+
+        [Key(16)]
+        public ushort? ItemEquipLevel { get; set; }
+
+        [Key(17)]
+        public byte? ItemMateriaSlots { get; set; }
+
+        [Key(18)]
+        public bool? ItemIsAdvancedMeldingPermitted { get; set; }
+
+        [Key(19)]
+        public List<string>? ItemStats { get; set; }
+
+        [Key(20)]
+        public string? MapPlaceName { get; set; }
+
+        [Key(21)]
+        public string? MapFilenameId { get; set; }
+
+        [Key(22)]
+        public ushort? MapSizeFactor { get; set; }
+
         public TextChunk(string content) {
             this.Content = content;
         }
 
-        public TextChunk(uint? fallbackColour, uint? foreground, uint? glow, bool italic, string content) {
+        public TextChunk(uint? fallbackColour, uint? foreground, uint? glow, bool italic, string content, uint? mapId = null, float? mapX = null, float? mapY = null, uint? itemId = null, bool? isHq = null) {
             this.FallbackColour = fallbackColour;
             this.Foreground = foreground;
             this.Glow = glow;
             this.Italic = italic;
             this.Content = content;
+            this.MapId = mapId;
+            this.MapX = mapX;
+            this.MapY = mapY;
+            this.ItemId = itemId;
+            this.IsHq = isHq;
         }
     }
 

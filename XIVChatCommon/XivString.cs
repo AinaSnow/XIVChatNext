@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -16,6 +16,11 @@ namespace XIVChatCommon {
             var italic = false;
             uint? foreground = null;
             uint? glow = null;
+            uint? mapId = null;
+            float? mapX = null;
+            float? mapY = null;
+            uint? itemId = null;
+            bool? isHq = null;
 
             void AppendCurrent(bool clear) {
                 var text = Encoding.UTF8.GetString(stringBytes.ToArray());
@@ -23,6 +28,11 @@ namespace XIVChatCommon {
                     Foreground = foreground,
                     Glow = glow,
                     Italic = italic,
+                    MapId = mapId,
+                    MapX = mapX,
+                    MapY = mapY,
+                    ItemId = itemId,
+                    IsHq = isHq,
                 });
                 if (clear) {
                     stringBytes.Clear();
@@ -44,6 +54,9 @@ namespace XIVChatCommon {
                     switch (kind) {
                         // icon processing
                         case 0x12:
+                            if (stringBytes.Count > 0) {
+                                AppendCurrent(true);
+                            }
                             var spriteIndex = GetInteger(data);
                             chunks.Add(new IconChunk {
                                 index = (byte) spriteIndex,
@@ -62,6 +75,60 @@ namespace XIVChatCommon {
 
                             italic = newStatus;
                             break;
+                        // interactive / embedded info
+                        case 0x27:
+                            if (data.BaseStream.Length > 0) {
+                                var subType = data.ReadByte();
+                                if (subType == 0x04) { // MapPositionLink
+                                    if (stringBytes.Count > 0) {
+                                        AppendCurrent(true);
+                                    }
+                                    try {
+                                        var packed = GetInteger(data);
+                                        var terrId = packed >> 16;
+                                        var mId = packed & 0xFFFF;
+                                        var rX = (int)GetInteger(data);
+                                        var rY = (int)GetInteger(data);
+                                        mapId = mId > 0 ? mId : null;
+                                        mapX = rX > 1000 ? rX / 1000.0f : rX / 10.0f;
+                                        mapY = rY > 1000 ? rY / 1000.0f : rY / 10.0f;
+                                    } catch {
+                                        // ignore parsing errors
+                                    }
+                                } else if (subType == 0x03) { // ItemLink
+                                    if (stringBytes.Count > 0) {
+                                        AppendCurrent(true);
+                                    }
+                                    try {
+                                        var rawItemId = GetInteger(data);
+                                        if (rawItemId >= 2_000_000) {
+                                            itemId = rawItemId - 2_000_000;
+                                            isHq = false;
+                                        } else if (rawItemId >= 1_000_000) {
+                                            itemId = rawItemId - 1_000_000;
+                                            isHq = true;
+                                        } else if (rawItemId >= 500_000) {
+                                            itemId = rawItemId - 500_000;
+                                            isHq = false;
+                                        } else {
+                                            itemId = rawItemId;
+                                            isHq = false;
+                                        }
+                                    } catch {
+                                        // ignore parsing errors
+                                    }
+                                } else if (subType == 0x02) { // LinkTerminator
+                                    if (stringBytes.Count > 0) {
+                                        AppendCurrent(true);
+                                    }
+                                    mapId = null;
+                                    mapX = null;
+                                    mapY = null;
+                                    itemId = null;
+                                    isHq = null;
+                                }
+                            }
+                            break;
                         // foreground
                         case 0x48:
                             break;
@@ -74,6 +141,10 @@ namespace XIVChatCommon {
                 }
 
                 stringBytes.Add(b);
+            }
+
+            if (stringBytes.Count > 0) {
+                AppendCurrent(false);
             }
 
             return chunks;

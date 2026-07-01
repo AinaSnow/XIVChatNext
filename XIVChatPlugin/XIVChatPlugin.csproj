@@ -1,0 +1,29 @@
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
+    <PropertyGroup>
+        <RootNamespace>XIVChatNextPlugin</RootNamespace>
+        <AssemblyName>XIVChatNext</AssemblyName>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <Version>1.7.14</Version>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="MessagePack" Version="3.1.7" />
+        <PackageReference Include="PeepingTom.Ipc" Version="2.0.0" />
+        <PackageReference Include="Sodium.Core" Version="1.3.5" />
+        <PackageReference Include="System.Threading.Channels" Version="9.0.3" />
+        <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
+    </ItemGroup>
+    <Target Name="CopyNativeLibraries" AfterTargets="AfterBuild">
+        <Copy SourceFiles="Resources\lib\libsodium.dll" DestinationFolder="$(OutDir)" />
+        <Copy SourceFiles="Resources\lib\xivchat_native_tools.dll" DestinationFolder="$(OutDir)" />
+    </Target>
+</Project>

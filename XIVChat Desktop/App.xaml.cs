@@ -141,8 +141,22 @@ namespace XIVChat_Desktop {
                 return;
             }
 
-            this.Connection?.Disconnect();
+            var oldConn = this.Connection;
             this.Connection = null;
+            oldConn?.Disconnect();
+
+            this.Dispatch(() => {
+                if (this.Window != null) {
+                    this.Window.LoggedInAsText.Text = "未登录";
+                    this.Window.LoggedInAsSeparatorText.Visibility = Visibility.Collapsed;
+                    this.Window.CurrentWorldText.Visibility = Visibility.Collapsed;
+                    this.Window.CurrentWorldSeparatorText.Visibility = Visibility.Collapsed;
+                    this.Window.LocationButton.Visibility = Visibility.Collapsed;
+                    this.Window.CurrentPlayerData = null;
+                    this.Window.AddSystemMessage("已断开连接");
+                    this.Window.OnPropertyChanged(nameof(MainWindow.InputPlaceholder));
+                }
+            });
         }
 
         private void OnReceiveMessage(ServerMessage message) {

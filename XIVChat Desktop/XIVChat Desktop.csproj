@@ -70,7 +70,7 @@
 
     <Target Name="CopyWinUIResourcesToPublish" AfterTargets="Publish">
         <ItemGroup>
-            <WinUIResources Include="$(TargetDir)**\*.xbf;$(TargetDir)**\*.pri" />
+            <WinUIResources Include="$(TargetDir)**\*.xbf;$(TargetDir)**\*.pri" Exclude="$(TargetDir)publish\**" />
         </ItemGroup>
         <Copy SourceFiles="@(WinUIResources)" DestinationFiles="@(WinUIResources->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>

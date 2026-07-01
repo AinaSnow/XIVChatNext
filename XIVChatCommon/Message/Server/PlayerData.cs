@@ -15,11 +15,31 @@ namespace XIVChatCommon.Message.Server {
         [Key(3)]
         public readonly string name;
 
-        public PlayerData(string homeWorld, string currentWorld, string location, string name) {
+        [Key(4)]
+        public readonly uint? mapId;
+
+        [Key(5)]
+        public readonly float? mapX;
+
+        [Key(6)]
+        public readonly float? mapY;
+
+        [Key(7)]
+        public readonly string? mapFilenameId;
+
+        [Key(8)]
+        public readonly ushort? mapSizeFactor;
+
+        public PlayerData(string homeWorld, string currentWorld, string location, string name, uint? mapId = null, float? mapX = null, float? mapY = null, string? mapFilenameId = null, ushort? mapSizeFactor = null) {
             this.homeWorld = homeWorld;
             this.currentWorld = currentWorld;
             this.location = location;
             this.name = name;
+            this.mapId = mapId;
+            this.mapX = mapX;
+            this.mapY = mapY;
+            this.mapFilenameId = mapFilenameId;
+            this.mapSizeFactor = mapSizeFactor;
         }
 
         [IgnoreMember]

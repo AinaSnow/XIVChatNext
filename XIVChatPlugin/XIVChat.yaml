@@ -1,0 +1,9 @@
+﻿author: Anna
+name: XIVChat Server
+punchline: Use chat away from the game.
+description: |-
+  XIVChat is a suite of software allowing you to use FFXIV's chat from
+  different devices. This is the server component required to do so.
+
+  For information about clients to use with this server, see the website.
+repo_url: https://xiv.chat/

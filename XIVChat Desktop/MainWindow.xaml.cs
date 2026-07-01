@@ -23,6 +23,8 @@ namespace XIVChat_Desktop {
         public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldText => this.CurrentWorld;
         public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldSeparatorText => this.CurrentWorldSeparator;
         public Microsoft.UI.Xaml.Controls.TextBlock LocationText => this.Location;
+        public Microsoft.UI.Xaml.Controls.HyperlinkButton LocationButton => this.LocationBtn;
+        public XIVChatCommon.Message.Server.PlayerData? CurrentPlayerData { get; set; }
 
         private int historyIndex = -1;
 
@@ -57,7 +59,6 @@ namespace XIVChat_Desktop {
                 MenuMain.Title = LocalizationHelper.GetString("Menu.XIVChat");
                 MenuConnect.Text = LocalizationHelper.GetString("Menu.Connect");
                 MenuDisconnect.Text = LocalizationHelper.GetString("Menu.Disconnect");
-                MenuScan.Text = LocalizationHelper.GetString("Menu.Scan");
                 MenuExport.Text = LocalizationHelper.GetString("Menu.Export");
                 MenuConfig.Text = LocalizationHelper.GetString("Menu.Config");
                 MenuExit.Text = LocalizationHelper.GetString("Menu.Exit");
@@ -84,13 +85,17 @@ namespace XIVChat_Desktop {
         }
 
         private void AddTab(Tab tab) {
-            var grid = new Grid();
+            var grid = new Grid {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             var messagePanel = new StackPanel {
                 VerticalAlignment = VerticalAlignment.Bottom,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 Padding = new Thickness(4),
             };
             foreach (var msg in tab.Messages) {
@@ -101,6 +106,7 @@ namespace XIVChat_Desktop {
             }
             var scrollViewer = new ScrollViewer {
                 Content = messagePanel,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
             };
             var chatCard = new Border {
@@ -109,7 +115,9 @@ namespace XIVChat_Desktop {
                 BorderThickness = new Thickness(1),
                 BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(35, 255, 255, 255)),
                 Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(210, 24, 26, 32)),
-                Margin = new Thickness(0, 0, 0, 8)
+                Margin = new Thickness(0, 0, 0, 8),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
             };
             Grid.SetRow(chatCard, 0);
             grid.Children.Add(chatCard);
@@ -230,6 +238,10 @@ namespace XIVChat_Desktop {
                 Content = grid,
                 Tag = tab,
                 ContextFlyout = flyout,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch
             };
 
             tabViewItem.DoubleTapped += (s, e) => {
@@ -448,9 +460,12 @@ namespace XIVChat_Desktop {
             return null;
         }
 
-        private void Scan_Click(object sender, RoutedEventArgs e) {
-            var dialog = new ServerScan();
-            dialog.Activate();
+        private void Map_Click(object sender, RoutedEventArgs e) {
+            MapWindow.ShowMap(this.CurrentPlayerData?.mapId, this.CurrentPlayerData?.mapX, this.CurrentPlayerData?.mapY, this.LocationText?.Text, this.CurrentPlayerData?.mapFilenameId, this.CurrentPlayerData?.mapSizeFactor);
+        }
+
+        private void LocationBtn_Click(object sender, RoutedEventArgs e) {
+            MapWindow.ShowMap(this.CurrentPlayerData?.mapId, this.CurrentPlayerData?.mapX, this.CurrentPlayerData?.mapY, this.LocationText?.Text, this.CurrentPlayerData?.mapFilenameId, this.CurrentPlayerData?.mapSizeFactor);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

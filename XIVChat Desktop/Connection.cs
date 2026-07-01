@@ -256,10 +256,15 @@ namespace XIVChat_Desktop {
             } catch (ObjectDisposedException) {
             }
             } catch (Exception ex) {
-                this.app.Dispatch(() => {
-                    this.app.Window.AddSystemMessage($"连接或通信中断: {ex.Message}");
-                    this.app.Disconnect();
-                });
+                if (!this.cancel.IsCancellationRequested && !(ex is OperationCanceledException)) {
+                    this.app.Dispatch(() => {
+                        this.app.Window.AddSystemMessage($"连接或通信中断: {ex.Message}");
+                        this.app.Disconnect();
+                    });
+                }
+            } finally {
+                this.SetPlayerData(null);
+                this.Available = false;
             }
         }
 
@@ -342,7 +347,8 @@ namespace XIVChat_Desktop {
                 window.CurrentWorldSeparatorText.Visibility = visibility;
 
                 window.LocationText.Text = playerData?.location;
-                window.LocationText.Visibility = visibility;
+                window.LocationButton.Visibility = visibility;
+                window.CurrentPlayerData = playerData;
             });
         }
 

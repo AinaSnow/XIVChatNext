@@ -123,6 +123,100 @@ namespace XIVChat_Desktop {
                         }
                         var style = textChunk.Italic ? FontStyle.Italic : FontStyle.Normal;
 
+                        bool isMapLink = textChunk.MapId.HasValue && textChunk.MapId.Value > 0;
+                        System.Text.RegularExpressions.Match? coordMatch = null;
+                        var coordRegex = @"[\(\[\{（【]?\s*([Xx]:?\s*)?([0-9]+(?:\.[0-9]+)?)\s*[,，]\s*([Yy]:?\s*)?([0-9]+(?:\.[0-9]+)?)\s*[\)\]\}）】]?";
+                        if (!isMapLink && !string.IsNullOrEmpty(textChunk.Content)) {
+                            coordMatch = System.Text.RegularExpressions.Regex.Match(textChunk.Content, coordRegex);
+                            if (coordMatch.Success) {
+                                isMapLink = true;
+                            }
+                        }
+
+                        if (isMapLink) {
+                            var linkBrush = new SolidColorBrush(Color.FromArgb(255, 100, 180, 255));
+                            var linkRun = new Run {
+                                Text = textChunk.Content,
+                                Foreground = linkBrush,
+                                FontStyle = style,
+                            };
+                            ApplyFontFamily(linkRun);
+
+                            var hyperlink = new Hyperlink();
+                            hyperlink.UnderlineStyle = UnderlineStyle.Single;
+                            hyperlink.Inlines.Add(linkRun);
+
+                            uint targetMapId = textChunk.MapId ?? 0;
+                            float targetX = 0;
+                            float targetY = 0;
+                            if (coordMatch != null && coordMatch.Success) {
+                                float.TryParse(coordMatch.Groups[2].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out targetX);
+                                float.TryParse(coordMatch.Groups[4].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out targetY);
+                            }
+                            if ((targetX <= 0 || targetY <= 0) && !string.IsNullOrEmpty(textChunk.Content)) {
+                                var m2 = System.Text.RegularExpressions.Regex.Match(textChunk.Content, coordRegex);
+                                if (m2.Success) {
+                                    float.TryParse(m2.Groups[2].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out targetX);
+                                    float.TryParse(m2.Groups[4].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out targetY);
+                                }
+                            }
+                            if (targetX <= 0 || targetY <= 0) {
+                                targetX = textChunk.MapX ?? 0;
+                                targetY = textChunk.MapY ?? 0;
+                            }
+                            string targetName = !string.IsNullOrEmpty(textChunk.MapPlaceName) ? textChunk.MapPlaceName : textChunk.Content;
+                            string? targetFilenameId = textChunk.MapFilenameId;
+                            ushort? targetSizeFactor = textChunk.MapSizeFactor;
+
+                            hyperlink.Click += (s, args) => {
+                                MapWindow.ShowMap(targetMapId > 0 ? targetMapId : null, targetX > 0 ? targetX : null, targetY > 0 ? targetY : null, targetName, targetFilenameId, targetSizeFactor);
+                            };
+
+                            elements.Add(hyperlink);
+                            break;
+                        }
+
+                        bool isItemLink = textChunk.ItemId.HasValue && textChunk.ItemId.Value > 0;
+                        if (!isItemLink && !string.IsNullOrEmpty(textChunk.Content)) {
+                            if (System.Text.RegularExpressions.Regex.IsMatch(textChunk.Content.TrimStart(), @"^[]")) {
+                                isItemLink = true;
+                            }
+                        }
+
+                        if (isItemLink) {
+                            Color linkColor = textChunk.ItemRarity switch {
+                                1 => Color.FromArgb(255, 240, 240, 240), // 白装/普通物品
+                                2 => Color.FromArgb(255, 140, 230, 140), // 绿装
+                                3 => Color.FromArgb(255, 89, 144, 255),  // 蓝装
+                                4 => Color.FromArgb(255, 184, 128, 255), // 紫装
+                                7 => Color.FromArgb(255, 255, 115, 190), // 粉装
+                                _ => Color.FromArgb(255, 255, 205, 90)   // 默认金色
+                            };
+                            var linkBrush = new SolidColorBrush(linkColor);
+                            var linkRun = new Run {
+                                Text = textChunk.Content,
+                                Foreground = linkBrush,
+                                FontStyle = style,
+                            };
+                            ApplyFontFamily(linkRun);
+
+                            var hyperlink = new Hyperlink();
+                            hyperlink.UnderlineStyle = UnderlineStyle.Single;
+                            hyperlink.Inlines.Add(linkRun);
+
+                            uint? targetItemId = textChunk.ItemId;
+                            bool targetIsHq = textChunk.IsHq ?? (textChunk.Content != null && (textChunk.Content.Contains("") || textChunk.Content.Contains("HQ", StringComparison.OrdinalIgnoreCase)));
+                            string targetName = textChunk.Content ?? "";
+
+                            var passedChunk = textChunk;
+                            hyperlink.Click += (s, args) => {
+                                ItemWindow.ShowItem(targetItemId > 0 ? targetItemId : null, targetIsHq, targetName, passedChunk);
+                            };
+
+                            elements.Add(hyperlink);
+                            break;
+                        }
+
                         if (processMarkdown) {
                             var inlines = Markdown.MarkdownToInlines(textChunk.Content);
 
