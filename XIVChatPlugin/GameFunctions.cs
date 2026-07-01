@@ -50,7 +50,7 @@ namespace XIVChatPlugin {
 
         private delegate int FormatFriendListNameDelegate(long a1, long a2, long a3, int a4, nint data, long a6);
 
-        private delegate nint OnReceiveFriendListChunkDelegate(nint a1, nint data);
+        private delegate void OnReceiveFriendListChunkDelegate(uint opcode, nint data);
 
         private delegate nint GetColourInfoDelegate(nint handler, uint lookupResult);
 
@@ -288,12 +288,12 @@ namespace XIVChatPlugin {
             return this._formatHook!.Original(a1, a2, a3, a4, data, a6);
         }
 
-        private unsafe nint OnReceiveFriendList(nint a1, nint data) {
+        private unsafe void OnReceiveFriendList(uint opcode, nint data) {
             // NOTE: if this is being called, hook isn't null
-            var ret = this._receiveChunkHook!.Original(a1, data);
+            this._receiveChunkHook!.Original(opcode, data);
 
             if (!this.RequestingFriendList) {
-                goto Return;
+                return;
             }
 
             try {
@@ -366,8 +366,6 @@ namespace XIVChatPlugin {
             Return:
             // reset properly
             this.RequestingFriendList = false;
-
-            return ret;
         }
 
 

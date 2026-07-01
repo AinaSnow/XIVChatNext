@@ -33,10 +33,34 @@ namespace XIVChat_Desktop {
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        private static Microsoft.Web.WebView2.Core.CoreWebView2Environment? _sharedWebViewEnv;
+
+        public static async Task EnsureWebView2Async(Microsoft.UI.Xaml.Controls.WebView2 webView) {
+            if (webView.CoreWebView2 != null) return;
+            try {
+                if (_sharedWebViewEnv == null) {
+                    string udf = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XIVChatDesktop", "WebView2UserData");
+                    System.IO.Directory.CreateDirectory(udf);
+                    _sharedWebViewEnv = await Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateWithOptionsAsync(null, udf, null);
+                }
+                await webView.EnsureCoreWebView2Async(_sharedWebViewEnv);
+            } catch (Exception ex) {
+                try {
+                    System.IO.File.AppendAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "webview_init_error.log"), $"{DateTime.Now}: {ex}\n");
+                } catch { }
+                await webView.EnsureCoreWebView2Async();
+            }
+        }
+
         [System.Runtime.CompilerServices.ModuleInitializer]
         internal static void InitializeRuntime() {
             try {
-                Environment.SetEnvironmentVariable("MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY", AppContext.BaseDirectory);
+                string baseDir = AppContext.BaseDirectory;
+                Environment.SetEnvironmentVariable("MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY", baseDir);
+                string path = Environment.GetEnvironmentVariable("PATH") ?? "";
+                if (!path.Contains(baseDir, StringComparison.OrdinalIgnoreCase)) {
+                    Environment.SetEnvironmentVariable("PATH", $"{baseDir};{path}");
+                }
             } catch { }
         }
 

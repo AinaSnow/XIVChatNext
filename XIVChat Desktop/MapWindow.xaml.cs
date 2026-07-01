@@ -96,7 +96,7 @@ namespace XIVChat_Desktop {
             }
 
             try {
-                await this.MapWebView.EnsureCoreWebView2Async();
+                await App.EnsureWebView2Async(this.MapWebView);
                 try {
                     this.MapWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("cache.local", LocalAssetCache.CacheDir, Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
                 } catch { }

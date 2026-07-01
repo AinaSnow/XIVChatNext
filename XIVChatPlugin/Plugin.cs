@@ -1,4 +1,4 @@
-﻿using Dalamud.Game.Command;
+using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using System;
 using System.Collections.Generic;
@@ -7,9 +7,8 @@ using System.Reflection;
 using Dalamud.Game;
 using Dalamud.IoC;
 using Dalamud.Plugin.Services;
-#if DEBUG
 using System.IO;
-#endif
+using System.Runtime.InteropServices;
 
 namespace XIVChatPlugin {
     internal class Plugin : IDalamudPlugin {
@@ -69,12 +68,30 @@ namespace XIVChatPlugin {
         public Plugin() {
             this.Events = new InternalEvents();
 
-            // load libsodium.so from debug location if in debug mode
-            #if DEBUG
-            string path = Environment.GetEnvironmentVariable("PATH")!;
-            string newPath = Path.GetDirectoryName(this.Location)!;
-            Environment.SetEnvironmentVariable("PATH", $"{path};{newPath}");
-            #endif
+            try {
+                var pluginDir = Path.GetDirectoryName(this.Location)!;
+                var currentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+                if (!currentPath.Contains(pluginDir, StringComparison.OrdinalIgnoreCase)) {
+                    Environment.SetEnvironmentVariable("PATH", $"{currentPath};{pluginDir}");
+                }
+                var libPath = Path.Combine(pluginDir, "libsodium.dll");
+                if (!File.Exists(libPath)) {
+                    libPath = Path.Combine(pluginDir, "runtimes", "win-x64", "native", "libsodium.dll");
+                }
+                if (File.Exists(libPath)) {
+                    NativeLibrary.TryLoad(libPath, out _);
+                }
+                NativeLibrary.SetDllImportResolver(typeof(Sodium.SodiumCore).Assembly, (libraryName, assembly, searchPath) => {
+                    if (libraryName == "libsodium" || libraryName == "libsodium.dll") {
+                        if (File.Exists(libPath) && NativeLibrary.TryLoad(libPath, out var handle)) {
+                            return handle;
+                        }
+                    }
+                    return IntPtr.Zero;
+                });
+            } catch {
+                // Ignore if SetDllImportResolver was already initialized
+            }
 
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Config.Initialise(this);

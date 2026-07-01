@@ -24,14 +24,15 @@
         <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
     </ItemGroup>
     <Target Name="CopyNativeLibraries" AfterTargets="AfterBuild">
-        <Copy SourceFiles="Resources\lib\libsodium.dll" DestinationFolder="$(OutDir)" />
+        <Copy SourceFiles="$(OutDir)runtimes\win-x64\native\libsodium.dll" DestinationFolder="$(OutDir)" />
         <Copy SourceFiles="Resources\lib\xivchat_native_tools.dll" DestinationFolder="$(OutDir)" />
     </Target>
     <Target Name="CleanUnwantedOutputs" AfterTargets="CopyNativeLibraries" BeforeTargets="DefaultDalamudPackagerRelease;DefaultDalamudPackagerDebug">
-        <RemoveDir Directories="$(OutDir)runtimes;$(OutDir)XIVChat" />
         <ItemGroup>
+            <UnwantedRuntimeFiles Include="$(OutDir)runtimes\linux*\**\*.*;$(OutDir)runtimes\osx*\**\*.*;$(OutDir)runtimes\win-x86\**\*.*;$(OutDir)runtimes\win-arm64\**\*.*" />
             <UnwantedFiles Include="$(OutDir)*.config;$(OutDir)XIVChat.json;$(OutDir)*.pdb" />
         </ItemGroup>
-        <Delete Files="@(UnwantedFiles)" />
+        <Delete Files="@(UnwantedRuntimeFiles);@(UnwantedFiles)" />
+        <RemoveDir Directories="$(OutDir)XIVChat" />
     </Target>
 </Project>
