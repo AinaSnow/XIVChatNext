@@ -11,7 +11,7 @@
     "LastUpdate": 0,
     "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.14/latest.zip",
     "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.14/latest.zip",
-    "AssemblyVersion": "1.0.1.10",
+    "AssemblyVersion": "1.7.14",
     "ApplicableVersion": "any",
     "DalamudApiLevel": "15",
     "Changelog": "??"
