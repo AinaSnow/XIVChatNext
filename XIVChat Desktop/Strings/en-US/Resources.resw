@@ -271,4 +271,22 @@
   <data name="ServerScan.Title" xml:space="preserve">
     <value>Server Scan</value>
   </data>
+  <data name="ConfigRecovery.Title" xml:space="preserve">
+    <value>Configuration recovery</value>
+  </data>
+  <data name="ConfigRecovery.BackupLoaded" xml:space="preserve">
+    <value>The previous configuration was loaded from its backup. The original file has been preserved. Restore to save the recovered settings and archive the damaged file.</value>
+  </data>
+  <data name="ConfigRecovery.DefaultsLoaded" xml:space="preserve">
+    <value>The configuration and any available backup could not be loaded. Default settings are in use for this session. Existing files have been preserved; saving settings will archive a damaged original.</value>
+  </data>
+  <data name="ConfigRecovery.Restore" xml:space="preserve">
+    <value>Restore backup</value>
+  </data>
+  <data name="ConfigRecovery.SaveFailed" xml:space="preserve">
+    <value>Could not save recovered configuration</value>
+  </data>
+  <data name="Dialog.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
 </root>

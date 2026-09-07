@@ -80,12 +80,13 @@ namespace XIVChat_Desktop {
         }
 
         private Exception? configLoadException;
+        private bool configRecoveredFromBackup;
 
         protected override void OnLaunched(LaunchActivatedEventArgs args) {
             base.OnLaunched(args);
 
             try {
-                this.Config = Configuration.Load() ?? new Configuration();
+                this.Config = Configuration.Load(out this.configRecoveredFromBackup) ?? new Configuration();
             } catch (Exception ex) {
                 this.configLoadException = ex;
                 this.Config = new Configuration();
@@ -94,7 +95,8 @@ namespace XIVChat_Desktop {
             LocalizationHelper.Initialize(this.Config.Language);
 
             try {
-                this.Config.Save();
+                // A failed load must never overwrite the original during startup.
+                if (this.configLoadException == null && !this.configRecoveredFromBackup) this.Config.Save();
             } catch {
                 // Ignore save error on launch
             }
@@ -110,17 +112,32 @@ namespace XIVChat_Desktop {
                 ApplyAlwaysOnTop(this.Config.AlwaysOnTop);
                 wnd.Activate();
 
-                if (this.configLoadException != null) {
+                if (this.configLoadException != null || this.configRecoveredFromBackup) {
                     var dialog = new ContentDialog {
-                        Title = "Error loading config",
-                        Content = $"Could not load the configuration file: {this.configLoadException.Message}. A new default configuration has been created.",
-                        CloseButtonText = "OK",
+                        Title = LocalizationHelper.GetString("ConfigRecovery.Title"),
+                        Content = LocalizationHelper.GetString(this.configRecoveredFromBackup ? "ConfigRecovery.BackupLoaded" : "ConfigRecovery.DefaultsLoaded")
+                            + "\n\n" + Configuration.ConfigFilePath,
+                        PrimaryButtonText = this.configRecoveredFromBackup ? LocalizationHelper.GetString("ConfigRecovery.Restore") : "",
+                        CloseButtonText = LocalizationHelper.GetString("Dialog.Close"),
                         XamlRoot = wnd.Content.XamlRoot
                     };
                     try {
-                        await dialog.ShowAsync();
+                        if (await dialog.ShowAsync() == ContentDialogResult.Primary) {
+                            try {
+                                this.Config.Save();
+                            } catch (Exception ex) {
+                                var errorDialog = new ContentDialog {
+                                    Title = LocalizationHelper.GetString("ConfigRecovery.SaveFailed"),
+                                    Content = ex.Message,
+                                    CloseButtonText = LocalizationHelper.GetString("Dialog.Close"),
+                                    XamlRoot = wnd.Content.XamlRoot
+                                };
+                                await errorDialog.ShowAsync();
+                            }
+                        }
                     } catch { }
                     this.configLoadException = null;
+                    this.configRecoveredFromBackup = false;
                 }
             } catch (Exception ex) {
                 try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "initwindow_crash.log"), ex.ToString()); } catch { }

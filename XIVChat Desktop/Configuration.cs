@@ -103,35 +103,32 @@ namespace XIVChat_Desktop {
             "config.json"
         );
 
-        public static Configuration? Load() {
-            var path = FilePath();
-            if (!File.Exists(path)) {
-                return null;
+        internal static string ConfigFilePath => FilePath();
+
+        public static Configuration? Load(out bool usedBackup) {
+            return ConfigurationFile.Load(FilePath(), Deserialize, out usedBackup);
+        }
+
+        private static Configuration Deserialize(string contents) {
+            try {
+                var config = JsonConvert.DeserializeObject<Configuration>(contents, new JsonSerializerSettings {
+                    ObjectCreationHandling = ObjectCreationHandling.Replace,
+                    CheckAdditionalContent = true,
+                });
+                if (config?.KeyPair?.PublicKey?.Length != 32 || config.KeyPair.PrivateKey?.Length != 32
+                    || config.Servers == null || config.TrustedKeys == null || config.Tabs == null || config.Notifications == null
+                    || config.Tabs.Any(tab => tab == null || tab.Filter?.Types == null)) {
+                    throw new InvalidDataException("Configuration is missing required keys or collections.");
+                }
+                return config;
+            } catch (Exception ex) when (ex is JsonException or ArgumentException) {
+                throw new InvalidDataException("Configuration JSON is invalid.", ex);
             }
-
-            using var reader = File.OpenText(path);
-            using var json = new JsonTextReader(reader);
-
-            var serializer = new JsonSerializer {
-                ObjectCreationHandling = ObjectCreationHandling.Replace,
-            };
-            return serializer.Deserialize<Configuration>(json);
         }
 
         public void Save() {
-            var path = FilePath();
-            if (!File.Exists(path)) {
-                var dir = Path.GetDirectoryName(path);
-                if (dir != null) {
-                    Directory.CreateDirectory(dir);
-                }
-            }
-
-            using var file = File.CreateText(path);
-            using var json = new JsonTextWriter(file);
-
-            var serialiser = new JsonSerializer();
-            serialiser.Serialize(json, this);
+            var contents = JsonConvert.SerializeObject(this, Formatting.Indented);
+            ConfigurationFile.Save(FilePath(), contents, text => { _ = Deserialize(text); });
         }
 
         #endregion
