@@ -1,0 +1,40 @@
+<UserControl
+    x:Class="XIVChat_Desktop.Controls.ChatMessageList"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:XIVChat_Desktop.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <!-- Keep this list bounded by the grid; an outer ScrollViewer disables virtualization. -->
+        <ListView x:Name="MessageList" SelectionMode="None" IsItemClickEnabled="False"
+                  HorizontalContentAlignment="Stretch" Padding="4"
+                  ScrollViewer.HorizontalScrollMode="Disabled"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0" />
+                    <Setter Property="IsTabStop" Value="False" />
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <local:MessageTextBlock Message="{Binding Message}"
+                                            ProcessMarkdown="{Binding Tab.ProcessMarkdown, Mode=OneWay}" />
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+        <Button x:Name="LatestButton" Grid.Row="1" HorizontalAlignment="Center"
+                Margin="4" Visibility="Collapsed" Click="LatestButton_Click" />
+    </Grid>
+</UserControl>

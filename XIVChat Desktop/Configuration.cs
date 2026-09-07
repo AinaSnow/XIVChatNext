@@ -310,6 +310,7 @@ namespace XIVChat_Desktop {
 
             var removed = this.Messages.Take((int)diff).ToList();
             this.Messages.RemoveRange(0, (int)diff);
+            this.insertAt = Math.Max(0, this.insertAt - (int)diff);
             this.NotifyRemoveItemsAt(removed, 0);
         }
 

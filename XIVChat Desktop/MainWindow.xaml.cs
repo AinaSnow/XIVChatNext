@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
@@ -51,6 +52,11 @@ namespace XIVChat_Desktop {
             this.Title = LocalizationHelper.GetString("AppTitle");
             this.PopulateTabs();
             UpdateLocalizations();
+            this.Closed += (_, _) => {
+                this.App.Config.Tabs.CollectionChanged -= this.OnTabsCollectionChanged;
+                foreach (var list in this.messageLists.Values) list.Dispose();
+                this.messageLists.Clear();
+            };
         }
 
         public void UpdateLocalizations() {
@@ -63,8 +69,11 @@ namespace XIVChat_Desktop {
                 MenuConfig.Text = LocalizationHelper.GetString("Menu.Config");
                 MenuExit.Text = LocalizationHelper.GetString("Menu.Exit");
                 OnPropertyChanged(nameof(InputPlaceholder));
+                foreach (var list in this.messageLists.Values) list.UpdateLocalizations();
             } catch { }
         }
+
+        private readonly Dictionary<Tab, Controls.ChatMessageList> messageLists = new();
 
         private void PopulateTabs() {
             this.Tabs.TabItems.Clear();
@@ -77,9 +86,22 @@ namespace XIVChat_Desktop {
 
         private void OnTabsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
             this.App.Dispatch(() => {
-                this.Tabs.TabItems.Clear();
-                foreach (var tab in this.App.Config.Tabs) {
-                    this.AddTab(tab);
+                foreach (var item in this.Tabs.TabItems.OfType<TabViewItem>().ToArray()) {
+                    if (item.Tag is Tab tab && !this.App.Config.Tabs.Contains(tab)) {
+                        this.messageLists[tab].Dispose();
+                        this.messageLists.Remove(tab);
+                        this.Tabs.TabItems.Remove(item);
+                    }
+                }
+                for (int i = 0; i < this.App.Config.Tabs.Count; i++) {
+                    var tab = this.App.Config.Tabs[i];
+                    if (!this.messageLists.ContainsKey(tab)) this.AddTab(tab);
+                    var item = this.Tabs.TabItems.OfType<TabViewItem>().First(item => ReferenceEquals(item.Tag, tab));
+                    var currentIndex = this.Tabs.TabItems.IndexOf(item);
+                    if (currentIndex != i) {
+                        this.Tabs.TabItems.RemoveAt(currentIndex);
+                        this.Tabs.TabItems.Insert(i, item);
+                    }
                 }
             });
         }
@@ -93,24 +115,10 @@ namespace XIVChat_Desktop {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var messagePanel = new StackPanel {
-                VerticalAlignment = VerticalAlignment.Bottom,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Padding = new Thickness(4),
-            };
-            foreach (var msg in tab.Messages) {
-                var block = new Controls.MessageTextBlock();
-                block.Message = msg;
-                block.ProcessMarkdown = tab.ProcessMarkdown;
-                messagePanel.Children.Add(block);
-            }
-            var scrollViewer = new ScrollViewer {
-                Content = messagePanel,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
-            };
+            var messageList = new Controls.ChatMessageList(tab);
+            this.messageLists.Add(tab, messageList);
             var chatCard = new Border {
-                Child = scrollViewer,
+                Child = messageList,
                 CornerRadius = new CornerRadius(8),
                 BorderThickness = new Thickness(1),
                 BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(35, 255, 255, 255)),
@@ -121,47 +129,6 @@ namespace XIVChat_Desktop {
             };
             Grid.SetRow(chatCard, 0);
             grid.Children.Add(chatCard);
-
-            tab.CollectionChanged += (s, e) => {
-                this.App.Dispatch(() => {
-                    if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null) {
-                        int index = e.NewStartingIndex;
-                        foreach (var item in e.NewItems) {
-                            if (item is ServerMessage msg) {
-                                var block = new Controls.MessageTextBlock();
-                                block.Message = msg;
-                                block.ProcessMarkdown = tab.ProcessMarkdown;
-                                if (index >= 0 && index <= messagePanel.Children.Count) {
-                                    messagePanel.Children.Insert(index, block);
-                                    index++;
-                                } else {
-                                    messagePanel.Children.Add(block);
-                                }
-                            }
-                        }
-                        messagePanel.DispatcherQueue?.TryEnqueue(() => {
-                            _ = scrollViewer.ChangeView(null, scrollViewer.ScrollableHeight, null);
-                        });
-                    } else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems != null) {
-                        int index = e.OldStartingIndex;
-                        for (int i = 0; i < e.OldItems.Count; i++) {
-                            if (index >= 0 && index < messagePanel.Children.Count) {
-                                messagePanel.Children.RemoveAt(index);
-                            } else if (messagePanel.Children.Count > 0) {
-                                messagePanel.Children.RemoveAt(0);
-                            }
-                        }
-                    } else if (e.Action == NotifyCollectionChangedAction.Reset) {
-                        messagePanel.Children.Clear();
-                        foreach (var msg in tab.Messages) {
-                            var block = new Controls.MessageTextBlock();
-                            block.Message = msg;
-                            block.ProcessMarkdown = tab.ProcessMarkdown;
-                            messagePanel.Children.Add(block);
-                        }
-                    }
-                });
-            };
 
             var channelText = new TextBlock {
                 Margin = new Thickness(8, 4, 0, 0),
@@ -323,6 +290,7 @@ namespace XIVChat_Desktop {
             var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
             if (diff > 0) {
                 this.Messages.RemoveRange(0, (int)diff);
+                this.insertAt = Math.Max(0, this.insertAt - (int)diff);
             }
         }
 
@@ -337,6 +305,7 @@ namespace XIVChat_Desktop {
             var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
             if (diff > 0) {
                 this.Messages.RemoveRange(0, (int)diff);
+                this.insertAt = Math.Max(0, this.insertAt - (int)diff);
             }
         }
 

@@ -289,4 +289,10 @@
   <data name="Dialog.Close" xml:space="preserve">
     <value>关闭</value>
   </data>
+  <data name="Chat.NewMessages" xml:space="preserve">
+    <value>新增 {0} 条 · 回到最新</value>
+  </data>
+  <data name="Chat.ReturnToLatest" xml:space="preserve">
+    <value>回到最新消息</value>
+  </data>
 </root>

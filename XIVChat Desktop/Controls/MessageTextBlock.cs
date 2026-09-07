@@ -58,6 +58,8 @@ namespace XIVChat_Desktop.Controls {
                 return;
             }
 
+            textBlock.Blocks.Clear();
+            textBlock.Background = null;
             var message = textBlock.Message;
             if (message == null) {
                 return;
@@ -67,8 +69,6 @@ namespace XIVChat_Desktop.Controls {
             if (config.Notifications.Any(notif => notif.Matches(message))) {
                 textBlock.Background = new SolidColorBrush(Color.FromArgb(128, 200, 100, 100));
             }
-
-            textBlock.Blocks.Clear();
 
             // Create new formatted text
             var inlines = MessageFormatter.ChunksToTextBlock(

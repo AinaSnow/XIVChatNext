@@ -289,4 +289,10 @@
   <data name="Dialog.Close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="Chat.NewMessages" xml:space="preserve">
+    <value>{0} new messages · Return to latest</value>
+  </data>
+  <data name="Chat.ReturnToLatest" xml:space="preserve">
+    <value>Return to latest messages</value>
+  </data>
 </root>
