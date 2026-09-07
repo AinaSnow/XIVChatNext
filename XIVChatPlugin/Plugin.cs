@@ -108,11 +108,6 @@ namespace XIVChatPlugin {
 
             this.Interface.UiBuilder.Draw += this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
-            this.Framework.Update += this.Server!.OnFrameworkUpdate;
-            this.ChatGui.ChatMessage += this.Server.OnChat;
-            this.ClientState.Login += this.Server.OnLogIn;
-            this.ClientState.Logout += this.Server.OnLogOut;
-            this.ClientState.TerritoryChanged += this.Server.OnTerritoryChange;
             this.CommandManager.AddHandler("/xivchat", new CommandInfo(this.OnCommand) {
                 HelpMessage = "Opens the config for the XIVChat plugin",
             });
@@ -128,15 +123,10 @@ namespace XIVChatPlugin {
             this._disposedValue = true;
 
             this.Relay?.Dispose();
-            this.Server.Dispose();
+            this.StopServer();
 
             this.Interface.UiBuilder.Draw -= this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi -= this.Ui.OpenSettings;
-            this.Framework.Update -= this.Server.OnFrameworkUpdate;
-            this.ChatGui.ChatMessage -= this.Server.OnChat;
-            this.ClientState.Login -= this.Server.OnLogIn;
-            this.ClientState.Logout -= this.Server.OnLogOut;
-            this.ClientState.TerritoryChanged -= this.Server.OnTerritoryChange;
             this.CommandManager.RemoveHandler("/xivchat");
             this.Functions.Dispose();
 
@@ -182,10 +172,24 @@ namespace XIVChatPlugin {
         private void LaunchServer() {
             this.Server = new Server(this);
             this.Server.Spawn();
+            this.Framework.Update += this.Server.OnFrameworkUpdate;
+            this.ChatGui.ChatMessage += this.Server.OnChat;
+            this.ClientState.Login += this.Server.OnLogIn;
+            this.ClientState.Logout += this.Server.OnLogOut;
+            this.ClientState.TerritoryChanged += this.Server.OnTerritoryChange;
+        }
+
+        private void StopServer() {
+            this.Framework.Update -= this.Server.OnFrameworkUpdate;
+            this.ChatGui.ChatMessage -= this.Server.OnChat;
+            this.ClientState.Login -= this.Server.OnLogIn;
+            this.ClientState.Logout -= this.Server.OnLogOut;
+            this.ClientState.TerritoryChanged -= this.Server.OnTerritoryChange;
+            this.Server.Dispose();
         }
 
         internal void RelaunchServer() {
-            this.Server.Dispose();
+            this.StopServer();
             this.LaunchServer();
         }
 

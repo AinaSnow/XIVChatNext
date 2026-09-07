@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -84,6 +84,14 @@ namespace XIVChatPlugin {
 
             this.Connected = this.Client.Connected;
             this._streamImplementation = this.Client.GetStream();
+        }
+
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                this._streamImplementation.Dispose();
+                this.Client.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         public override void Flush() {

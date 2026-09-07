@@ -1,6 +1,7 @@
 using Sodium;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace XIVChatCommon {
@@ -47,14 +48,14 @@ namespace XIVChatCommon {
             return new SessionKeys(rx, tx);
         }
 
-        public static async Task<HandshakeInfo> ServerHandshake(KeyPair server, Stream stream) {
+        public static async Task<HandshakeInfo> ServerHandshake(KeyPair server, Stream stream, CancellationToken token = default) {
             // get client public key
             byte[] clientPublic = new byte[32];
-            await stream.ReadExactlyAsync(clientPublic, 0, clientPublic.Length);
+            await stream.ReadExactlyAsync(clientPublic, 0, clientPublic.Length, token);
 
             // send our public key
-            await stream.WriteAsync(server.PublicKey, 0, server.PublicKey.Length);
-            await stream.FlushAsync();
+            await stream.WriteAsync(server.PublicKey, 0, server.PublicKey.Length, token);
+            await stream.FlushAsync(token);
 
             // get shared secret and derive keys
             var keys = ServerSessionKeys(server, clientPublic);
@@ -62,13 +63,13 @@ namespace XIVChatCommon {
             return new HandshakeInfo(clientPublic, keys);
         }
 
-        public static async Task<HandshakeInfo> ClientHandshake(KeyPair client, Stream stream) {
+        public static async Task<HandshakeInfo> ClientHandshake(KeyPair client, Stream stream, CancellationToken token = default) {
             // send our public key
-            await stream.WriteAsync(client.PublicKey, 0, client.PublicKey.Length);
+            await stream.WriteAsync(client.PublicKey, 0, client.PublicKey.Length, token);
 
             // get server public key
             byte[] serverPublic = new byte[32];
-            await stream.ReadExactlyAsync(serverPublic, 0, serverPublic.Length);
+            await stream.ReadExactlyAsync(serverPublic, 0, serverPublic.Length, token);
 
             // get shared secret and derive keys
             var keys = ClientSessionKeys(client, serverPublic);

@@ -21,6 +21,7 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            this.Closed += (_, _) => this.trustChannel.TryWrite(false);
 
             this.ClientPublicKey.Text = ToHexString(this.App.Config.KeyPair.PublicKey);
             var clientColours = BreakIntoColours(this.App.Config.KeyPair.PublicKey);

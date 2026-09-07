@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using XIVChatCommon;
 using XIVChatCommon.Message;
@@ -26,7 +24,7 @@ namespace XIVChat_Desktop {
         private readonly Channel<string> outgoing = Channel.CreateUnbounded<string>();
         private readonly Channel<byte[]> outgoingMessages = Channel.CreateUnbounded<byte[]>();
         private readonly Channel<byte[]> incoming = Channel.CreateUnbounded<byte[]>();
-        private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(2);
+        private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
         public readonly CancellationTokenSource cancel = new CancellationTokenSource();
 
@@ -67,205 +65,186 @@ namespace XIVChat_Desktop {
 
         public void Disconnect() {
             this.cancel.Cancel();
-            for (var i = 0; i < 2; i++) {
-                this.cancelChannel.Writer.TryWrite(1);
-            }
+            this.cancelChannel.Writer.TryWrite(1);
         }
 
         public async Task Connect() {
+            Task? receiver = null;
             try {
                 this.client = new TcpClient();
                 await this.client.ConnectAsync(this.host, this.port, this.cancel.Token);
                 var stream = this.client.GetStream();
 
-            // write the magic bytes
-            await stream.WriteAsync(new byte[] {
-                14, 20, 67,
-            });
+                // write the magic bytes
+                await stream.WriteAsync(new byte[] {
+                    14, 20, 67,
+                }, this.cancel.Token);
 
-            // do the handshake
-            var handshake = await KeyExchange.ClientHandshake(this.app.Config.KeyPair, stream);
+                // do the handshake
+                using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(this.cancel.Token);
+                handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                var handshake = await KeyExchange.ClientHandshake(this.app.Config.KeyPair, stream, handshakeTimeout.Token);
+                handshakeTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
 
-            // check for trust and prompt if not
-            if (!this.app.Config.TrustedKeys.Any(trusted => trusted.Key.SequenceEqual(handshake.RemotePublicKey))) {
-                var trustChannel = Channel.CreateBounded<bool>(1);
+                // check for trust and prompt if not
+                if (!this.app.Config.TrustedKeys.Any(trusted => trusted.Key.SequenceEqual(handshake.RemotePublicKey))) {
+                    var trustChannel = Channel.CreateBounded<bool>(1);
 
-                this.app.Dispatch(() => {
-                    new TrustDialog(trustChannel.Writer, handshake.RemotePublicKey).Activate();
-                });
+                    this.DispatchIfCurrent(() => {
+                        new TrustDialog(trustChannel.Writer, handshake.RemotePublicKey).Activate();
+                    });
 
-                var trusted = await trustChannel.Reader.ReadAsync(this.cancel.Token);
+                    var trusted = await trustChannel.Reader.ReadAsync(this.cancel.Token);
 
-                if (!trusted) {
-                    goto Close;
+                    if (!trusted) {
+                        goto Close;
+                    }
                 }
-            }
 
-            // clear messages if connecting to a different host
-            var currentHost = $"{this.host}:{this.port}";
-            var sameHost = this.app.LastHost == currentHost;
-            if (!sameHost) {
-                this.app.Dispatch(() => {
-                    this.app.Window.ClearAllMessages();
-                    this.app.LastHost = currentHost;
+                // clear messages if connecting to a different host
+                var currentHost = $"{this.host}:{this.port}";
+                var sameHost = this.app.LastHost == currentHost;
+                if (!sameHost) {
+                    this.DispatchIfCurrent(() => {
+                        this.app.Window.ClearAllMessages();
+                        this.app.LastHost = currentHost;
+                    });
+                }
+
+                this.DispatchIfCurrent(() => {
+                    this.app.Window.AddSystemMessage("Connected");
                 });
-            }
 
-            this.app.Dispatch(() => {
-                this.app.Window.AddSystemMessage("Connected");
-            });
-
-            // tell the server our preferences
-            var preferences = new ClientPreferences {
-                Preferences = new Dictionary<ClientPreference, object> {
-                    {
-                        ClientPreference.BacklogNewestMessagesFirst, true
+                // tell the server our preferences
+                var preferences = new ClientPreferences {
+                    Preferences = new Dictionary<ClientPreference, object> {
+                        {
+                            ClientPreference.BacklogNewestMessagesFirst, true
+                        },
                     },
-                },
-            };
-            await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, preferences, this.cancel.Token);
-
-            // check if backlog or catch-up is needed
-            if (sameHost) {
-                // catch-up
-                var lastRealMessage = this.app.Window.Messages.LastOrDefault(msg => msg.Channel != 0);
-                if (lastRealMessage != null) {
-                    _backlogSequence += 1;
-                    var catchUp = new ClientCatchUp(lastRealMessage.Timestamp);
-                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, catchUp, this.cancel.Token);
-                }
-            } else if (this.app.Config.BacklogMessages > 0) {
-                // backlog
-                _backlogSequence += 1;
-                var backlogReq = new ClientBacklog {
-                    Amount = this.app.Config.BacklogMessages,
                 };
-                await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, backlogReq, this.cancel.Token);
-            }
+                await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, preferences, this.cancel.Token);
 
-            // start a task for accepting incoming messages and sending them down the channel
-            _ = Task.Run(async () => {
-                var inc = SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, this.cancel.Token);
+                // check if backlog or catch-up is needed
+                if (sameHost) {
+                    // catch-up
+                    var lastRealMessage = this.app.Window.Messages.LastOrDefault(msg => msg.Channel != 0);
+                    if (lastRealMessage != null) {
+                        _backlogSequence += 1;
+                        var catchUp = new ClientCatchUp(lastRealMessage.Timestamp);
+                        await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, catchUp, this.cancel.Token);
+                    }
+                } else if (this.app.Config.BacklogMessages > 0) {
+                    // backlog
+                    _backlogSequence += 1;
+                    var backlogReq = new ClientBacklog {
+                        Amount = this.app.Config.BacklogMessages,
+                    };
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, backlogReq, this.cancel.Token);
+                }
+
+                // start a task for accepting incoming messages and sending them down the channel
+                receiver = Task.Run(async () => {
+                    try {
+                        while (!this.cancel.IsCancellationRequested) {
+                            var rawMessage = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, this.cancel.Token);
+                            await this.incoming.Writer.WriteAsync(rawMessage, this.cancel.Token);
+                        }
+                        this.incoming.Writer.TryComplete();
+                    } catch (Exception ex) {
+                        // Propagate a failed read to the owner instead of leaving it waiting forever.
+                        this.incoming.Writer.TryComplete(ex);
+                    }
+                });
+
+                var incoming = this.incoming.Reader.ReadAsync().AsTask();
+                var outgoing = this.outgoing.Reader.ReadAsync().AsTask();
+                var outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
                 var cancel = this.cancelChannel.Reader.ReadAsync().AsTask();
 
+                // listen for incoming and outgoing messages and cancel requests
                 while (!this.cancel.IsCancellationRequested) {
-                    var result = await Task.WhenAny(inc, cancel);
-                    if (result == inc) {
-                        var ex = inc.Exception;
-                        if (ex != null) {
-                            this.app.Dispatch(() => {
-                                this.app.Window.AddSystemMessage("Error reading incoming message.");
-                                Console.WriteLine($"Error reading incoming message: {ex.Message}");
-                                foreach (var inner in ex.InnerExceptions) {
-                                    Console.WriteLine(inner.StackTrace);
-                                }
-                            });
-                            if (!(ex.InnerException is CryptographicException)) {
-                                this.app.Disconnect();
-                                break;
-                            }
-                        }
+                    var result = await Task.WhenAny(incoming, outgoing, outgoingMessage, cancel);
+                    if (result == incoming) {
+                        var rawMessage = await incoming;
+                        incoming = this.incoming.Reader.ReadAsync().AsTask();
 
-                        var rawMessage = await inc;
-                        inc = SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, this.cancel.Token);
-                        await this.incoming.Writer.WriteAsync(rawMessage);
+                        await this.HandleIncoming(rawMessage);
+                    } else if (result == outgoing) {
+                        var toSend = await outgoing;
+                        outgoing = this.outgoing.Reader.ReadAsync().AsTask();
+
+                        var message = new ClientMessage(toSend);
+                        try {
+                            await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, message, this.cancel.Token);
+                        } catch (Exception ex) {
+                            this.DispatchIfCurrent(() => {
+                                this.app.Window.AddSystemMessage("Error sending message.");
+                                Console.WriteLine($"Error sending message: {ex.Message}");
+                                Console.WriteLine(ex.StackTrace);
+                            });
+                            break;
+                        }
+                    } else if (result == outgoingMessage) {
+                        var toSend = await outgoingMessage;
+                        outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
+
+                        try {
+                            await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, toSend, this.cancel.Token);
+                        } catch (Exception ex) {
+                            this.DispatchIfCurrent(() => {
+                                this.app.Window.AddSystemMessage("Error sending message.");
+                                Console.WriteLine($"Error sending message: {ex.Message}");
+                                Console.WriteLine(ex.StackTrace);
+                            });
+                            break;
+                        }
                     } else if (result == cancel) {
                         break;
                     }
                 }
-            });
 
-            var incoming = this.incoming.Reader.ReadAsync().AsTask();
-            var outgoing = this.outgoing.Reader.ReadAsync().AsTask();
-            var outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
-            var cancel = this.cancelChannel.Reader.ReadAsync().AsTask();
+                // remove player data
+                this.SetPlayerData(null);
 
-            // listen for incoming and outgoing messages and cancel requests
-            while (!this.cancel.IsCancellationRequested) {
-                var result = await Task.WhenAny(incoming, outgoing, outgoingMessage, cancel);
-                if (result == incoming) {
-                    if (this.incoming.Reader.Completion.IsCompleted) {
-                        break;
-                    }
+                // set availability
+                this.Available = false;
 
-                    var rawMessage = await incoming;
-                    incoming = this.incoming.Reader.ReadAsync().AsTask();
+                // at this point, we are disconnected, so log it
+                this.DispatchIfCurrent(() => {
+                    this.app.Window.AddSystemMessage("Disconnected");
+                });
 
-                    await this.HandleIncoming(rawMessage);
-                } else if (result == outgoing) {
-                    var toSend = await outgoing;
-                    outgoing = this.outgoing.Reader.ReadAsync().AsTask();
+                // wait up to a second to send the shutdown packet
+                await Task.WhenAny(Task.Delay(1_000), SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance));
 
-                    var message = new ClientMessage(toSend);
-                    try {
-                        await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, message, this.cancel.Token);
-                    } catch (Exception ex) {
-                        this.app.Dispatch(() => {
-                            this.app.Window.AddSystemMessage("Error sending message.");
-                            Console.WriteLine($"Error sending message: {ex.Message}");
-                            Console.WriteLine(ex.StackTrace);
-                        });
-                        break;
-                    }
-                } else if (result == outgoingMessage) {
-                    var toSend = await outgoingMessage;
-                    outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
-
-                    try {
-                        await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, toSend, this.cancel.Token);
-                    } catch (Exception ex) {
-                        this.app.Dispatch(() => {
-                            this.app.Window.AddSystemMessage("Error sending message.");
-                            Console.WriteLine($"Error sending message: {ex.Message}");
-                            Console.WriteLine(ex.StackTrace);
-                        });
-                        break;
-                    }
-                } else if (result == cancel) {
-                    try {
-                        await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance);
-                    } catch (Exception ex) {
-                        this.app.Dispatch(() => {
-                            this.app.Window.AddSystemMessage("Error sending message.");
-                            Console.WriteLine($"Error sending message: {ex.Message}");
-                            Console.WriteLine(ex.StackTrace);
-                        });
-                    }
-
-                    break;
+            Close:
+                try {
+                    this.client?.Close();
+                } catch (ObjectDisposedException) {
                 }
-            }
-
-            // remove player data
-            this.SetPlayerData(null);
-
-            // set availability
-            this.Available = false;
-
-            // at this point, we are disconnected, so log it
-            this.app.Dispatch(() => {
-                this.app.Window.AddSystemMessage("Disconnected");
-            });
-
-            // wait up to a second to send the shutdown packet
-            await Task.WhenAny(Task.Delay(1_000), SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance));
-
-        Close:
-            try {
-                this.client?.Close();
-            } catch (ObjectDisposedException) {
-            }
             } catch (Exception ex) {
                 if (!this.cancel.IsCancellationRequested && !(ex is OperationCanceledException)) {
-                    this.app.Dispatch(() => {
+                    this.DispatchIfCurrent(() => {
                         this.app.Window.AddSystemMessage($"连接或通信中断: {ex.Message}");
-                        this.app.Disconnect();
+                        if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
                     });
                 }
             } finally {
-                this.SetPlayerData(null);
+                this.cancel.Cancel();
+                this.client?.Dispose();
+                if (receiver != null) await receiver;
                 this.Available = false;
+                this.DispatchIfCurrent(() => {
+                    if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
+                });
             }
+        }
+
+        private void DispatchIfCurrent(Action action) {
+            this.app.Dispatch(() => {
+                if (ReferenceEquals(this.app.Connection, this)) action();
+            });
         }
 
         private Task HandleIncoming(byte[] rawMessage) {
@@ -280,13 +259,15 @@ namespace XIVChat_Desktop {
                 case ServerOperation.Message:
                     var message = ServerMessage.Decode(payload);
 
-                    this.app.Dispatch(() => {
+                    this.DispatchIfCurrent(() => {
                         this.ReceiveMessage?.Invoke(message);
                         this.app.Window.AddMessage(message);
                     });
                     break;
                 case ServerOperation.Shutdown:
-                    this.app.Disconnect();
+                    this.DispatchIfCurrent(() => {
+                        if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
+                    });
                     break;
                 case ServerOperation.PlayerData:
                     var playerData = payload.Length == 0 ? null : PlayerData.Decode(payload);
@@ -303,7 +284,7 @@ namespace XIVChat_Desktop {
 
                     this.CurrentChannel = channel.name;
 
-                    this.app.Dispatch(() => {
+                    this.DispatchIfCurrent(() => {
                         this.OnPropertyChanged(nameof(this.CurrentChannel));
                     });
                     break;
@@ -314,7 +295,7 @@ namespace XIVChat_Desktop {
                     foreach (var msg in backlog.messages.ToList().Chunks(100)) {
                         msg.Reverse();
                         var array = msg.ToArray();
-                        this.app.Dispatch(() => {
+                        this.DispatchIfCurrent(() => {
                             this.app.Window.AddReversedChunk(array, seq);
                         });
                     }
@@ -334,7 +315,8 @@ namespace XIVChat_Desktop {
         private void SetPlayerData(PlayerData? playerData) {
             var visibility = playerData == null ? Visibility.Collapsed : Visibility.Visible;
 
-            this.app.Dispatch(() => {
+            this.DispatchIfCurrent(() => {
+                if (!ReferenceEquals(this.app.Connection, this)) return;
                 var window = this.app.Window;
 
                 window.LoggedInAsText.Text = playerData?.name ?? "Not logged in";
@@ -366,7 +348,7 @@ namespace XIVChat_Desktop {
                 };
             }
 
-            this.app.Dispatch(action);
+            this.DispatchIfCurrent(action);
         }
     }
 }

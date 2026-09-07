@@ -1,4 +1,4 @@
-﻿using Sodium;
+using Sodium;
 using System;
 using System.IO;
 using System.Linq;
@@ -11,25 +11,18 @@ namespace XIVChatCommon {
         private const uint MaxMessageLen = 128_000;
 
         public static async Task<byte[]> ReadSecretMessage(Stream s, byte[] key, CancellationToken token = default) {
-            var read = 0;
-
-            byte[] header = new byte[4 + 24];
-            while (read < header.Length) {
-                read += await s.ReadAsync(header, read, header.Length - read, token);
-            }
+            byte[] header = new byte[4 + NonceSize];
+            await s.ReadExactlyAsync(header, 0, header.Length, token);
 
             var length = BitConverter.ToUInt32(header, 0);
             byte[] nonce = header.Skip(4).ToArray();
 
-            if (length > MaxMessageLen) {
-                throw new ArgumentOutOfRangeException($"Encrypted message specified a size of {length}, which is greater than the limit of {MaxMessageLen}");
+            if (length < MacSize || length > MaxMessageLen) {
+                throw new ArgumentOutOfRangeException($"Encrypted message specified a size of {length}, outside the allowed range {MacSize}–{MaxMessageLen}");
             }
 
             byte[] ciphertext = new byte[length];
-            read = 0;
-            while (read < ciphertext.Length) {
-                read += await s.ReadAsync(ciphertext, read, ciphertext.Length - read, token);
-            }
+            await s.ReadExactlyAsync(ciphertext, 0, ciphertext.Length, token);
 
             return SecretBox.Open(ciphertext, nonce, key);
         }

@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -100,25 +101,31 @@ namespace XIVChatPlugin {
         }
 
         internal void Spawn() {
-            var port = this._plugin.Config.Port;
+            var listener = new TcpListener(IPAddress.Any, this._plugin.Config.Port);
+            this._listener = listener;
+            try {
+                listener.Start();
+            } catch (SocketException ex) {
+                Plugin.Log.Error($"Could not start XIVChat server: {ex.Message}");
+                listener.Stop();
+                return;
+            }
 
-            Task.Run(async () => {
-                this._listener = new TcpListener(IPAddress.Any, port);
-                this._listener.Start();
-
-                this._running = true;
-                Plugin.Log.Info("Running...");
-                while (!this._tokenSource.IsCancellationRequested) {
-                    var conn = await this._listener.GetTcpClient(this._tokenSource);
-                    if (conn == null) {
-                        continue;
+            this._running = true;
+            _ = Task.Run(async () => {
+                try {
+                    while (!this._tokenSource.IsCancellationRequested) {
+                        var conn = await listener.AcceptTcpClientAsync(this._tokenSource.Token);
+                        this.SpawnClientTask(new TcpConnected(conn), true);
                     }
-
-                    var client = new TcpConnected(conn);
-                    this.SpawnClientTask(client, true);
+                } catch (Exception) when (this._tokenSource.IsCancellationRequested) {
+                    // Stopping the listener also interrupts a pending accept.
+                } catch (Exception ex) {
+                    Plugin.Log.Error($"XIVChat listener stopped: {ex.Message}");
+                } finally {
+                    listener.Stop();
+                    this._running = false;
                 }
-
-                this._running = false;
             });
         }
 
@@ -248,108 +255,70 @@ namespace XIVChatPlugin {
             var id = Guid.NewGuid();
             this._clients[id] = client;
 
-            Task.Run(async () => {
-                if (requiresMagic) {
-                    // get ready for reading magic bytes
-                    var magic = new byte[Magic.Count];
-                    var read = 0;
-
-                    // only listen for magic for five seconds
-                    using var cts = new CancellationTokenSource();
-                    cts.CancelAfter(TimeSpan.FromSeconds(5));
-
-                    // read magic bytes
-                    while (read < magic.Length) {
-                        if (cts.IsCancellationRequested) {
-                            return;
-                        }
-
-                        read += await client.ReadAsync(magic, read, magic.Length - read, cts.Token);
-                    }
-
-                    // ignore this connection if incorrect magic bytes
-                    if (!magic.SequenceEqual(Magic)) {
-                        return;
-                    }
-                }
-
-                var handshake = await KeyExchange.ServerHandshake(this._plugin.Config.KeyPair!, client);
-                client.Handshake = handshake;
-
-                // if this public key isn't trusted, prompt first
-                if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(handshake.RemotePublicKey))) {
-                    // if configured to not accept new clients, reject connection
-                    if (!this._plugin.Config.AcceptNewClients) {
-                        return;
-                    }
-
-                    var accepted = Channel.CreateBounded<bool>(1);
-
-                    await this.PendingClients.Writer.WriteAsync(Tuple.Create(client, accepted), this._tokenSource.Token);
-                    if (!await accepted.Reader.ReadAsync(this._tokenSource.Token)) {
-                        return;
-                    }
-                }
-
-                client.Connected = true;
-
-                // queue sending availability for this client
-                this._awaitingAvailability.Enqueue(id);
-
-                // queue sending player data for this client
-                this._awaitingPlayerData.Enqueue(id);
-
-                // send current channel
+            _ = Task.Run(async () => {
+                Task? listen = null;
+                using var stopRegistration = this._tokenSource.Token.Register(client.Disconnect);
                 try {
-                    var channel = this._currentChannel;
-                    await SecretMessage.SendSecretMessage(
-                        client,
-                        handshake.Keys.tx,
-                        new ServerChannel(
-                            channel,
-                            this._currentChannelName?.TextValue ?? this.LocalisedChannelName(channel)
-                        ),
-                        this._tokenSource.Token
-                    );
-                } catch (Exception ex) {
-                    Plugin.Log.Error($"Could not send message: {ex.Message}");
-                }
-
-                var listen = Task.Run(async () => {
-                    while (this._clients.TryGetValue(id, out var client) && client.Connected && !client.TokenSource.IsCancellationRequested) {
-                        byte[] msg;
-                        try {
-                            msg = await SecretMessage.ReadSecretMessage(client, handshake.Keys.rx, client.TokenSource.Token);
-                        } catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut) {
-                            continue;
-                        } catch (Exception ex) {
-                            Plugin.Log.Error($"Could not read message: {ex.Message}");
-                            continue;
-                        }
-
-                        await this.ProcessMessage(id, client, msg);
+                    using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
+                    handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                    if (requiresMagic) {
+                        var magic = new byte[Magic.Count];
+                        await client.ReadExactlyAsync(magic, 0, magic.Length, handshakeTimeout.Token);
+                        if (!magic.SequenceEqual(Magic)) return;
                     }
-                });
 
-                this._plugin.Events.FireNewClientEvent(id, client);
+                    var handshake = await KeyExchange.ServerHandshake(this._plugin.Config.KeyPair!, client, handshakeTimeout.Token);
+                    client.Handshake = handshake;
+                    handshakeTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
 
-                while (this._clients.TryGetValue(id, out var client) && client.Connected && !client.TokenSource.IsCancellationRequested) {
-                    try {
+                    if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(handshake.RemotePublicKey))) {
+                        if (!this._plugin.Config.AcceptNewClients) return;
+                        var accepted = Channel.CreateBounded<bool>(1);
+                        await this.PendingClients.Writer.WriteAsync(Tuple.Create(client, accepted), client.TokenSource.Token);
+                        if (!await accepted.Reader.ReadAsync(client.TokenSource.Token)) return;
+                    }
+
+                    client.Connected = true;
+                    this._awaitingAvailability.Enqueue(id);
+                    this._awaitingPlayerData.Enqueue(id);
+                    await SecretMessage.SendSecretMessage(client, handshake.Keys.tx,
+                        new ServerChannel(this._currentChannel, this._currentChannelName?.TextValue ?? this.LocalisedChannelName(this._currentChannel)),
+                        client.TokenSource.Token);
+
+                    listen = Task.Run(async () => {
+                        try {
+                            while (!client.TokenSource.IsCancellationRequested) {
+                                var msg = await SecretMessage.ReadSecretMessage(client, handshake.Keys.rx, client.TokenSource.Token);
+                                await this.ProcessMessage(id, client, msg);
+                            }
+                        } finally {
+                            // Wake the send loop on EOF, malformed packets or cancellation.
+                            client.Disconnect();
+                        }
+                    });
+
+                    this._plugin.Events.FireNewClientEvent(id, client);
+                    while (!client.TokenSource.IsCancellationRequested) {
                         var msg = await client.Queue.Reader.ReadAsync(client.TokenSource.Token);
                         await SecretMessage.SendSecretMessage(client, handshake.Keys.tx, msg, client.TokenSource.Token);
-                    } catch (Exception ex) {
-                        Plugin.Log.Error($"Could not send message: {ex.Message}");
+                    }
+                } catch (Exception) when (client.TokenSource.IsCancellationRequested) {
+                } catch (EndOfStreamException) {
+                    Plugin.Log.Info($"Client disconnected during handshake: {id}");
+                } catch (Exception ex) {
+                    Plugin.Log.Error($"Client connection failed: {ex.Message}");
+                } finally {
+                    this.RemoveClient(id);
+                    if (listen != null) {
+                        try {
+                            await listen;
+                        } catch (OperationCanceledException) {
+                        } catch (EndOfStreamException) {
+                        } catch (Exception ex) {
+                            Plugin.Log.Info($"Client receive loop ended: {ex.Message}");
+                        }
                     }
                 }
-
-                client.Disconnect();
-
-                await listen;
-
-                this._clients.TryRemove(id, out _);
-                Plugin.Log.Info($"Client thread ended: {id}");
-            }).ContinueWith(_ => {
-                this.RemoveClient(id);
             });
         }
 
@@ -939,43 +908,14 @@ namespace XIVChatPlugin {
         internal void OnTerritoryChange(uint territory) => this._sendPlayerData = true;
 
         public void Dispose() {
-            // stop accepting new clients
             this._tokenSource.Cancel();
-            foreach (var client in this._clients.Values) {
-                Task.Run(async () => {
-                    // tell clients we're shutting down
-                    if (client.Handshake != null) {
-                        try {
-                            await SecretMessage.SendSecretMessage(client, client.Handshake.Keys.tx, ServerShutdown.Instance);
-                        } catch (Exception) {
-                            // ignored
-                        }
-                    }
-
-                    // cancel threads for open clients
-                    await client.TokenSource.CancelAsync();
-                });
+            this._listener?.Stop();
+            this._running = false;
+            foreach (var id in this._clients.Keys) {
+                this.RemoveClient(id);
             }
 
             this._plugin.Functions.ReceiveFriendList -= this.OnReceiveFriendList;
-        }
-    }
-
-    internal static class TcpListenerExt {
-        internal static async Task<TcpClient?> GetTcpClient(this TcpListener listener, CancellationTokenSource source) {
-            await using (source.Token.Register(listener.Stop)) {
-                try {
-                    var client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                    return client;
-                } catch (ObjectDisposedException) {
-                    // Token was canceled - swallow the exception and return null
-                    if (source.Token.IsCancellationRequested) {
-                        return null;
-                    }
-
-                    throw;
-                }
-            }
         }
     }
 }
