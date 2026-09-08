@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Dalamud.Game;
-using Dalamud.IoC;
 using Dalamud.Plugin.Services;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -16,38 +15,27 @@ namespace XIVChatPlugin {
 
         private bool _disposedValue;
 
-        [PluginService]
         internal static IPluginLog Log { get; private set; } = null!;
 
-        [PluginService]
-        internal IDalamudPluginInterface Interface { get; private init; } = null!;
+        internal IDalamudPluginInterface Interface { get; }
 
-        [PluginService]
-        internal IChatGui ChatGui { get; private init; } = null!;
+        internal IChatGui ChatGui { get; }
 
-        [PluginService]
-        internal IClientState ClientState { get; private init; } = null!;
+        internal IClientState ClientState { get; }
 
-        [PluginService]
-        private ICommandManager CommandManager { get; init; } = null!;
+        private ICommandManager CommandManager { get; }
 
-        [PluginService]
-        internal IDataManager DataManager { get; private init; } = null!;
+        internal IDataManager DataManager { get; }
 
-        [PluginService]
-        private IFramework Framework { get; init; } = null!;
+        private IFramework Framework { get; }
 
-        [PluginService]
-        internal IObjectTable ObjectTable { get; private init; } = null!;
+        internal IObjectTable ObjectTable { get; }
 
-        [PluginService]
-        internal IPlayerState PlayerState { get; private init; } = null!;
+        internal IPlayerState PlayerState { get; }
 
-        [PluginService]
-        internal IGameInteropProvider GameInteropProvider { get; private init; } = null!;
+        internal IGameInteropProvider GameInteropProvider { get; }
 
-        [PluginService]
-        private ISigScanner SigScanner { get; init; } = null!;
+        private ISigScanner SigScanner { get; }
 
         internal Configuration Config { get; }
         private PluginUi Ui { get; }
@@ -68,7 +56,22 @@ namespace XIVChatPlugin {
             this.Location = path;
         }
 
-        public Plugin() {
+        public Plugin(IDalamudPluginInterface pluginInterface, IPluginLog log, IChatGui chatGui,
+            IClientState clientState, ICommandManager commandManager, IDataManager dataManager,
+            IFramework framework, IObjectTable objectTable, IPlayerState playerState,
+            IGameInteropProvider gameInteropProvider, ISigScanner sigScanner) {
+            // Assign dependencies before configuration, hooks, or the listener are initialized.
+            this.Interface = pluginInterface;
+            Log = log;
+            this.ChatGui = chatGui;
+            this.ClientState = clientState;
+            this.CommandManager = commandManager;
+            this.DataManager = dataManager;
+            this.Framework = framework;
+            this.ObjectTable = objectTable;
+            this.PlayerState = playerState;
+            this.GameInteropProvider = gameInteropProvider;
+            this.SigScanner = sigScanner;
             this.Events = new InternalEvents();
 
             try {

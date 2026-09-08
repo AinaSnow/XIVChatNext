@@ -30,7 +30,8 @@
     <Target Name="CleanUnwantedOutputs" AfterTargets="CopyNativeLibraries" BeforeTargets="DefaultDalamudPackagerRelease;DefaultDalamudPackagerDebug">
         <ItemGroup>
             <UnwantedRuntimeFiles Include="$(OutDir)runtimes\linux*\**\*.*;$(OutDir)runtimes\osx*\**\*.*;$(OutDir)runtimes\win-x86\**\*.*;$(OutDir)runtimes\win-arm64\**\*.*" />
-            <UnwantedFiles Include="$(OutDir)*.config;$(OutDir)XIVChat.json;$(OutDir)*.pdb" />
+            <UnwantedFiles Include="$(OutDir)*.config;$(OutDir)XIVChat.json" />
+            <UnwantedFiles Include="$(OutDir)*.pdb" Condition="'$(Configuration)' == 'Release'" />
         </ItemGroup>
         <Delete Files="@(UnwantedRuntimeFiles);@(UnwantedFiles)" />
         <RemoveDir Directories="$(OutDir)XIVChat" />

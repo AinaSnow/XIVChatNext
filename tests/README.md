@@ -46,6 +46,18 @@ dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
 
 ## Game integration
 
+Before loading a Debug build, check the real plugin entry point using the same uninitialized-object
+constructor invocation used by Dalamud:
+
+```powershell
+dotnet run --project tests/PluginLoadRegression/PluginLoadRegression.csproj -- 'XIVChatPlugin/bin/Debug/XIVChatNext.dll' "$env:APPDATA\XIVLauncher\addon\Hooks\dev"
+```
+
+This requires .NET 10 and the local Dalamud assemblies. It supplies proxy services to the actual
+compiled constructor and deliberately stops at `GetPluginConfig`, before hooks or networking.
+It verifies all constructor dependencies were assigned and that the development manifest and
+debug symbols exist. It does not load the plugin into the game or read/write game configuration.
+
 ```powershell
 dotnet build XIVChatPlugin/XIVChatPlugin.csproj -c Debug
 ```
