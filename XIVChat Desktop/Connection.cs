@@ -23,7 +23,9 @@ namespace XIVChat_Desktop {
 
         private readonly Channel<string> outgoing = Channel.CreateUnbounded<string>();
         private readonly Channel<byte[]> outgoingMessages = Channel.CreateUnbounded<byte[]>();
-        private readonly Channel<byte[]> incoming = Channel.CreateUnbounded<byte[]>();
+        private readonly Channel<byte[]> incoming = Channel.CreateBounded<byte[]>(256);
+        private string source = "";
+        private ServerCapabilities? capabilities;
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
         public readonly CancellationTokenSource cancel = new CancellationTokenSource();
@@ -85,6 +87,7 @@ namespace XIVChat_Desktop {
                 handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
                 var handshake = await KeyExchange.ClientHandshake(this.app.Config.KeyPair, stream, handshakeTimeout.Token);
                 handshakeTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
+                this.source = Convert.ToHexString(handshake.RemotePublicKey);
 
                 // check for trust and prompt if not
                 if (!this.app.Config.TrustedKeys.Any(trusted => trusted.Key.SequenceEqual(handshake.RemotePublicKey))) {
@@ -103,13 +106,14 @@ namespace XIVChat_Desktop {
 
                 // clear messages if connecting to a different host
                 var currentHost = $"{this.host}:{this.port}";
-                var sameHost = this.app.LastHost == currentHost;
+                var sameHost = this.app.LastHost == currentHost && this.app.Session.Source == this.source;
                 if (!sameHost) {
                     this.DispatchIfCurrent(() => {
-                        this.app.Window.ClearAllMessages();
+                        this.app.Session.Clear();
                         this.app.LastHost = currentHost;
                     });
                 }
+                this.DispatchIfCurrent(() => this.app.Session.Source = this.source);
 
                 this.DispatchIfCurrent(() => {
                     this.app.Window.AddSystemMessage("Connected");
@@ -121,6 +125,7 @@ namespace XIVChat_Desktop {
                         {
                             ClientPreference.BacklogNewestMessagesFirst, true
                         },
+                        { ClientPreference.WorkbenchSupport, true },
                     },
                 };
                 await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, preferences, this.cancel.Token);
@@ -128,7 +133,7 @@ namespace XIVChat_Desktop {
                 // check if backlog or catch-up is needed
                 if (sameHost) {
                     // catch-up
-                    var lastRealMessage = this.app.Window.Messages.LastOrDefault(msg => msg.Channel != 0);
+                    var lastRealMessage = this.app.Session.Messages.LastOrDefault(msg => msg.Channel != 0);
                     if (lastRealMessage != null) {
                         _backlogSequence += 1;
                         var catchUp = new ClientCatchUp(lastRealMessage.Timestamp);
@@ -247,7 +252,7 @@ namespace XIVChat_Desktop {
             });
         }
 
-        private Task HandleIncoming(byte[] rawMessage) {
+        private async Task HandleIncoming(byte[] rawMessage) {
             var type = (ServerOperation) rawMessage[0];
             var payload = new byte[rawMessage.Length - 1];
             Array.Copy(rawMessage, 1, payload, 0, payload.Length);
@@ -258,10 +263,10 @@ namespace XIVChat_Desktop {
                     break;
                 case ServerOperation.Message:
                     var message = ServerMessage.Decode(payload);
+                    await this.Record(message);
 
                     this.DispatchIfCurrent(() => {
-                        this.ReceiveMessage?.Invoke(message);
-                        this.app.Window.AddMessage(message);
+                        if (this.app.Session.Add(message)) this.ReceiveMessage?.Invoke(message);
                     });
                     break;
                 case ServerOperation.Shutdown:
@@ -290,16 +295,46 @@ namespace XIVChat_Desktop {
                     break;
                 case ServerOperation.Backlog:
                     var backlog = ServerBacklog.Decode(payload);
+                    // New peers use cursor history; the eager legacy request remains safe for old peers.
+                    if (this.capabilities?.CursorBacklog == true) break;
+                    await Task.WhenAll(backlog.messages.Select(this.Record));
 
                     var seq = _backlogSequence;
                     foreach (var msg in backlog.messages.ToList().Chunks(100)) {
                         msg.Reverse();
                         var array = msg.ToArray();
                         this.DispatchIfCurrent(() => {
-                            this.app.Window.AddReversedChunk(array, seq);
+                            this.app.Session.AddBacklog(array, seq);
                         });
                     }
 
+                    break;
+                case ServerOperation.Capabilities:
+                    this.capabilities = ServerCapabilities.Decode(payload);
+                    if (this.capabilities.CursorBacklog) {
+                        HistoryCursor? cursor = null;
+                        try {
+                            if (this.app.Session.Store != null && this.app.Config.HistoryEnabled && this.app.Session.StorageError == null)
+                                cursor = await this.app.Session.Store.GetCursorAsync(this.source, this.capabilities.ServiceId);
+                        } catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
+                        this.outgoingMessages.Writer.TryWrite(new ClientHistory { After = cursor }.Encode());
+                    }
+                    break;
+                case ServerOperation.History:
+                    if (this.capabilities?.CursorBacklog != true) break;
+                    var history = ServerHistory.Decode(payload);
+                    if (history.Cursor.ServiceId != this.capabilities.ServiceId || history.Cursor.RunId != this.capabilities.RunId) break;
+                    await Task.WhenAll(history.Messages.Select(this.Record));
+                    this.DispatchIfCurrent(() => {
+                        if (history.HasGap) this.app.Window?.AddSystemMessage(LocalizationHelper.GetString("History.Gap"));
+                        this.app.Session.AddCursorPage(history.Messages);
+                    });
+                    // Save progress only after every page record has committed. Live messages never advance this checkpoint.
+                    if (this.app.Config.HistoryEnabled && this.app.Session.Store != null && this.app.Session.StorageError == null) {
+                        try { await this.app.Session.Store.SaveCursorAsync(this.source, history.Cursor); }
+                        catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
+                    }
+                    if (history.HasMore) this.outgoingMessages.Writer.TryWrite(new ClientHistory { After = history.Cursor, Through = history.Through }.Encode());
                     break;
                 case ServerOperation.PlayerList:
                     break;
@@ -307,7 +342,12 @@ namespace XIVChat_Desktop {
                     break;
             }
 
-            return Task.CompletedTask;
+        }
+
+        private async Task Record(ServerMessage message) {
+            // Capture connection ownership before asynchronous persistence; a replaced connection must not pollute the next source.
+            if (!ReferenceEquals(this.app.Connection, this)) return;
+            await this.app.Session.RecordAsync(message, this.source);
         }
 
         private static int _backlogSequence = -1;
@@ -317,6 +357,9 @@ namespace XIVChat_Desktop {
 
             this.DispatchIfCurrent(() => {
                 if (!ReferenceEquals(this.app.Connection, this)) return;
+                var previousOwner = this.app.Session.Player?.Identity?.Key;
+                this.app.Session.SetPlayer(playerData);
+                if (playerData?.Identity?.Key is { } owner && owner != previousOwner) _ = this.app.RestorePlayerHistoryAsync(playerData);
                 var window = this.app.Window;
 
                 window.LoggedInAsText.Text = playerData?.name ?? "Not logged in";

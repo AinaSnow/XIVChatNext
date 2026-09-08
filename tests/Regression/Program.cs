@@ -20,11 +20,19 @@ var tests = new (string Name, Func<Task> Run)[] {
     ("Invalid primary and backup remain intact", BothInvalid),
     ("Failed validation preserves primary and backup", FailedSave),
     ("Interrupted temporary write does not affect loading", InterruptedSave),
+    ("Appended protocol fields preserve old wire layouts", WorkbenchTests.ProtocolCompatibility),
+    ("Cursor pages bound frames and report missing history", WorkbenchTests.CursorPages),
+    ("SQLite deduplicates stable IDs and isolates characters", WorkbenchTests.Persistence),
+    ("Retention protects notes, bookmarks and favorite sources", WorkbenchTests.Retention),
+    ("Database recovery preserves corrupt and newer databases", WorkbenchTests.Recovery),
+    ("Chinese search, literal queries and pagination", WorkbenchTests.Search),
+    ("Failed database writes roll back and preserve checkpoints", WorkbenchTests.WriteFailure),
+    ("100,000-row history remains searchable and paged", WorkbenchTests.LargeHistory),
 };
 int failures = 0;
 foreach (var test in tests) {
     try {
-        await test.Run().WaitAsync(TimeSpan.FromSeconds(10));
+        await test.Run().WaitAsync(TimeSpan.FromSeconds(60));
         Console.WriteLine($"PASS {test.Name}");
     } catch (Exception ex) {
         failures++;

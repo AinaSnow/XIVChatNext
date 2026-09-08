@@ -36,6 +36,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
+        <ProjectReference Include="..\XIVChatStorage\XIVChatStorage.csproj" />
     </ItemGroup>
 
     <ItemGroup>

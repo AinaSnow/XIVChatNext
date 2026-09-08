@@ -295,4 +295,10 @@
   <data name="Chat.ReturnToLatest" xml:space="preserve">
     <value>回到最新消息</value>
   </data>
+  <data name="History.Title" xml:space="preserve"><value>历史</value></data>
+  <data name="History.Enabled" xml:space="preserve"><value>保存本地历史</value></data>
+  <data name="History.Retention" xml:space="preserve"><value>保留天数（0 为永久）</value></data>
+  <data name="History.RetentionHelp" xml:space="preserve"><value>收藏、书签和带备注的消息始终保留。关闭后停止保存新消息。</value></data>
+  <data name="History.Unavailable" xml:space="preserve"><value>本地历史不可用，本次继续临时聊天：</value></data>
+  <data name="History.Gap" xml:space="preserve"><value>部分历史无法补齐：服务已重载或记录已清理。</value></data>
 </root>

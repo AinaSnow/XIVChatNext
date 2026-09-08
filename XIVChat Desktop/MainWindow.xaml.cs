@@ -17,7 +17,7 @@ namespace XIVChat_Desktop {
     public partial class MainWindow : INotifyPropertyChanged {
         public App App => (App)Application.Current;
 
-        public List<ServerMessage> Messages { get; } = new List<ServerMessage>();
+        public List<ServerMessage> Messages => this.App.Session.Messages;
 
         public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsText => this.LoggedInAs;
         public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsSeparatorText => this.LoggedInAsSeparator;
@@ -52,6 +52,14 @@ namespace XIVChat_Desktop {
             this.Title = LocalizationHelper.GetString("AppTitle");
             this.PopulateTabs();
             UpdateLocalizations();
+            this.AppWindow.Closing += async (_, args) => {
+                if (this.App.Session.Store == null) return;
+                args.Cancel = true;
+                if (this.stopping) return;
+                this.stopping = true;
+                try { await this.App.StopSessionAsync(); }
+                finally { this.Close(); }
+            };
             this.Closed += (_, _) => {
                 this.App.Config.Tabs.CollectionChanged -= this.OnTabsCollectionChanged;
                 foreach (var list in this.messageLists.Values) list.Dispose();
@@ -74,6 +82,7 @@ namespace XIVChat_Desktop {
         }
 
         private readonly Dictionary<Tab, Controls.ChatMessageList> messageLists = new();
+        private bool stopping;
 
         private void PopulateTabs() {
             this.Tabs.TabItems.Clear();
@@ -250,10 +259,7 @@ namespace XIVChat_Desktop {
         }
 
         public void ClearAllMessages() {
-            this.Messages.Clear();
-            foreach (var tab in this.App.Config.Tabs) {
-                tab.ClearMessages();
-            }
+            this.App.Session.Clear();
         }
 
         public void AddSystemMessage(string content) {
@@ -271,42 +277,12 @@ namespace XIVChat_Desktop {
             this.AddMessage(message);
         }
 
-        private int lastSequence = -1;
-        private int insertAt;
-
         public void AddReversedChunk(ServerMessage[] messages, int sequence) {
-            if (sequence != this.lastSequence) {
-                this.lastSequence = sequence;
-                this.insertAt = this.Messages.Count;
-            }
-
-            // add messages to main list
-            this.Messages.InsertRange(this.insertAt, messages);
-            // add message to each tab if the filter allows for it
-            foreach (var tab in this.App.Config.Tabs) {
-                tab.AddReversedChunk(messages, sequence, this.App.Config);
-            }
-
-            var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
-            if (diff > 0) {
-                this.Messages.RemoveRange(0, (int)diff);
-                this.insertAt = Math.Max(0, this.insertAt - (int)diff);
-            }
+            this.App.Session.AddBacklog(messages, sequence);
         }
 
         public void AddMessage(ServerMessage message) {
-            // add message to main list
-            this.Messages.Add(message);
-            // add message to each tab if the filter allows for it
-            foreach (var tab in this.App.Config.Tabs) {
-                tab.AddMessage(message, this.App.Config);
-            }
-
-            var diff = this.Messages.Count - this.App.Config.LocalBacklogMessages;
-            if (diff > 0) {
-                this.Messages.RemoveRange(0, (int)diff);
-                this.insertAt = Math.Max(0, this.insertAt - (int)diff);
-            }
+            this.App.Session.Add(message);
         }
 
         public void InsertTellCommand(string name, string world, bool focus = true) {

@@ -15,6 +15,10 @@ namespace XIVChat_Desktop {
     public partial class App : INotifyPropertyChanged {
         public MainWindow Window { get; private set; } = null!;
         public Configuration Config { get; private set; } = null!;
+        private ChatSession? session;
+        public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
+        private DispatcherQueue? dispatcher;
+        private Task? connectionTask;
 
         public string? LastHost { get; set; }
 
@@ -82,8 +86,9 @@ namespace XIVChat_Desktop {
         private Exception? configLoadException;
         private bool configRecoveredFromBackup;
 
-        protected override void OnLaunched(LaunchActivatedEventArgs args) {
+        protected override async void OnLaunched(LaunchActivatedEventArgs args) {
             base.OnLaunched(args);
+            this.dispatcher = DispatcherQueue.GetForCurrentThread();
 
             try {
                 this.Config = Configuration.Load(out this.configRecoveredFromBackup) ?? new Configuration();
@@ -101,7 +106,16 @@ namespace XIVChat_Desktop {
                 // Ignore save error on launch
             }
 
+            try {
+                var historyPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XIVChatDesktop", "history.sqlite3");
+                this.Session.Store = await XIVChatStorage.HistoryStore.OpenAsync(historyPath);
+                await this.Session.Store.PruneAsync(this.Config.HistoryRetentionDays, DateTime.UtcNow);
+            } catch (Exception ex) {
+                this.Session.ReportStorageError(ex);
+            }
             this.InitialiseWindow();
+            if (this.Session.StorageError != null) this.Window.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + this.Session.StorageError.Message);
+            this.Session.PersistenceFailed += ex => this.Dispatch(() => this.Window?.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + ex.Message));
         }
 
         public async void InitialiseWindow() {
@@ -156,8 +170,9 @@ namespace XIVChat_Desktop {
         }
 
         public void Dispatch(Action action) {
-            if (this.Window?.DispatcherQueue != null) {
-                this.Window.DispatcherQueue.TryEnqueue(() => action());
+            var queue = this.dispatcher ?? this.Window?.DispatcherQueue;
+            if (queue != null) {
+                queue.TryEnqueue(() => action());
             } else {
                 action();
             }
@@ -174,7 +189,31 @@ namespace XIVChat_Desktop {
 
             this.Connection = new Connection(this, host, port);
             this.Connection.ReceiveMessage += this.OnReceiveMessage;
-            Task.Run(this.Connection.Connect);
+            this.connectionTask = Task.Run(this.Connection.Connect);
+        }
+
+        public async Task StopSessionAsync() {
+            this.Disconnect();
+            if (this.connectionTask != null) await this.connectionTask;
+            if (this.Session.Store != null) {
+                try { await this.Session.Store.DisposeAsync(); }
+                finally { this.Session.Store = null; }
+            }
+        }
+
+        public async Task RestorePlayerHistoryAsync(PlayerData player) {
+            var store = this.Session.Store;
+            var source = this.Session.Source;
+            var owner = player.Identity?.Key;
+            if (store == null || owner == null || this.Session.StorageError != null) return;
+            try {
+                var recent = await store.SearchAsync(new XIVChatStorage.HistoryQuery(OwnerKey: owner, Source: source,
+                    Limit: (int)Math.Min(500, this.Config.LocalBacklogMessages)));
+                this.Dispatch(() => {
+                    if (this.Session.Player?.Identity?.Key == owner && this.Session.Source == source)
+                        this.Session.AddCursorPage(recent.Reverse().Select(row => row.Message).ToArray());
+                });
+            } catch (Exception ex) { this.Session.ReportStorageError(ex); }
         }
 
         public void Disconnect() {
@@ -185,6 +224,7 @@ namespace XIVChat_Desktop {
             var oldConn = this.Connection;
             this.Connection = null;
             oldConn?.Disconnect();
+            this.Session.SetPlayer(null);
 
             this.Dispatch(() => {
                 if (this.Window != null) {

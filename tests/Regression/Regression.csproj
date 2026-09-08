@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../XIVChatCommon/XIVChatCommon.csproj" />
+    <ProjectReference Include="../../XIVChatStorage/XIVChatStorage.csproj" />
     <Compile Include="../../XIVChat Desktop/ConfigurationFile.cs" Link="ConfigurationFile.cs" />
     <Compile Include="../../XIVChatPlugin/Client.cs" Link="Client.cs" />
   </ItemGroup>

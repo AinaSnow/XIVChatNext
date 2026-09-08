@@ -24,6 +24,13 @@ namespace XIVChatCommon.Message.Server {
         [Key(4)]
         public List<Chunk> Chunks { get; set; }
 
+        [Key(5)] public string? MessageId { get; set; }
+        [Key(6)] public string? ServiceId { get; set; }
+        [Key(7)] public string? RunId { get; set; }
+        [Key(8)] public long Sequence { get; set; }
+        [Key(9)] public CharacterIdentity? Owner { get; set; }
+        [Key(10)] public CharacterIdentity? TellPeer { get; set; }
+
         [IgnoreMember]
         public string ContentText => XivString.GetText(this.Content);
 

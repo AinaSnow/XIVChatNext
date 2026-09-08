@@ -29,6 +29,9 @@ namespace XIVChatCommon.Message.Client {
         
         [Preference(typeof(bool))]
         HousingLocationSupport = 2,
+
+        [Preference(typeof(bool))]
+        WorkbenchSupport = 3,
     }
 
     public static class ClientPreferencesExtension {

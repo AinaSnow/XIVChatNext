@@ -45,6 +45,10 @@ namespace XIVChat_Desktop {
 
         public uint LocalBacklogMessages { get; set; } = 10_000;
 
+        public bool HistoryEnabled { get; set; } = true;
+        // Zero means keep forever. Turning history off stops new persistence.
+        public int HistoryRetentionDays { get; set; } = 90;
+
         private double opacity = 1.0;
 
         public double Opacity {
@@ -299,6 +303,16 @@ namespace XIVChat_Desktop {
             this.Messages.Add(message);
             this.NotifyAdd(message);
 
+            this.Prune(config);
+        }
+
+        public void MergeHistory(IEnumerable<ServerMessage> messages, Configuration config) {
+            foreach (var message in messages.Where(message => this.Filter.Allowed(message))) {
+                var index = this.Messages.FindIndex(existing => ChatSession.Compare(message, existing) < 0);
+                if (index < 0) index = this.Messages.Count;
+                this.Messages.Insert(index, message);
+                this.NotifyAddItemsAt(new[] { message }, index);
+            }
             this.Prune(config);
         }
 

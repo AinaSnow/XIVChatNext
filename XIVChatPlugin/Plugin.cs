@@ -41,6 +41,9 @@ namespace XIVChatPlugin {
         internal IObjectTable ObjectTable { get; private init; } = null!;
 
         [PluginService]
+        internal IPlayerState PlayerState { get; private init; } = null!;
+
+        [PluginService]
         internal IGameInteropProvider GameInteropProvider { get; private init; } = null!;
 
         [PluginService]

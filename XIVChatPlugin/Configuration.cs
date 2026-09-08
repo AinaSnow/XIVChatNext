@@ -10,6 +10,7 @@ namespace XIVChatPlugin {
 
         public int Version { get; set; } = 1;
         public ushort Port { get; set; } = 14777;
+        public string ServiceId { get; set; } = Guid.NewGuid().ToString("N");
 
         public bool BacklogEnabled { get; set; } = true;
         public ushort BacklogCount { get; set; } = 100;

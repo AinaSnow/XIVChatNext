@@ -10,5 +10,7 @@
         PlayerList = 8,
         LinkshellList = 9,
         HousingLocation = 10,
+        Capabilities = 11,
+        History = 12,
     }
 }

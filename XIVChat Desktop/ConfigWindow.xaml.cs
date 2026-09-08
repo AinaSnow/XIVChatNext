@@ -12,6 +12,7 @@ namespace XIVChat_Desktop {
             this.Config = config;
 
             this.InitializeComponent();
+            this.HistoryRetention.Value = this.Config.HistoryRetentionDays;
             ThemeHelper.InitializeWindow(this);
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(650, 520));
 
@@ -35,6 +36,11 @@ namespace XIVChat_Desktop {
                 TabWindow.Header = LocalizationHelper.GetString("Config.Window");
                 TabConnection.Header = LocalizationHelper.GetString("Config.Connection");
                 TabNotifications.Header = LocalizationHelper.GetString("Config.Notifications");
+                TabHistory.Header = LocalizationHelper.GetString("History.Title");
+                ChkHistoryEnabled.Content = LocalizationHelper.GetString("History.Enabled");
+                HistoryRetention.Header = LocalizationHelper.GetString("History.Retention");
+                HistoryRetentionHelp.Text = LocalizationHelper.GetString("History.RetentionHelp");
+                BtnSaveHistory.Content = LocalizationHelper.GetString("Dialog.Save");
 
                 ChkAlwaysOnTop.Content = LocalizationHelper.GetString("Config.AlwaysOnTop");
                 ChkCompactMode.Content = LocalizationHelper.GetString("Config.CompactMode");
@@ -88,8 +94,17 @@ namespace XIVChat_Desktop {
             }
         }
 
-        private void Save_Click(object sender, RoutedEventArgs e) {
+        private void HistoryRetention_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) {
+            if (!double.IsNaN(args.NewValue)) this.Config.HistoryRetentionDays = (int)Math.Clamp(args.NewValue, 0, 36500);
+        }
+
+        private async void Save_Click(object sender, RoutedEventArgs e) {
             this.Config.Save();
+            var session = ((App)Application.Current).Session;
+            if (session.Store != null && session.StorageError == null) {
+                try { await session.Store.PruneAsync(this.Config.HistoryRetentionDays, DateTime.UtcNow); }
+                catch (Exception ex) { session.ReportStorageError(ex); }
+            }
         }
 
         private void SavedServers_ItemDoubleClick(SavedServer? server) {

@@ -295,4 +295,10 @@
   <data name="Chat.ReturnToLatest" xml:space="preserve">
     <value>Return to latest messages</value>
   </data>
+  <data name="History.Title" xml:space="preserve"><value>History</value></data>
+  <data name="History.Enabled" xml:space="preserve"><value>Save local history</value></data>
+  <data name="History.Retention" xml:space="preserve"><value>Days to keep (0 = forever)</value></data>
+  <data name="History.RetentionHelp" xml:space="preserve"><value>Favorites, bookmarks and annotated messages are retained. Disabling history stops saving new messages.</value></data>
+  <data name="History.Unavailable" xml:space="preserve"><value>Local history is unavailable. Chat continues without persistence:</value></data>
+  <data name="History.Gap" xml:space="preserve"><value>Some history could not be recovered: the service restarted or records were cleared.</value></data>
 </root>

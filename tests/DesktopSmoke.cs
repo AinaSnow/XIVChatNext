@@ -104,6 +104,7 @@ namespace XIVChat_Desktop {
                 Check(first.Messages.SequenceEqual(window.Messages) && list.Items.Count == 5, "Tab and virtualized backlog stay synchronized");
 
                 await this.TestDisconnectedConnection();
+                await this.TestWorkbenchConnection();
                 window.Close();
                 results.Add("PASS Desktop smoke test completed");
             } catch (Exception ex) {
@@ -139,6 +140,64 @@ namespace XIVChat_Desktop {
         private void Check(bool condition, string message) {
             if (!condition) throw new Exception(message);
             results.Add("PASS " + message);
+        }
+
+        private async Task TestWorkbenchConnection() {
+            var tempDirectory = Path.Combine(Path.GetTempPath(), "xivchat-desktop-history-" + Guid.NewGuid().ToString("N"));
+            var store = await XIVChatStorage.HistoryStore.OpenAsync(Path.Combine(tempDirectory, "history.db"));
+            this.Session.Store = store;
+            try {
+                this.Config.LocalBacklogMessages = 100;
+                using var listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                var key = PublicKeyBox.GenerateKeyPair();
+                this.Config.TrustedKeys.Add(new TrustedKey("Workbench smoke", key.PublicKey));
+                var accept = listener.AcceptTcpClientAsync();
+                this.Connect("127.0.0.1", (ushort)((IPEndPoint)listener.LocalEndpoint).Port);
+                using (var peer = await accept.WaitAsync(TimeSpan.FromSeconds(3))) {
+                    var stream = peer.GetStream();
+                    await stream.ReadExactlyAsync(new byte[3]);
+                    var handshake = await KeyExchange.ServerHandshake(key, stream);
+                    var preferences = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx);
+                    this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
+                        new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true });
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(request[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.History, "Capabilities enable cursor recovery");
+                    var owner = new CharacterIdentity { ContentId = 1, Name = "Aina Snow", HomeWorldId = 1, HomeWorld = "Home" };
+                    var live = Message(2); live.Owner = owner; live.ServiceId = "smoke"; live.RunId = "run"; live.Sequence = 2; live.MessageId = "smoke:run:2";
+                    // The server's framework-thread PlayerData response may arrive after live/history packets.
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, live);
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
+                        new PlayerData("Home", "Visiting", "Area", "Aina Snow") { Identity = owner });
+                    var older = Message(1); older.Owner = owner; older.ServiceId = "smoke"; older.RunId = "run"; older.Sequence = 1; older.MessageId = "smoke:run:1";
+                    var foreign = Message(3); foreign.Owner = new CharacterIdentity { ContentId = 2, Name = "Aina Snow", HomeWorldId = 2 };
+                    foreign.ServiceId = "smoke"; foreign.RunId = "run"; foreign.Sequence = 3; foreign.MessageId = "smoke:run:3";
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new ServerHistory {
+                        Messages = new[] { older, live, foreign }, Through = 3,
+                        Cursor = new HistoryCursor { ServiceId = "smoke", RunId = "run", Sequence = 3 },
+                    });
+                    var source = Convert.ToHexString(key.PublicKey);
+                    for (int i = 0; i < 100 && (await store.GetCursorAsync(source, "smoke"))?.Sequence != 3; i++) await Task.Delay(30);
+                    await Task.Delay(200);
+                    this.Check(this.Session.Messages.Where(m => m.MessageId != null).Select(m => m.Sequence).SequenceEqual(new long[] { 1, 2 }),
+                        "Pending identity, replay deduplication and stream ordering share one view");
+                    this.Check((await store.SearchAsync(new XIVChatStorage.HistoryQuery())).Count == 3, "Foreign-role history persists without entering the active view");
+                    this.Check((await store.GetCursorAsync(source, "smoke"))?.Sequence == 3, "Recovery checkpoint follows committed records");
+                }
+                for (int i = 0; i < 100 && this.Connected; i++) await Task.Delay(30);
+                this.Check(!this.Connected, "New-protocol connection closes after EOF");
+                this.Session.SetPlayer(new PlayerData("Other", "Other", "Area", "Aina Snow") {
+                    Identity = new CharacterIdentity { ContentId = 2, Name = "Aina Snow", HomeWorldId = 2 },
+                });
+                this.Check(this.Session.Messages.Count == 0, "Changing own character clears the active view");
+            } finally {
+                this.Disconnect();
+                this.Session.Store = null;
+                await store.DisposeAsync();
+                Directory.Delete(tempDirectory, true);
+            }
         }
 
         private static ServerMessage Message(int index) {

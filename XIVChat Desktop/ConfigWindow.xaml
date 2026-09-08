@@ -94,6 +94,17 @@
                 </Button>
             </Grid>
         </TabViewItem>
+        <TabViewItem x:Name="TabHistory" Header="历史" IsClosable="False">
+            <StackPanel Margin="16" Spacing="16">
+                <CheckBox x:Name="ChkHistoryEnabled" Content="保存本地历史"
+                          IsChecked="{x:Bind Config.HistoryEnabled, Mode=TwoWay}" />
+                <NumberBox x:Name="HistoryRetention" Header="保留天数（0 为永久）" Minimum="0" Maximum="36500"
+                           ValueChanged="HistoryRetention_ValueChanged" Width="260" HorizontalAlignment="Left" />
+                <TextBlock x:Name="HistoryRetentionHelp" Text="收藏、书签和带备注的消息始终保留。关闭后停止保存新消息。"
+                           TextWrapping="Wrap" />
+                <Button x:Name="BtnSaveHistory" Content="保存" Click="Save_Click" />
+            </StackPanel>
+        </TabViewItem>
         <TabViewItem x:Name="TabNotifications" Header="通知" IsClosable="False">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>

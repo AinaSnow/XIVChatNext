@@ -30,6 +30,8 @@ namespace XIVChatCommon.Message.Server {
         [Key(8)]
         public readonly ushort? mapSizeFactor;
 
+        [Key(9)] public CharacterIdentity? Identity { get; set; }
+
         public PlayerData(string homeWorld, string currentWorld, string location, string name, uint? mapId = null, float? mapX = null, float? mapY = null, string? mapFilenameId = null, ushort? mapSizeFactor = null) {
             this.homeWorld = homeWorld;
             this.currentWorld = currentWorld;

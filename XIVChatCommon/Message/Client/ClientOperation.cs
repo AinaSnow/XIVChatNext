@@ -9,5 +9,6 @@ namespace XIVChatCommon.Message.Client {
         LinkshellList = 7,
         Preferences = 8,
         Channel = 9,
+        History = 10,
     }
 }

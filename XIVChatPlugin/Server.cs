@@ -54,6 +54,9 @@ namespace XIVChatPlugin {
         private readonly HashSet<Guid> _waitingForFriendList = [];
 
         private readonly LinkedList<ServerMessage> _backlog = [];
+        private readonly object _historyLock = new();
+        private readonly string _runId = Guid.NewGuid().ToString("N");
+        private long _messageSequence;
 
         private TcpListener? _listener;
 
@@ -74,6 +77,8 @@ namespace XIVChatPlugin {
 
         internal Server(Plugin plugin) {
             this._plugin = plugin;
+            if (string.IsNullOrWhiteSpace(plugin.Config.ServiceId)) plugin.Config.ServiceId = Guid.NewGuid().ToString("N");
+            plugin.Config.Save();
             if (this._plugin.Config.KeyPair == null) {
                 this.RegenerateKeyPair();
             }
@@ -176,9 +181,23 @@ namespace XIVChatPlugin {
                 chunks
             );
 
-            this._backlog.AddLast(msg);
-            while (this._backlog.Count > this._plugin.Config.BacklogCount) {
-                this._backlog.RemoveFirst();
+            msg.Owner = this.CurrentIdentity();
+            if (chatCode.Type is ChatType.TellIncoming or ChatType.TellOutgoing) {
+                var peer = sender.Payloads.OfType<PlayerPayload>().FirstOrDefault();
+                if (peer != null) msg.TellPeer = new CharacterIdentity {
+                    Name = peer.PlayerName, HomeWorldId = (ushort)peer.World.RowId,
+                    HomeWorld = peer.World.Value.Name.ExtractText(),
+                };
+            }
+            lock (this._historyLock) {
+                msg.ServiceId = this._plugin.Config.ServiceId;
+                msg.RunId = this._runId;
+                msg.Sequence = ++this._messageSequence;
+                msg.MessageId = $"{msg.ServiceId}:{msg.RunId}:{msg.Sequence}";
+                if (this._plugin.Config.BacklogEnabled) this._backlog.AddLast(msg);
+                while (this._backlog.Count > (this._plugin.Config.BacklogEnabled ? this._plugin.Config.BacklogCount : 0)) {
+                    this._backlog.RemoveFirst();
+                }
             }
 
             foreach (var client in this._clients.Values) {
@@ -187,6 +206,9 @@ namespace XIVChatPlugin {
         }
 
         internal void OnFrameworkUpdate(IFramework framework) {
+            lock (this._historyLock) {
+                while (this._backlog.Count > (this._plugin.Config.BacklogEnabled ? this._plugin.Config.BacklogCount : 0)) this._backlog.RemoveFirst();
+            }
             var player = this._plugin.ObjectTable.LocalPlayer;
             if (player != null && this._sendPlayerData) {
                 this.BroadcastPlayerData();
@@ -365,14 +387,16 @@ namespace XIVChatPlugin {
 
                     var backlogMessages = new List<ServerMessage>();
 
-                    var node = this._backlog.Last;
-                    while (node != null) {
-                        if (backlogMessages.Count >= backlog.Amount) {
-                            break;
-                        }
+                    lock (this._historyLock) {
+                        var node = this._backlog.Last;
+                        while (node != null) {
+                            if (backlogMessages.Count >= backlog.Amount) {
+                                break;
+                            }
 
-                        backlogMessages.Add(node.Value);
-                        node = node.Previous;
+                            backlogMessages.Add(node.Value);
+                            node = node.Previous;
+                        }
                     }
 
                     if (!client.GetPreference(ClientPreference.BacklogNewestMessagesFirst, false)) {
@@ -408,12 +432,24 @@ namespace XIVChatPlugin {
                 case ClientOperation.Preferences:
                     var preferences = ClientPreferences.Decode(payload);
                     client.Preferences = preferences;
+                    if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
+                        client.Queue.Writer.TryWrite(new ServerCapabilities {
+                            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true,
+                        });
+                    }
 
                     // immediately queue housing location
                     if (client.GetPreference(ClientPreference.HousingLocationSupport, false)) {
                         this._awaitingHousingLocation.Enqueue(id);
                     }
 
+                    break;
+                case ClientOperation.History:
+                    if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
+                        var request = ClientHistory.Decode(payload);
+                        var page = this.HistoryPage(request);
+                        await client.Queue.Writer.WriteAsync(page, client.TokenSource.Token);
+                    }
                     break;
                 case ClientOperation.Channel:
                     var channel = ClientChannel.Decode(payload);
@@ -748,7 +784,19 @@ namespace XIVChatPlugin {
             return chunks;
         }
 
-        private IEnumerable<ServerMessage> MessagesAfter(DateTime time) => this._backlog.Where(msg => msg.Timestamp > time).ToArray();
+        private IEnumerable<ServerMessage> MessagesAfter(DateTime time) {
+            lock (this._historyLock) return this._backlog.Where(msg => msg.Timestamp > time).ToArray();
+        }
+
+        private ServerHistory HistoryPage(ClientHistory request) {
+            ServerMessage[] snapshot;
+            long latest;
+            lock (this._historyLock) {
+                snapshot = this._backlog.ToArray();
+                latest = this._messageSequence;
+            }
+            return HistoryPager.Create(snapshot, this._plugin.Config.ServiceId, this._runId, latest, request);
+        }
 
         private static IEnumerable<string> Wrap(string input) {
             if (input.Length <= MaxMessageLength) {
@@ -885,7 +933,18 @@ namespace XIVChatPlugin {
                 }
             }
 
-            return new PlayerData(homeWorld, currentWorld, location, name, mapIdOpt, mapX, mapY, mapFilenameId, mapSizeFactor);
+            return new PlayerData(homeWorld, currentWorld, location, name, mapIdOpt, mapX, mapY, mapFilenameId, mapSizeFactor) {
+                Identity = this.CurrentIdentity(),
+            };
+        }
+
+        private CharacterIdentity? CurrentIdentity() {
+            var state = this._plugin.PlayerState;
+            if (!state.IsLoaded) return null;
+            return new CharacterIdentity {
+                ContentId = state.ContentId, Name = state.CharacterName,
+                HomeWorldId = (ushort)state.HomeWorld.RowId, HomeWorld = state.HomeWorld.Value.Name.ExtractText(),
+            };
         }
 
         private void BroadcastPlayerData() {
