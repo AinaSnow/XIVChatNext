@@ -46,6 +46,10 @@ dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
 
 ## Game integration
 
+The live single-character send/receive, SQLite persistence, offline replay and two reconnect checks
+performed on 2026-09-09 are recorded in [the integration report](../docs/LIVE_INTEGRATION_2026-09-09.md),
+including the scenarios that still need real-game verification.
+
 Before loading a Debug build, check the real plugin entry point using the same uninitialized-object
 constructor invocation used by Dalamud:
 
