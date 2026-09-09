@@ -42,6 +42,7 @@
 
 ### 好友列表透传：可行性调查与接入（新增待办）
 
+- 用户补充：旧好友读取曾有问题并已移除。后续只复用协议设计，旧读取代码按待替换残留处理，先清理或隔离旧 Hook，再验证新读取服务。已同步最新 FFCS／Dalamud 参考源码并核对实际安装版本，问题与替换路径见 [好友读取审查](FRIEND_LIST_REVIEW_2026-09-09.md)。
 - 调查结论（2026-09-09）：已有可复用的请求／响应链路。`ClientPlayerList`（客户端操作码 6）请求 Friend 类型，插件 `Server.OnReceiveFriendList` 回传 `ServerPlayerList`（服务端操作码 8）。但桌面端 `Connection.cs` 的 PlayerList 分支直接跳过，也未找到发送该请求的入口；因此不能把现有协议视为端到端功能已完成。
 - 当前 `GameFunctions.cs` 通过 Hook 捕获好友列表管理器、请求并解析列表，首次使用可能需要先在游戏打开好友列表。旧实现使用手写偏移，读取 `FriendListEntry.ContentId` 后仅用于跳过无效项，未将其装入协议的 `Player` 对象。
 - 优先验证与实际 Dalamud／游戏版本匹配的 FFXIVClientStructs 类型接口，替代重复维护的手写布局；上游存在 [InfoProxyFriendList](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Info/InfoProxyFriendList.cs)，继承列表提供 `CharDataSpan`、`GetEntryByName`、`GetContentIdForEntry`，条目包含 ContentId、姓名、母世界、当前世界和状态等字段。参见 [InfoProxyCommonList](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Info/InfoProxyCommonList.cs)。源码可用性不等于本机版本实测通过。
@@ -50,7 +51,7 @@
 - 优先复用旧 PlayerList 协议，以追加字段及能力协商携带好友 ContentId、所属登录角色、请求／快照标识、完整性和更新时间；保留已有 MessagePack 编号，分包遵守消息大小限制。确认完整快照后再替换列表；拒绝属于旧连接、旧角色或旧请求的迟到响应。
 - 客户端按自己的角色保存好友状态，提供好友列表、手动刷新、在线状态与更新时间，并能从好友打开或新建固定目标的私聊会话；断线保留可辨认的过期快照，切角色不得沿用上一角色好友。服务端仍校验发送时的活动角色和目标。
 - 调查通过唯一的完整姓名＋母世界匹配好友快照，为已确认好友补充私聊对端 ContentId；无匹配或有冲突时保持未知，不错误合并旧历史。Lodestone ID 仍独立查询，不由 ContentId 推算；仅按需为可见好友加载头像，不批量扫描整份好友列表。
-- 状态：仅完成代码与上游资料调查，尚未实测读取当前好友列表，也未接入客户端。第二阶段完成插件读取、刷新与协议；第三阶段完成好友界面、会话及头像衔接。
+- 状态：完成源码同步、旧实现审查及针对已安装 FFCS 的 API 编译验证；尚未实测读取当前好友列表，也未接入客户端。第二阶段替换有问题的旧读取、验证刷新与协议；第三阶段完成好友界面、会话及头像衔接。
 
 ### 事件与通知
 
