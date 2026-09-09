@@ -51,7 +51,8 @@ namespace XIVChatPlugin {
         internal IReadOnlyDictionary<Guid, BaseClient> Clients => this._clients;
         internal readonly Channel<Tuple<BaseClient, Channel<bool>>> PendingClients = Channel.CreateUnbounded<Tuple<BaseClient, Channel<bool>>>();
 
-        private readonly HashSet<Guid> _waitingForFriendList = [];
+        internal FriendListCoordinator FriendLists { get; }
+        private string _ownerEpoch = Guid.NewGuid().ToString("N");
 
         private readonly LinkedList<ServerMessage> _backlog = [];
         private readonly object _historyLock = new();
@@ -87,23 +88,12 @@ namespace XIVChatPlugin {
 
             this._sendWatch.Start();
 
-            this._plugin.Functions.ReceiveFriendList += this.OnReceiveFriendList;
+            this.FriendLists = new FriendListCoordinator(new GameFriendListReader(plugin), (request, message) => {
+                if (!request.Cancellation.IsCancellationRequested && this._clients.TryGetValue(request.ClientId, out var client))
+                    client.Queue.Writer.TryWrite(message);
+            });
         }
 
-
-        private async void OnReceiveFriendList(List<Player> friends) {
-            var msg = new ServerPlayerList(PlayerListType.Friend, friends.ToArray());
-
-            foreach (var id in this._waitingForFriendList) {
-                if (!this.Clients.TryGetValue(id, out var client)) {
-                    continue;
-                }
-
-                await client.Queue.Writer.WriteAsync(msg);
-            }
-
-            this._waitingForFriendList.Clear();
-        }
 
         internal void Spawn() {
             var listener = new TcpListener(IPAddress.Any, this._plugin.Config.Port);
@@ -206,6 +196,7 @@ namespace XIVChatPlugin {
         }
 
         internal void OnFrameworkUpdate(IFramework framework) {
+            this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             lock (this._historyLock) {
                 while (this._backlog.Count > (this._plugin.Config.BacklogEnabled ? this._plugin.Config.BacklogCount : 0)) this._backlog.RemoveFirst();
             }
@@ -421,11 +412,9 @@ namespace XIVChatPlugin {
                     var playerList = ClientPlayerList.Decode(payload);
 
                     if (playerList.Type == PlayerListType.Friend) {
-                        this._waitingForFriendList.Add(id);
-
-                        if (!this._plugin.Functions.RequestingFriendList && !this._plugin.Functions.RequestFriendList()) {
-                            this._plugin.ChatGui.PrintError($"[{Plugin.Name}] Please open your friend list to enable friend list support. You should only need to do this on initial install or after updates.");
-                        }
+                        if (playerList.RequestId?.Length > 64 || playerList.ExpectedOwnerKey?.Length > 128 || playerList.ExpectedOwnerEpoch?.Length > 64) break;
+                        if (!this.FriendLists.Enqueue(new FriendRequest(id, playerList, client.TokenSource.Token)))
+                            client.Queue.Writer.TryWrite(FriendListProtocol.Error(playerList.RequestId, null, null, FriendListStatus.Busy));
                     }
 
                     break;
@@ -434,7 +423,7 @@ namespace XIVChatPlugin {
                     client.Preferences = preferences;
                     if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Queue.Writer.TryWrite(new ServerCapabilities {
-                            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true,
+                            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
                         });
                     }
 
@@ -934,7 +923,7 @@ namespace XIVChatPlugin {
             }
 
             return new PlayerData(homeWorld, currentWorld, location, name, mapIdOpt, mapX, mapY, mapFilenameId, mapSizeFactor) {
-                Identity = this.CurrentIdentity(),
+                Identity = this.CurrentIdentity(), OwnerEpoch = this._ownerEpoch,
             };
         }
 
@@ -954,14 +943,17 @@ namespace XIVChatPlugin {
         }
 
         internal void OnLogIn() {
+            this._ownerEpoch = Guid.NewGuid().ToString("N");
             this.BroadcastAvailability(true);
             // send player data on next framework update
             this._sendPlayerData = true;
         }
 
         internal void OnLogOut(int type, int code) {
+            this._ownerEpoch = Guid.NewGuid().ToString("N");
+            this.FriendLists.Tick(null, this._ownerEpoch, DateTime.UtcNow);
             this.BroadcastAvailability(false);
-            this.BroadcastPlayerData();
+            this.BroadcastMessage(EmptyPlayerData.Instance);
         }
 
         internal void OnTerritoryChange(uint territory) => this._sendPlayerData = true;
@@ -974,7 +966,7 @@ namespace XIVChatPlugin {
                 this.RemoveClient(id);
             }
 
-            this._plugin.Functions.ReceiveFriendList -= this.OnReceiveFriendList;
+            this.FriendLists.Dispose();
         }
     }
 }

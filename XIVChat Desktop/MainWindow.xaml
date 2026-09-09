@@ -26,6 +26,8 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem x:Name="MenuMap" Text="悬浮窗地图"
                                 Click="Map_Click" />
+                <MenuFlyoutItem x:Name="MenuRefreshFriends" Text="刷新好友列表"
+                                Click="RefreshFriends_Click" IsEnabled="{Binding App.Connected, Mode=OneWay}" />
                 <MenuFlyoutItem x:Name="MenuExport" Text="导出"
                                 Click="Export_Click" />
                 <MenuFlyoutSeparator />

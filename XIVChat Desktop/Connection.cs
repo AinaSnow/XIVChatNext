@@ -283,6 +283,8 @@ namespace XIVChat_Desktop {
                     var availability = Availability.Decode(payload);
 
                     this.Available = availability.available;
+                    if (!availability.available) this.DispatchIfCurrent(() =>
+                        this.app.Session.Friends.SetContext(this.source, null, null, this.capabilities?.FriendSnapshots == true));
                     break;
                 case ServerOperation.Channel:
                     var channel = ServerChannel.Decode(payload);
@@ -311,6 +313,7 @@ namespace XIVChat_Desktop {
                     break;
                 case ServerOperation.Capabilities:
                     this.capabilities = ServerCapabilities.Decode(payload);
+                    this.DispatchIfCurrent(this.UpdateFriendsContext);
                     if (this.capabilities.CursorBacklog) {
                         HistoryCursor? cursor = null;
                         try {
@@ -337,6 +340,15 @@ namespace XIVChat_Desktop {
                     if (history.HasMore) this.outgoingMessages.Writer.TryWrite(new ClientHistory { After = history.Cursor, Through = history.Through }.Encode());
                     break;
                 case ServerOperation.PlayerList:
+                    if (this.capabilities?.FriendSnapshots != true || rawMessage.Length > FriendListProtocol.MaxPageBytes) break;
+                    var friends = ServerPlayerList.Decode(payload);
+                    this.DispatchIfCurrent(() => {
+                        var state = this.app.Session.Friends;
+                        var request = state.RequestId;
+                        var snapshot = state.Add(friends);
+                        if (snapshot != null) _ = this.SaveFriendsAsync(snapshot);
+                        if (request != null && state.RequestId == null && state.Manual) this.ReportFriendResult();
+                    });
                     break;
                 case ServerOperation.LinkshellList:
                     break;
@@ -352,6 +364,54 @@ namespace XIVChat_Desktop {
 
         private static int _backlogSequence = -1;
 
+        private void UpdateFriendsContext() {
+            var player = this.app.Session.Player;
+            var state = this.app.Session.Friends;
+            if (!state.SetContext(this.source, player?.Identity?.Key, player?.OwnerEpoch, this.capabilities?.FriendSnapshots == true)) return;
+            if (state.OwnerKey != null) _ = this.RestoreFriendsAsync(state.Version, state.OwnerKey);
+            this.RefreshFriends(false);
+        }
+
+        private async Task RestoreFriendsAsync(int version, string owner) {
+            if (!this.app.Config.HistoryEnabled || this.app.Session.Store == null || this.app.Session.StorageError != null) return;
+            try {
+                var saved = await this.app.Session.Store.GetFriendSnapshotAsync(this.source, owner);
+                this.DispatchIfCurrent(() => this.app.Session.Friends.Restore(version, saved));
+            } catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
+        }
+
+        private async Task SaveFriendsAsync(ServerPlayerList snapshot) {
+            if (!this.app.Config.HistoryEnabled || this.app.Session.Store == null || this.app.Session.StorageError != null) return;
+            try { await this.app.Session.Store.SaveFriendSnapshotAsync(this.source, snapshot); }
+            catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
+        }
+
+        public bool RefreshFriends(bool manual = true) {
+            if (!ReferenceEquals(this.app.Connection, this) || this.cancel.IsCancellationRequested) return false;
+            var request = this.app.Session.Friends.Begin(manual);
+            if (request == null) return false;
+            this.outgoingMessages.Writer.TryWrite(request.Encode());
+            _ = this.FriendTimeoutAsync(request.RequestId!);
+            return true;
+        }
+
+        private async Task FriendTimeoutAsync(string requestId) {
+            try {
+                await Task.Delay(TimeSpan.FromSeconds(15), this.cancel.Token);
+                this.DispatchIfCurrent(() => {
+                    if (this.app.Session.Friends.Fail(requestId, FriendListStatus.TimedOut) && this.app.Session.Friends.Manual)
+                        this.ReportFriendResult();
+                });
+            } catch (OperationCanceledException) { }
+        }
+
+        private void ReportFriendResult() {
+            var state = this.app.Session.Friends;
+            this.app.Window.AddSystemMessage(state.Status == FriendListStatus.Success
+                ? string.Format(LocalizationHelper.GetString("FriendList.Updated"), state.Snapshot!.Players.Length)
+                : LocalizationHelper.GetString("FriendList.Failed") + " (" + state.Status + ")");
+        }
+
         private void SetPlayerData(PlayerData? playerData) {
             var visibility = playerData == null ? Visibility.Collapsed : Visibility.Visible;
 
@@ -359,6 +419,7 @@ namespace XIVChat_Desktop {
                 if (!ReferenceEquals(this.app.Connection, this)) return;
                 var previousOwner = this.app.Session.Player?.Identity?.Key;
                 this.app.Session.SetPlayer(playerData);
+                this.UpdateFriendsContext();
                 if (playerData?.Identity?.Key is { } owner && owner != previousOwner) _ = this.app.RestorePlayerHistoryAsync(playerData);
                 var window = this.app.Window;
 

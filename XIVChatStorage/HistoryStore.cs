@@ -13,7 +13,7 @@ public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMe
 
 /// <summary>All writes run on one worker. Completion means the transaction committed.</summary>
 public sealed class HistoryStore : IAsyncDisposable {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
     private readonly string connectionString;
     private readonly SqliteConnection writer;
     private readonly Channel<Write> writes = Channel.CreateBounded<Write>(new BoundedChannelOptions(2048) {
@@ -45,7 +45,11 @@ public sealed class HistoryStore : IAsyncDisposable {
                     connection.BackupDatabase(backup);
                 }
                 using var tx = connection.BeginTransaction();
-                Execute(connection, Schema, tx);
+                if (version < 1) Execute(connection, Schema, tx);
+                if (version < 2) Execute(connection, """
+                    CREATE TABLE friend_snapshots (source TEXT NOT NULL, owner_key TEXT NOT NULL,
+                        captured_at INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(source,owner_key));
+                    """, tx);
                 Execute(connection, $"PRAGMA user_version={SchemaVersion}", tx);
                 tx.Commit();
             }
@@ -113,6 +117,31 @@ public sealed class HistoryStore : IAsyncDisposable {
             command.ExecuteNonQuery();
         });
     }
+
+    public Task SaveFriendSnapshotAsync(string source, ServerPlayerList snapshot) {
+        if (string.IsNullOrEmpty(source) || snapshot.Type != PlayerListType.Friend || snapshot.Owner?.Key == null ||
+            snapshot.Status != FriendListStatus.Success || snapshot.PageIndex != 0 || snapshot.PageCount != 1 ||
+            string.IsNullOrEmpty(snapshot.SnapshotId) || !FriendListProtocol.ValidPlayers(snapshot.Players))
+            throw new ArgumentException("Only complete, owned friend snapshots can be saved.");
+        var owner = snapshot.Owner.Key;
+        var captured = Millis(snapshot.CapturedAt);
+        var payload = MessagePackSerializer.Serialize(snapshot);
+        return this.Enqueue((db, tx) => {
+            using var command = Command(db, """
+                INSERT INTO friend_snapshots(source,owner_key,captured_at,payload) VALUES($source,$owner,$time,$payload)
+                ON CONFLICT(source,owner_key) DO UPDATE SET captured_at=excluded.captured_at,payload=excluded.payload
+                WHERE excluded.captured_at >= friend_snapshots.captured_at
+                """, tx, ("$source", source), ("$owner", owner), ("$time", captured), ("$payload", payload));
+            command.ExecuteNonQuery();
+        });
+    }
+
+    public Task<ServerPlayerList?> GetFriendSnapshotAsync(string source, string owner) => Task.Run(() => {
+        using var db = this.OpenReader();
+        using var command = Command(db, "SELECT payload FROM friend_snapshots WHERE source=$source AND owner_key=$owner", null,
+            ("$source", source), ("$owner", owner));
+        return command.ExecuteScalar() is byte[] payload ? MessagePackSerializer.Deserialize<ServerPlayerList>(payload) : null;
+    });
 
     public Task SaveCursorAsync(string source, HistoryCursor cursor) => this.Enqueue((db, tx) => {
         using var command = Command(db, """

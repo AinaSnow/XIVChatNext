@@ -8,6 +8,10 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Friend wire compatibility and complete bounded assembly", FriendTests.Protocol),
+    ("Friend refresh preserves snapshots and isolates login episodes", FriendTests.Session),
+    ("Friend reader coalesces requests, times out and rejects old roles", FriendTests.Coordinator),
+    ("Friend database migration preserves history and partitions snapshots", FriendTests.Storage),
     ("Encrypted frames tolerate fragmented reads", FragmentedFrame),
     ("EOF at every frame boundary terminates", TruncatedFrames),
     ("Invalid frame lengths are rejected", InvalidLengths),

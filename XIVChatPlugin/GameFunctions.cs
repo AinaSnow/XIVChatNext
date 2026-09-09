@@ -24,9 +24,6 @@ namespace XIVChatPlugin {
             internal const string ProcessChat = "48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 48 8B F2 48 8B F9 45 84 C9";
             internal const string Input = "E8 ?? ?? ?? ?? ?? ?? ?? 84 C0 B9";
             internal const string InputAfk = "E8 ?? ?? ?? ?? 84 C0 74 ?? 66 83 3D";
-            internal const string FriendList = "40 53 48 81 EC 80 0F 00 00 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 48 8B D9 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0 0F 84 ?? ?? ?? ?? 44 0F B6 43 ?? 33 C9";
-            internal const string Format = "48 89 5C 24 ?? 56 57 41 56 48 83 EC 30 4C 8B 74 24";
-            internal const string ReceiveChunk = "48 89 5C 24 ?? 56 48 83 EC 20 48 8B 0D ?? ?? ?? ?? 48 8B F2";
 
             internal const string GetColour = "48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 8B F2 48 8D B9";
 
@@ -46,12 +43,6 @@ namespace XIVChatPlugin {
 
         private delegate byte IsInputAfkDelegate();
 
-        private delegate byte RequestFriendListDelegate(nint manager);
-
-        private delegate int FormatFriendListNameDelegate(long a1, long a2, long a3, int a4, nint data, long a6);
-
-        private delegate void OnReceiveFriendListChunkDelegate(uint opcode, nint data);
-
         private delegate nint GetColourInfoDelegate(nint handler, uint lookupResult);
 
         private delegate byte ChatChannelChangeDelegate(nint a1, uint channel);
@@ -69,15 +60,6 @@ namespace XIVChatPlugin {
 
         [Signature(Signatures.InputAfk, DetourName = nameof(IsInputAfkDetour))]
         private readonly Hook<IsInputAfkDelegate>? _isInputAfkHook;
-
-        [Signature(Signatures.FriendList, DetourName = nameof(OnRequestFriendList))]
-        private readonly Hook<RequestFriendListDelegate>? _friendListHook;
-
-        [Signature(Signatures.Format, DetourName = nameof(OnFormatFriendList))]
-        private readonly Hook<FormatFriendListNameDelegate>? _formatHook;
-
-        [Signature(Signatures.ReceiveChunk, DetourName = nameof(OnReceiveFriendList))]
-        private readonly Hook<OnReceiveFriendListChunkDelegate>? _receiveChunkHook;
 
         [Signature(Signatures.Channel, DetourName = nameof(ChangeChatChannelDetour))]
         private readonly Hook<ChatChannelChangeDelegate>? _chatChannelChangeHook;
@@ -131,26 +113,13 @@ namespace XIVChatPlugin {
         }
 
         private InputSetters HadInput { get; set; } = InputSetters.None;
-        private nint _friendListManager = nint.Zero;
         private nint _chatManager = nint.Zero;
         private readonly nint _emptyXivString;
-
-        internal bool RequestingFriendList { get; private set; }
-
-        private readonly List<Player> _friends = [];
-
-        internal delegate void ReceiveFriendListHandler(List<Player> friends);
-
-        internal event ReceiveFriendListHandler? ReceiveFriendList;
 
         internal GameFunctions(Plugin plugin) {
             this.Plugin = plugin;
 
             this.Plugin.GameInteropProvider.InitializeFromAttributes(this);
-
-            this._friendListHook?.Enable();
-            this._formatHook?.Enable();
-            this._receiveChunkHook?.Enable();
             this._chatChannelChangeHook?.Enable();
             this._chatChannelChangeNameHook?.Enable();
             this._isInputHook?.Enable();
@@ -238,16 +207,6 @@ namespace XIVChatPlugin {
             Marshal.FreeHGlobal(mem1);
         }
 
-        internal bool RequestFriendList() {
-            if (this._friendListManager == nint.Zero || this._friendListHook == null) {
-                return false;
-            }
-
-            this.RequestingFriendList = true;
-            this._friendListHook.Original(this._friendListManager);
-            return true;
-        }
-
         private byte ChangeChatChannelDetour(nint a1, uint channel) {
             this._chatManager = a1;
             // Last ShB patch
@@ -278,147 +237,7 @@ namespace XIVChatPlugin {
             return ret;
         }
 
-        private byte OnRequestFriendList(nint manager) {
-            this._friendListManager = manager;
-            // NOTE: if this is being called, hook isn't null
-            return this._friendListHook!.Original(manager);
-        }
-
-        private int OnFormatFriendList(long a1, long a2, long a3, int a4, nint data, long a6) {
-            return this._formatHook!.Original(a1, a2, a3, a4, data, a6);
-        }
-
-        private unsafe void OnReceiveFriendList(uint opcode, nint data) {
-            // NOTE: if this is being called, hook isn't null
-            this._receiveChunkHook!.Original(opcode, data);
-
-            if (!this.RequestingFriendList) {
-                return;
-            }
-
-            try {
-                // data IS the InfoProxyCommonList pointer.
-                // We read fields directly based on FFXIVClientStructs/InfoProxyInterface layout.
-                // EntryCount at 0x10 (from InfoProxyInterface).
-                var entryCount = *(uint*)(data + 0x10);
-                
-                // CharData pointer at 0xB0 (from InfoProxyCommonList).
-                // This points to the start of the array of CharacterData structures.
-                var charDataPtr = *(byte**)(data + 0xB0);
-
-                if (entryCount > 2000 || charDataPtr == null) {
-                    goto Return;
-                }
-
-                this._friends.Clear();
-                var sizeOfEntry = 0x70; // sizeof(CharacterData)
-
-                for (uint i = 0; i < entryCount; i++) {
-                    var entryPtr = charDataPtr + (i * sizeOfEntry);
-                    // Parse the entry from the array
-                    var entry = Marshal.PtrToStructure<FriendListEntry>((nint)entryPtr);
-                    
-                    if (entry.ContentId == 0) continue; // Skip empty/invalid
-
-                    string? jobName = null;
-                    if (entry.Job > 0) {
-                        jobName = this.Plugin.DataManager.GetExcelSheet<ClassJob>().GetRowOrDefault(entry.Job)?.Name.ExtractText();
-                    }
-
-                    string? territoryName = null;
-                    try {
-                        territoryName = this.Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(entry.TerritoryId)?.PlaceName.Value.Name.ExtractText();
-                    } catch (NullReferenceException) {
-                        territoryName = null;
-                    }
-
-                    var player = new Player {
-                        Name = entry.Name(),
-                        FreeCompany = entry.FreeCompany(),
-                        Status = entry.Status,
-
-                        CurrentWorld = entry.CurrentWorldId,
-                        CurrentWorldName = this.Plugin.DataManager.GetExcelSheet<World>().GetRowOrDefault(entry.CurrentWorldId)?.Name.ExtractText(),
-                        HomeWorld = entry.HomeWorldId,
-                        HomeWorldName = this.Plugin.DataManager.GetExcelSheet<World>().GetRowOrDefault(entry.HomeWorldId)?.Name.ExtractText(),
-
-                        Territory = entry.TerritoryId,
-                        TerritoryName = territoryName,
-
-                        Job = entry.Job,
-                        JobName = jobName,
-
-                        GrandCompany = entry.GrandCompany,
-                        GrandCompanyName = this.Plugin.DataManager.GetExcelSheet<GrandCompany>().GetRowOrDefault(entry.GrandCompany)?.Name.ExtractText(),
-
-                        Languages = entry.LangsEnabled,
-                        MainLanguage = entry.MainLanguage,
-                    };
-                    this._friends.Add(player);
-                }
-
-                this.ReceiveFriendList?.Invoke(this._friends);
-
-            } catch (Exception ex) {
-                Plugin.Log.Error(ex, "Error processing friend list");
-            }
-
-            Return:
-            // reset properly
-            this.RequestingFriendList = false;
-        }
-
-
-    [StructLayout(LayoutKind.Explicit, Size = 0x70)]
-    internal unsafe struct FriendListEntry {
-        [FieldOffset(0x00)] internal ulong ContentId;
-        [FieldOffset(0x08)] internal ulong Status;
-        
-        [FieldOffset(0x20)] internal uint ExtraFlags;
-        
-        [FieldOffset(0x26)] internal ushort CurrentWorldId;
-        [FieldOffset(0x28)] internal ushort HomeWorldId;
-        [FieldOffset(0x2A)] internal ushort TerritoryId;
-        
-        [FieldOffset(0x2C)] internal byte GrandCompany;
-        [FieldOffset(0x2D)] internal byte MainLanguage;
-        [FieldOffset(0x2E)] internal byte LangsEnabled;
-        
-        [FieldOffset(0x31)] internal byte Job;
-        
-        [FieldOffset(0x32)] internal fixed byte name[32];
-        [FieldOffset(0x52)] internal fixed byte fc[14]; 
-
-        internal string? Name() {
-            fixed (byte* p = this.name) {
-                return HandleString(p, 32);
-            }
-        }
-        internal string? FreeCompany() {
-             fixed (byte* p = this.fc) {
-                 return HandleString(p, 14);
-             }
-        }
-
-        private static string? HandleString(byte* ptr, int len) {
-             int count = 0;
-             while (count < len && ptr[count] != 0) {
-                 count++;
-             }
-             if (count == 0) return null;
-             return Encoding.UTF8.GetString(ptr, count);
-        }
-    }
-    
-    // I will insert the struct at the end of file properly.
-    // Here I only replace the method body.
-    // I need to use write_to_file or multi_replace to put the struct at EOF.
-
-
         public void Dispose() {
-            this._friendListHook?.Dispose();
-            this._formatHook?.Dispose();
-            this._receiveChunkHook?.Dispose();
             this._chatChannelChangeHook?.Dispose();
             this._chatChannelChangeNameHook?.Dispose();
             this._isInputHook?.Dispose();

@@ -73,6 +73,7 @@ namespace XIVChat_Desktop {
                 MenuMain.Title = LocalizationHelper.GetString("Menu.XIVChat");
                 MenuConnect.Text = LocalizationHelper.GetString("Menu.Connect");
                 MenuDisconnect.Text = LocalizationHelper.GetString("Menu.Disconnect");
+                MenuRefreshFriends.Text = LocalizationHelper.GetString("FriendList.Refresh");
                 MenuExport.Text = LocalizationHelper.GetString("Menu.Export");
                 MenuConfig.Text = LocalizationHelper.GetString("Menu.Config");
                 MenuExit.Text = LocalizationHelper.GetString("Menu.Exit");
@@ -226,6 +227,11 @@ namespace XIVChat_Desktop {
             };
 
             this.Tabs.TabItems.Add(tabViewItem);
+        }
+
+        private void RefreshFriends_Click(object sender, RoutedEventArgs e) {
+            if (this.App.Connection?.RefreshFriends() != true)
+                this.AddSystemMessage(LocalizationHelper.GetString("FriendList.NotReady"));
         }
 
         private MenuFlyout CreateChannelFlyout() {

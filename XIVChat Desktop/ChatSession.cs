@@ -18,6 +18,7 @@ namespace XIVChat_Desktop {
         private long lastCleanupUtcTicks;
         private Exception? storageError;
         public List<ServerMessage> Messages { get; } = new();
+        public FriendListSession Friends { get; } = new();
         public PlayerData? Player { get; private set; }
         public HistoryStore? Store { get; set; }
         public Exception? StorageError => Volatile.Read(ref this.storageError);

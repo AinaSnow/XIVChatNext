@@ -27,7 +27,7 @@ namespace XIVChatPlugin {
 
         internal IDataManager DataManager { get; }
 
-        private IFramework Framework { get; }
+        internal IFramework Framework { get; }
 
         internal IObjectTable ObjectTable { get; }
 

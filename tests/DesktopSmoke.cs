@@ -161,7 +161,7 @@ namespace XIVChat_Desktop {
                     var preferences = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx);
                     this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
-                        new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true });
+                        new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true });
                     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                     var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(request[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.History, "Capabilities enable cursor recovery");
@@ -170,7 +170,7 @@ namespace XIVChat_Desktop {
                     // The server's framework-thread PlayerData response may arrive after live/history packets.
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, live);
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
-                        new PlayerData("Home", "Visiting", "Area", "Aina Snow") { Identity = owner });
+                        new PlayerData("Home", "Visiting", "Area", "Aina Snow") { Identity = owner, OwnerEpoch = "login1" });
                     var older = Message(1); older.Owner = owner; older.ServiceId = "smoke"; older.RunId = "run"; older.Sequence = 1; older.MessageId = "smoke:run:1";
                     var foreign = Message(3); foreign.Owner = new CharacterIdentity { ContentId = 2, Name = "Aina Snow", HomeWorldId = 2 };
                     foreign.ServiceId = "smoke"; foreign.RunId = "run"; foreign.Sequence = 3; foreign.MessageId = "smoke:run:3";
@@ -185,6 +185,37 @@ namespace XIVChat_Desktop {
                         "Pending identity, replay deduplication and stream ordering share one view");
                     this.Check((await store.SearchAsync(new XIVChatStorage.HistoryQuery())).Count == 3, "Foreign-role history persists without entering the active view");
                     this.Check((await store.GetCursorAsync(source, "smoke"))?.Sequence == 3, "Recovery checkpoint follows committed records");
+                    var friendRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(friendRaw[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.PlayerList, "Desktop automatically requests friends after identity arrives");
+                    var friendRequest = XIVChatCommon.Message.Client.ClientPlayerList.Decode(friendRaw[1..]);
+                    this.Check(friendRequest.ExpectedOwnerKey == owner.Key && friendRequest.ExpectedOwnerEpoch == "login1", "Friend request carries login ownership");
+                    var snapshot = new ServerPlayerList(PlayerListType.Friend, Enumerable.Range(1, 70).Select(i =>
+                        new Player { ContentId = (ulong)i, Name = "Friend " + i, HomeWorld = 1 }).ToArray()) {
+                        Owner = owner, OwnerEpoch = "login1", SnapshotId = "snapshot1", CapturedAt = DateTime.UtcNow,
+                    };
+                    var pages = FriendListProtocol.Pages(snapshot, friendRequest.RequestId);
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, pages[0]);
+                    await Task.Delay(150);
+                    this.Check(this.Session.Friends.Snapshot == null && await store.GetFriendSnapshotAsync(source, owner.Key!) == null,
+                        "Incomplete friend pages stay out of visible state and SQLite");
+                    foreach (var page in pages.Skip(1)) await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, page);
+                    for (int i = 0; i < 100 && await store.GetFriendSnapshotAsync(source, owner.Key!) == null; i++) await Task.Delay(30);
+                    this.Check(this.Session.Friends.Snapshot?.Players.Length == 70 && !this.Session.Friends.IsStale &&
+                        (await store.GetFriendSnapshotAsync(source, owner.Key!))?.Players.Length == 70, "Complete friend snapshot reaches shared state and SQLite");
+                    this.Check(this.Connection!.RefreshFriends(), "Manual friend refresh is available");
+                    friendRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    friendRequest = XIVChatCommon.Message.Client.ClientPlayerList.Decode(friendRaw[1..]);
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, FriendListProtocol.Error(friendRequest.RequestId, owner, "login1", FriendListStatus.Busy));
+                    await Task.Delay(150);
+                    this.Check(this.Session.Friends.Snapshot?.Players.Length == 70 && this.Session.Friends.IsStale, "Refresh error keeps the last complete snapshot");
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new PlayerData("Home", "Home", "Area", "Other") {
+                        Identity = foreign.Owner, OwnerEpoch = "login2",
+                    });
+                    await Task.Delay(150);
+                    foreach (var page in pages) await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, page);
+                    await Task.Delay(150);
+                    this.Check(this.Session.Friends.OwnerKey == "cid:2" && this.Session.Friends.Snapshot == null,
+                        "Late friend pages cannot enter the next role");
                 }
                 for (int i = 0; i < 100 && this.Connected; i++) await Task.Delay(30);
                 this.Check(!this.Connected, "New-protocol connection closes after EOF");

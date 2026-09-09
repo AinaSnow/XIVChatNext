@@ -17,6 +17,10 @@ cursor pagination and packet-size limits, SQLite reopen/deduplication, retained 
 FTS5 and short Chinese searches, cancellation, failed-write rollback, corrupt/future database
 preservation, and filtered pagination across 100,000 rows. Timing is printed for the large fixture.
 
+Friend coverage checks bounded complete pagination, legacy fields, duplicate IDs, login episodes,
+cached/empty snapshots, refresh failures, concurrent request coalescing, timeout, queue limits,
+and the v1-to-v2 database migration with its pre-migration backup and source/owner partitions.
+
 ## WinUI desktop smoke test
 
 ```powershell
@@ -37,6 +41,10 @@ returning to latest, clearing messages, backlog ordering, and desktop cleanup af
 A simulated modern server also exercises capability negotiation, messages arriving before player
 identity, replay/live interleaving, database persistence of another character's records, checkpoint
 commit ordering and character switches. All history files are created in a unique temporary directory.
+
+The modern server also sends a 70-person friend snapshot in three pages. Checks verify automatic
+and manual requests, ownership fields, no partial publication/persistence, error preservation,
+and rejection of pages from the previous character.
 
 Rebuild without the test targets before running the regular desktop app:
 

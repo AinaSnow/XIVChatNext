@@ -301,4 +301,7 @@
   <data name="History.RetentionHelp" xml:space="preserve"><value>收藏、书签和带备注的消息始终保留。关闭后停止保存新消息。</value></data>
   <data name="History.Unavailable" xml:space="preserve"><value>本地历史不可用，本次继续临时聊天：</value></data>
   <data name="History.Gap" xml:space="preserve"><value>部分历史无法补齐：服务已重载或记录已清理。</value></data>
+  <data name="FriendList.Updated" xml:space="preserve"><value>好友列表已更新：{0} 人。</value></data>
+  <data name="FriendList.Failed" xml:space="preserve"><value>好友刷新失败，保留上次完整快照。</value></data>
+  <data name="FriendList.NotReady" xml:space="preserve"><value>暂时无法刷新好友：请确认已登录且服务端支持，或等待当前刷新完成。</value></data>
 </root>

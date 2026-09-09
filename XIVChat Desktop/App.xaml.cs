@@ -225,6 +225,7 @@ namespace XIVChat_Desktop {
             this.Connection = null;
             oldConn?.Disconnect();
             this.Session.SetPlayer(null);
+            this.Session.Friends.SetContext(this.Session.Source, null, null, false);
 
             this.Dispatch(() => {
                 if (this.Window != null) {
