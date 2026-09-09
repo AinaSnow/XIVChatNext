@@ -81,6 +81,9 @@ namespace XIVChatCommon.Message {
         [Key(22)]
         public ushort? MapSizeFactor { get; set; }
 
+        // Raw game item kind (normal, HQ, collectible, event item), independent of the base ID.
+        [Key(23)] public uint? ItemKind { get; set; }
+
         public TextChunk(string content) {
             this.Content = content;
         }

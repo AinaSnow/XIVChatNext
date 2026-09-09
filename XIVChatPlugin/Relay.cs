@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -30,6 +30,7 @@ namespace XIVChatPlugin {
         private bool Disposed { get; set; }
 
         private Plugin Plugin { get; }
+        private readonly Server server;
 
         private WebSocket Connection { get; }
 
@@ -37,10 +38,22 @@ namespace XIVChatPlugin {
 
         internal ConnectionStatus Status { get; private set; }
 
-        private Channel<IToRelay> ToRelay { get; } = Channel.CreateUnbounded<IToRelay>();
+        private sealed record Outbound(IToRelay Message, CancellationToken Cancellation, TaskCompletionSource Completion);
+        private Channel<Outbound> ToRelay { get; } = Channel.CreateBounded<Outbound>(32);
+        private readonly CancellationTokenSource lifetime = new();
+        private CancellationTokenSource? connectionLifetime;
+        private int reconnectScheduled;
+
+        private async Task SendAsync(IToRelay message, CancellationToken token) {
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, this.lifetime.Token);
+            await this.ToRelay.Writer.WriteAsync(new Outbound(message, token, completion), linked.Token);
+            await completion.Task.WaitAsync(linked.Token);
+        }
 
         internal Relay(Plugin plugin) {
             this.Plugin = plugin;
+            this.server = plugin.Server;
 
             this.Connection = new WebSocket(RelayUrl.ToString()) {
                 SslConfiguration = {
@@ -56,19 +69,24 @@ namespace XIVChatPlugin {
 
         public void Dispose() {
             this.Disposed = true;
-            new Thread(() => this.Connection.Close(CloseStatusCode.Normal)).Start();
+            this.lifetime.Cancel();
+            this.connectionLifetime?.Cancel();
+            this.ToRelay.Writer.TryComplete();
+            while (this.ToRelay.Reader.TryRead(out var pending)) pending.Completion.TrySetCanceled();
+            this.DisconnectRelayClients();
+            _ = Task.Run(() => this.Connection.Close(CloseStatusCode.Normal));
             this.Running = false;
         }
 
         internal void Start() {
-            if (this.Plugin.Config.RelayAuth == null) {
+            if (this.Disposed || this.Plugin.Config.RelayAuth == null) {
                 return;
             }
 
             this.Running = true;
 
             this.Status = ConnectionStatus.Connecting;
-            new Thread(() => this.Connection.Connect()).Start();
+            _ = Task.Run(() => this.Connection.Connect());
         }
 
         internal void ResendPublicKey() {
@@ -81,21 +99,30 @@ namespace XIVChatPlugin {
                 AuthToken = "",
                 PublicKey = keys.PublicKey,
             };
-            var bytes = MessagePackSerializer.Serialize((IToRelay) msg);
-
-            this.Connection.Send(bytes);
+            this.QueueControl(msg);
         }
 
         internal void DisconnectClient(IEnumerable<byte> pk) {
             var msg = new RelayClientDisconnect {
                 PublicKey = pk.ToList(),
             };
-            var bytes = MessagePackSerializer.Serialize((IToRelay) msg);
+            this.QueueControl(msg);
+        }
 
-            this.Connection.Send(bytes);
+        private void QueueControl(IToRelay message) {
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!this.ToRelay.Writer.TryWrite(new Outbound(message, this.lifetime.Token, completion))) {
+                ConnectionError = "Relay control queue is full or closed.";
+                return;
+            }
+            _ = completion.Task.ContinueWith(task => { _ = task.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         private void OnOpen(object? o, EventArgs eventArgs) {
+            if (this.Disposed) return;
+            this.connectionLifetime?.Cancel();
+            this.connectionLifetime = CancellationTokenSource.CreateLinkedTokenSource(this.lifetime.Token);
+            var connectionToken = this.connectionLifetime.Token;
             this.Status = ConnectionStatus.Negotiating;
 
             var auth = this.Plugin.Config.RelayAuth;
@@ -116,25 +143,37 @@ namespace XIVChatPlugin {
 
             this.Connection.Send(bytes);
 
-            Task.Run(async () => {
-                while (this.Running) {
-                    this.Connection.Ping();
-                    await Task.Delay(TimeSpan.FromSeconds(30));
-                }
+            _ = Task.Run(async () => {
+                try {
+                    while (!connectionToken.IsCancellationRequested) {
+                        await Task.Delay(TimeSpan.FromSeconds(30), connectionToken);
+                        this.Connection.Ping();
+                    }
+                } catch (OperationCanceledException) { }
             });
-
             Task.Run(async () => {
-                while (this.Running) {
-                    var message = await this.ToRelay.Reader.ReadAsync();
-                    var bytes = MessagePackSerializer.Serialize(message);
-
-                    this.Connection.Send(bytes);
-                }
+                try {
+                    while (!connectionToken.IsCancellationRequested) {
+                        var pending = await this.ToRelay.Reader.ReadAsync(connectionToken);
+                        try {
+                            pending.Cancellation.ThrowIfCancellationRequested();
+                            connectionToken.ThrowIfCancellationRequested();
+                            var encoded = MessagePackSerializer.Serialize(pending.Message);
+                            if (encoded.Length > 256_000) throw new InvalidOperationException("Relay envelope exceeds its byte budget.");
+                            this.Connection.Send(encoded);
+                            pending.Completion.TrySetResult();
+                        } catch (Exception ex) { pending.Completion.TrySetException(ex); }
+                    }
+                } catch (OperationCanceledException) { }
+                catch (ChannelClosedException) { }
             });
         }
 
         private void OnMessage(object? sender, MessageEventArgs args) {
-            var message = MessagePackSerializer.Deserialize<IFromRelay>(args.RawData);
+            if (this.Disposed || args.RawData.Length > 256_000) return;
+            IFromRelay message;
+            try { message = MessagePackSerializer.Deserialize<IFromRelay>(args.RawData); }
+            catch (MessagePackSerializationException) { ConnectionError = "Malformed relay packet."; return; }
             switch (message) {
                 case RelaySuccess success:
                     if (success.Success) {
@@ -149,58 +188,76 @@ namespace XIVChatPlugin {
 
                     break;
                 case RelayNewClient newClient:
+                    if (newClient.PublicKey.Count != 32) break;
                     #pragma warning disable CA1806
                     IPAddress.TryParse(newClient.Address, out var remote);
                     #pragma warning restore CA1806
                     var client = new RelayConnected(
                         newClient.PublicKey.ToArray(),
                         remote,
-                        this.ToRelay.Writer,
-                        Channel.CreateUnbounded<byte[]>()
+                        this.SendAsync
                     );
 
-                    this.Plugin.Server.SpawnClientTask(client, false);
+                    this.server.SpawnClientTask(client, false);
                     break;
                 case RelayClientDisconnect disconnect:
                     var clientPk = disconnect.PublicKey.ToArray();
-                    var id = this.Plugin.Server.Clients
+                    var id = this.server.Clients
                         .Where(client => client.Value is RelayConnected)
                         .Where(client => client.Value.Handshake?.RemotePublicKey?.SequenceEqual(clientPk) ?? false)
                         .Select(client => client.Key)
                         .FirstOrDefault();
                     if (id != default) {
-                        this.Plugin.Server.RemoveClient(id);
+                        this.server.RemoveClient(id);
                     }
 
                     break;
                 case RelayedMessage relayed:
-                    var relayedClient = this.Plugin.Server.Clients.Values
+                    var relayedClient = this.server.Clients.Values
                         .Where(client => client is RelayConnected)
                         .Cast<RelayConnected>()
                         .FirstOrDefault(client => client.PublicKey.SequenceEqual(relayed.PublicKey));
 
-                    relayedClient?.FromRelayWriter.WriteAsync(relayed.Message.ToArray()).AsTask().Wait();
+                    relayedClient?.Receive(relayed.Message.ToArray());
                     break;
             }
         }
 
         private void OnClose(object? sender, CloseEventArgs args) {
             this.Running = false;
+            this.connectionLifetime?.Cancel();
+            this.DisconnectRelayClients();
             this.Status = ConnectionStatus.Disconnected;
 
             if (!args.WasClean && !this.Disposed) {
-                Task.Run(async () => await Task.Delay(3_000)).ContinueWith(_ => this.Start());
+                this.ScheduleReconnect();
             }
         }
 
         private void OnError(object? sender, ErrorEventArgs args) {
+            ConnectionError = args.Message;
             Plugin.Log.Error(args.Exception, $"Error in relay connection: {args.Message}");
             this.Running = false;
+            this.connectionLifetime?.Cancel();
+            this.DisconnectRelayClients();
             this.Status = ConnectionStatus.Disconnected;
 
             if (!this.Disposed) {
-                Task.Run(async () => await Task.Delay(3_000)).ContinueWith(_ => this.Start());
+                this.ScheduleReconnect();
             }
+        }
+
+        private void DisconnectRelayClients() {
+            foreach (var pair in this.server.Clients.Where(c => c.Value is RelayConnected).ToArray())
+                this.server.RemoveClient(pair.Key);
+        }
+        private void ScheduleReconnect() {
+            if (Interlocked.Exchange(ref this.reconnectScheduled, 1) != 0) return;
+            _ = Task.Run(async () => {
+                try { await Task.Delay(3_000, this.lifetime.Token); this.Start(); }
+                catch (OperationCanceledException) { }
+                finally { Interlocked.Exchange(ref this.reconnectScheduled, 0); }
+            });
         }
     }
 }

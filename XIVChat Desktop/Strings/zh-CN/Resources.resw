@@ -304,4 +304,11 @@
   <data name="FriendList.Updated" xml:space="preserve"><value>好友列表已更新：{0} 人。</value></data>
   <data name="FriendList.Failed" xml:space="preserve"><value>好友刷新失败，保留上次完整快照。</value></data>
   <data name="FriendList.NotReady" xml:space="preserve"><value>暂时无法刷新好友：请确认已登录且服务端支持，或等待当前刷新完成。</value></data>
+  <data name="Command.NotLoggedIn" xml:space="preserve"><value>操作已取消：请等待角色登录就绪。</value></data>
+  <data name="Command.IdentityChanged" xml:space="preserve"><value>操作已取消：当前角色或登录会话已改变。</value></data>
+  <data name="Command.ChannelChanged" xml:space="preserve"><value>操作已取消：频道或目标已改变，请确认目标后重新发送。</value></data>
+  <data name="Command.QueueFull" xml:space="preserve"><value>未发送：发送队列已满，请检查连接后重试。</value></data>
+  <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
+  <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
+  <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
 </root>

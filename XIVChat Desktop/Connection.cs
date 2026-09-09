@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -21,11 +22,13 @@ namespace XIVChat_Desktop {
 
         private TcpClient? client;
 
-        private readonly Channel<string> outgoing = Channel.CreateUnbounded<string>();
-        private readonly Channel<byte[]> outgoingMessages = Channel.CreateUnbounded<byte[]>();
+        private readonly Channel<byte[]> outgoingMessages = Channel.CreateBounded<byte[]>(256);
         private readonly Channel<byte[]> incoming = Channel.CreateBounded<byte[]>(256);
         private string source = "";
         private ServerCapabilities? capabilities;
+        private ClientPreferences preferences;
+        private long? channelRevision;
+        private PlayerData? commandPlayer;
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
         public readonly CancellationTokenSource cancel = new CancellationTokenSource();
@@ -52,18 +55,69 @@ namespace XIVChat_Desktop {
 
             this.host = host;
             this.port = port;
+            this.preferences = this.BuildPreferences();
+            app.Config.Saved += this.UpdateSubscriptions;
+            app.Config.PropertyChanged += this.ConfigChanged;
+            app.Config.Tabs.CollectionChanged += this.CollectionsChanged;
+            app.Config.Notifications.CollectionChanged += this.CollectionsChanged;
         }
 
-        public void SendMessage(string message) {
-            this.outgoing.Writer.TryWrite(message);
+        public bool SendMessage(string message) {
+            if (!this.Available || this.cancel.IsCancellationRequested || string.IsNullOrWhiteSpace(message)) return false;
+            if (System.Text.Encoding.UTF8.GetByteCount(message) > 8 * 1024) {
+                this.ReportCommandFailure(CommandFailure.InvalidRequest); return false;
+            }
+            var player = this.commandPlayer;
+            if (this.capabilities?.GuardedCommands == true && (player?.Identity?.Key == null || this.channelRevision == null)) {
+                this.ReportCommandFailure(CommandFailure.NotLoggedIn); return false;
+            }
+            return this.QueuePacket(new ClientMessage(message) {
+                RequestId = Guid.NewGuid().ToString("N"), ExpectedOwnerKey = player?.Identity?.Key,
+                ExpectedOwnerEpoch = player?.OwnerEpoch, ExpectedChannelRevision = this.channelRevision,
+            }.Encode());
         }
 
         public void ChangeChannel(InputChannel channel) {
             var msg = new ClientChannel {
                 Channel = channel,
+                RequestId = Guid.NewGuid().ToString("N"), ExpectedOwnerKey = this.commandPlayer?.Identity?.Key,
+                ExpectedOwnerEpoch = this.commandPlayer?.OwnerEpoch,
             };
-            this.outgoingMessages.Writer.TryWrite(msg.Encode());
+            if (this.Available) this.QueuePacket(msg.Encode());
         }
+
+        private bool QueuePacket(byte[] packet) {
+            if (this.cancel.IsCancellationRequested) return false;
+            if (packet.Length + SecretMessage.MacSize <= 128_000 && this.outgoingMessages.Writer.TryWrite(packet)) return true;
+            this.ReportCommandFailure(CommandFailure.QueueFull);
+            this.Disconnect();
+            return false;
+        }
+
+        private ClientPreferences BuildPreferences() => new() {
+            Preferences = new Dictionary<ClientPreference, object> {
+                { ClientPreference.BacklogNewestMessagesFirst, true },
+                { ClientPreference.WorkbenchSupport, true },
+                { ClientPreference.GuardedCommandsSupport, true },
+            },
+            Channels = ChannelSubscription.Union(this.app.Config.HistoryEnabled,
+                this.app.Config.Tabs.SelectMany(t => t.Filter.Types).Distinct().SelectMany(t => t.Types()).Select(t => (ushort)t),
+                this.app.Config.Notifications.SelectMany(n => n.Channels).Select(t => (ushort)t)),
+        };
+
+        public void UpdateSubscriptions() {
+            var updated = this.BuildPreferences();
+            if ((updated.Channels == null && this.preferences.Channels == null) ||
+                (updated.Channels != null && this.preferences.Channels != null && updated.Channels.SequenceEqual(this.preferences.Channels))) return;
+            this.preferences = updated;
+            if (this.capabilities?.ChannelSubscriptions == true) this.QueuePacket(updated.Encode());
+        }
+        private void ConfigChanged(object? sender, PropertyChangedEventArgs args) {
+            if (args.PropertyName == nameof(Configuration.HistoryEnabled)) this.UpdateSubscriptions();
+        }
+        private void CollectionsChanged(object? sender, NotifyCollectionChangedEventArgs args) => this.UpdateSubscriptions();
+        private void ReportCommandFailure(CommandFailure failure) => this.DispatchIfCurrent(() =>
+            this.app.Window.AddSystemMessage(LocalizationHelper.GetString("Command." + failure)));
 
         public void Disconnect() {
             this.cancel.Cancel();
@@ -120,15 +174,7 @@ namespace XIVChat_Desktop {
                 });
 
                 // tell the server our preferences
-                var preferences = new ClientPreferences {
-                    Preferences = new Dictionary<ClientPreference, object> {
-                        {
-                            ClientPreference.BacklogNewestMessagesFirst, true
-                        },
-                        { ClientPreference.WorkbenchSupport, true },
-                    },
-                };
-                await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, preferences, this.cancel.Token);
+                await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, this.preferences, this.cancel.Token);
 
                 // check if backlog or catch-up is needed
                 if (sameHost) {
@@ -163,33 +209,17 @@ namespace XIVChat_Desktop {
                 });
 
                 var incoming = this.incoming.Reader.ReadAsync().AsTask();
-                var outgoing = this.outgoing.Reader.ReadAsync().AsTask();
                 var outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
                 var cancel = this.cancelChannel.Reader.ReadAsync().AsTask();
 
                 // listen for incoming and outgoing messages and cancel requests
                 while (!this.cancel.IsCancellationRequested) {
-                    var result = await Task.WhenAny(incoming, outgoing, outgoingMessage, cancel);
+                    var result = await Task.WhenAny(incoming, outgoingMessage, cancel);
                     if (result == incoming) {
                         var rawMessage = await incoming;
                         incoming = this.incoming.Reader.ReadAsync().AsTask();
 
                         await this.HandleIncoming(rawMessage);
-                    } else if (result == outgoing) {
-                        var toSend = await outgoing;
-                        outgoing = this.outgoing.Reader.ReadAsync().AsTask();
-
-                        var message = new ClientMessage(toSend);
-                        try {
-                            await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, message, this.cancel.Token);
-                        } catch (Exception ex) {
-                            this.DispatchIfCurrent(() => {
-                                this.app.Window.AddSystemMessage("Error sending message.");
-                                Console.WriteLine($"Error sending message: {ex.Message}");
-                                Console.WriteLine(ex.StackTrace);
-                            });
-                            break;
-                        }
                     } else if (result == outgoingMessage) {
                         var toSend = await outgoingMessage;
                         outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
@@ -236,6 +266,10 @@ namespace XIVChat_Desktop {
                     });
                 }
             } finally {
+                this.app.Config.Saved -= this.UpdateSubscriptions;
+                this.app.Config.PropertyChanged -= this.ConfigChanged;
+                this.app.Config.Tabs.CollectionChanged -= this.CollectionsChanged;
+                this.app.Config.Notifications.CollectionChanged -= this.CollectionsChanged;
                 this.cancel.Cancel();
                 this.client?.Dispose();
                 if (receiver != null) await receiver;
@@ -283,6 +317,7 @@ namespace XIVChat_Desktop {
                     var availability = Availability.Decode(payload);
 
                     this.Available = availability.available;
+                    if (!availability.available) this.commandPlayer = null;
                     if (!availability.available) this.DispatchIfCurrent(() =>
                         this.app.Session.Friends.SetContext(this.source, null, null, this.capabilities?.FriendSnapshots == true));
                     break;
@@ -290,6 +325,7 @@ namespace XIVChat_Desktop {
                     var channel = ServerChannel.Decode(payload);
 
                     this.CurrentChannel = channel.name;
+                    this.channelRevision = channel.Revision;
 
                     this.DispatchIfCurrent(() => {
                         this.OnPropertyChanged(nameof(this.CurrentChannel));
@@ -312,15 +348,20 @@ namespace XIVChat_Desktop {
 
                     break;
                 case ServerOperation.Capabilities:
+                    var previousCapabilities = this.capabilities;
                     this.capabilities = ServerCapabilities.Decode(payload);
+                    var newServerSession = previousCapabilities == null || previousCapabilities.ServiceId != this.capabilities.ServiceId ||
+                        previousCapabilities.RunId != this.capabilities.RunId;
+                    // Capture configuration changes made while capability negotiation was in flight.
+                    if (newServerSession && this.capabilities.ChannelSubscriptions) this.QueuePacket(this.preferences.Encode());
                     this.DispatchIfCurrent(this.UpdateFriendsContext);
-                    if (this.capabilities.CursorBacklog) {
+                    if (newServerSession && this.capabilities.CursorBacklog) {
                         HistoryCursor? cursor = null;
                         try {
                             if (this.app.Session.Store != null && this.app.Config.HistoryEnabled && this.app.Session.StorageError == null)
                                 cursor = await this.app.Session.Store.GetCursorAsync(this.source, this.capabilities.ServiceId);
                         } catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
-                        this.outgoingMessages.Writer.TryWrite(new ClientHistory { After = cursor }.Encode());
+                        this.QueuePacket(new ClientHistory { After = cursor }.Encode());
                     }
                     break;
                 case ServerOperation.History:
@@ -337,7 +378,7 @@ namespace XIVChat_Desktop {
                         try { await this.app.Session.Store.SaveCursorAsync(this.source, history.Cursor); }
                         catch (Exception ex) { this.app.Session.ReportStorageError(ex); }
                     }
-                    if (history.HasMore) this.outgoingMessages.Writer.TryWrite(new ClientHistory { After = history.Cursor, Through = history.Through }.Encode());
+                    if (history.HasMore) this.QueuePacket(new ClientHistory { After = history.Cursor, Through = history.Through }.Encode());
                     break;
                 case ServerOperation.PlayerList:
                     if (this.capabilities?.FriendSnapshots != true || rawMessage.Length > FriendListProtocol.MaxPageBytes) break;
@@ -351,6 +392,10 @@ namespace XIVChat_Desktop {
                     });
                     break;
                 case ServerOperation.LinkshellList:
+                    break;
+                case ServerOperation.CommandResult:
+                    if (this.capabilities?.GuardedCommands == true)
+                        this.ReportCommandFailure(ServerCommandResult.Decode(payload).Failure);
                     break;
             }
 
@@ -390,7 +435,7 @@ namespace XIVChat_Desktop {
             if (!ReferenceEquals(this.app.Connection, this) || this.cancel.IsCancellationRequested) return false;
             var request = this.app.Session.Friends.Begin(manual);
             if (request == null) return false;
-            this.outgoingMessages.Writer.TryWrite(request.Encode());
+            this.QueuePacket(request.Encode());
             _ = this.FriendTimeoutAsync(request.RequestId!);
             return true;
         }
@@ -413,6 +458,7 @@ namespace XIVChat_Desktop {
         }
 
         private void SetPlayerData(PlayerData? playerData) {
+            this.commandPlayer = playerData;
             var visibility = playerData == null ? Visibility.Collapsed : Visibility.Visible;
 
             this.DispatchIfCurrent(() => {

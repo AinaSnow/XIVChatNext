@@ -341,7 +341,7 @@ namespace XIVChat_Desktop {
                 return;
             }
 
-            conn.SendMessage(textBox.Text);
+            if (!conn.SendMessage(textBox.Text)) return;
             this.History.Add(textBox.Text);
             while (this.History.Count > 100) {
                 this.History.RemoveAt(0);

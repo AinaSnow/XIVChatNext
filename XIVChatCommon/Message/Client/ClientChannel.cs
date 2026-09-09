@@ -8,6 +8,10 @@ namespace XIVChatCommon.Message.Client {
         [Key(0)]
         public InputChannel Channel { get; set; }
 
+        [Key(1)] public string? RequestId { get; set; }
+        [Key(2)] public string? ExpectedOwnerKey { get; set; }
+        [Key(3)] public string? ExpectedOwnerEpoch { get; set; }
+
         public static ClientChannel Decode(byte[] bytes) {
             return MessagePackSerializer.Deserialize<ClientChannel>(bytes);
         }

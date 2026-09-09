@@ -23,6 +23,7 @@ namespace XIVChatPlugin {
 
         internal PluginUi(Plugin plugin) {
             this.Plugin = plugin ?? throw new ArgumentNullException(nameof(plugin), "Plugin cannot be null");
+            this.portDraft = plugin.Config.Port;
         }
 
         private static class Colours {
@@ -93,256 +94,170 @@ namespace XIVChatPlugin {
             ImGui.EndTooltip();
         }
 
+        private int portDraft;
+        private string? portError;
+        private bool Chinese => this.Plugin.Config.UiLanguage == 1 ||
+            (this.Plugin.Config.UiLanguage == 0 && System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase));
+        private string T(string chinese, string english) => this.Chinese ? chinese : english;
+
         private void DrawInner() {
             this.AcceptPending();
-
             foreach (var item in this._pending.ToList()) {
-                if (this.DrawPending(item.Key, item.Value.Item1, item.Value.Item2)) {
-                    this._pending.Remove(item.Key);
+                if (item.Value.Item1.TokenSource.IsCancellationRequested || this.DrawPending(item.Key, item.Value.Item1, item.Value.Item2)) {
+                    this._pending.Remove(item.Key); this._pendingNames.Remove(item.Key);
                 }
             }
-
-            if (!this.ShowSettings) {
-                return;
+            if (!this.ShowSettings) return;
+            ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
+            if (!Begin(Plugin.Name, ref this._showSettings, ImGuiWindowFlags.None)) { ImGui.End(); return; }
+            var language = this.Plugin.Config.UiLanguage;
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.Combo(this.T("界面语言", "Language") + "##language", ref language, "Auto\0简体中文\0English\0")) {
+                this.Plugin.Config.UiLanguage = language; this.Plugin.Config.Save();
             }
-
-            if (!Begin(Plugin.Name, ref this._showSettings, ImGuiWindowFlags.AlwaysAutoResize)) {
-                ImGui.End();
-                return;
+            if (ImGui.BeginTabBar("settings-tabs")) {
+                if (ImGui.BeginTabItem(this.T("连接", "Connection") + "###connection")) {
+                    this.DrawConnection(); ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem(this.T("消息", "Messages") + "###messages")) {
+                    this.DrawMessages(); ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem(this.T("设备", "Devices") + "###devices")) {
+                    this.DrawDevices(); ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem(this.T("诊断", "Diagnostics") + "###diagnostics")) {
+                    this.DrawDiagnostics(); ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
             }
-
-            if (WithWhiteText(() => ImGui.CollapsingHeader("Server public key"))) {
-                string serverPublic = this.Plugin.Config.KeyPair!.PublicKey.ToHexString(upper: true);
-                ImGui.TextUnformatted(serverPublic);
-                DrawColours(this.Plugin.Config.KeyPair.PublicKey, serverPublic);
-
-                if (WithWhiteText(() => ImGui.Button("Regenerate"))) {
-                    this.Plugin.Server.RegenerateKeyPair();
-                    this.Plugin.Relay?.ResendPublicKey();
-                }
-
-                ImGui.SameLine();
-
-                if (WithWhiteText(() => ImGui.Button("Copy"))) {
-                    ImGui.SetClipboardText(serverPublic);
-                }
-            }
-
-            if (WithWhiteText(() => ImGui.CollapsingHeader("Settings", ImGuiTreeNodeFlags.DefaultOpen))) {
-                TextWhite("Port");
-
-                int port = this.Plugin.Config.Port;
-                if (WithWhiteText(() => ImGui.InputInt("##port", ref port))) {
-                    var realPort = (ushort) Math.Min(ushort.MaxValue, Math.Max(1, port));
-                    this.Plugin.Config.Port = realPort;
-                    this.Plugin.Config.Save();
-
-                    this.Plugin.RelaunchServer();
-                }
-
-                ImGui.Spacing();
-
-                var backlogEnabled = this.Plugin.Config.BacklogEnabled;
-                if (WithWhiteText(() => ImGui.Checkbox("Enable backlog", ref backlogEnabled))) {
-                    this.Plugin.Config.BacklogEnabled = backlogEnabled;
-                    this.Plugin.Config.Save();
-                }
-
-                int backlogCount = this.Plugin.Config.BacklogCount;
-                if (WithWhiteText(() => ImGui.DragInt("Backlog messages", ref backlogCount, 1f, 0, ushort.MaxValue))) {
-                    this.Plugin.Config.BacklogCount = (ushort) Math.Max(0, Math.Min(ushort.MaxValue, backlogCount));
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.Spacing();
-
-                var sendBattle = this.Plugin.Config.SendBattle;
-                if (WithWhiteText(() => ImGui.Checkbox("Send battle messages", ref sendBattle))) {
-                    this.Plugin.Config.SendBattle = sendBattle;
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.SameLine();
-                HelpMarker("Changing this setting will not affect messages already in the backlog.");
-
-                ImGui.Spacing();
-
-                var messagesCountAsInput = this.Plugin.Config.MessagesCountAsInput;
-                if (WithWhiteText(() => ImGui.Checkbox("Count messages as user input", ref messagesCountAsInput))) {
-                    this.Plugin.Config.MessagesCountAsInput = messagesCountAsInput;
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.SameLine();
-                HelpMarker("If this is enabled, sending a message from any client will count as user input, resetting the AFK timer.");
-
-
-                ImGui.Spacing();
-
-                var acceptNew = this.Plugin.Config.AcceptNewClients;
-                if (WithWhiteText(() => ImGui.Checkbox("Accept new clients", ref acceptNew))) {
-                    this.Plugin.Config.AcceptNewClients = acceptNew;
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.SameLine();
-                HelpMarker("If this is disabled, XIVChat Server will only allow clients with already-trusted keys to connect.");
-            }
-
-            if (WithWhiteText(() => ImGui.CollapsingHeader("Relay"))) {
-                var allowRelay = this.Plugin.Config.AllowRelayConnections;
-                if (WithWhiteText(() => ImGui.Checkbox("Allow relay connections", ref allowRelay))) {
-                    if (allowRelay) {
-                        this.Plugin.StartRelay();
-                    } else {
-                        this.Plugin.StopRelay();
-                    }
-
-                    this.Plugin.Config.AllowRelayConnections = allowRelay;
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.SameLine();
-                HelpMarker("If this is enabled, connections from the XIVChat Relay will be accepted.");
-
-                ImGui.Spacing();
-
-                ImGui.TextUnformatted($"Connection status: {this.Plugin.Relay?.Status ?? ConnectionStatus.Disconnected}");
-
-                ImGui.Spacing();
-
-                if ((this.Plugin.Relay?.Status ?? ConnectionStatus.Disconnected) == ConnectionStatus.Disconnected && Relay.ConnectionError != null) {
-                    ImGui.TextUnformatted($"Error: {Relay.ConnectionError}");
-
-                    ImGui.Spacing();
-                }
-
-                var relayAuth = this.Plugin.Config.RelayAuth ?? "";
-                WithWhiteText(() => ImGui.TextUnformatted("Relay authentication code"));
-                ImGui.PushItemWidth(-1f);
-                if (ImGui.InputText("###relay-auth", ref relayAuth, 100, ImGuiInputTextFlags.Password)) {
-                    relayAuth = relayAuth.Trim();
-                    if (relayAuth.Length == 0) {
-                        relayAuth = null;
-                    }
-
-                    this.Plugin.Config.RelayAuth = relayAuth;
-                    this.Plugin.Config.Save();
-                }
-
-                ImGui.PopItemWidth();
-            }
-
-            if (WithWhiteText(() => ImGui.CollapsingHeader("Trusted keys"))) {
-                if (this.Plugin.Config.TrustedKeys.Count == 0) {
-                    ImGui.TextUnformatted("None");
-                }
-
-                ImGui.Columns(2);
-                var maxKeyLength = 0f;
-                foreach (var entry in this.Plugin.Config.TrustedKeys.ToList()) {
-                    var name = entry.Value.Item1;
-
-                    var key = entry.Value.Item2;
-                    var hex = key.ToHexString(true);
-
-                    maxKeyLength = Math.Max(maxKeyLength, ImGui.CalcTextSize(name).X);
-
-                    ImGui.TextUnformatted(name);
-                    if (ImGui.IsItemHovered()) {
-                        ImGui.BeginTooltip();
-                        ImGui.TextUnformatted(hex);
-                        DrawColours(key, hex);
-                        ImGui.EndTooltip();
-                    }
-
-                    ImGui.NextColumn();
-
-                    if (WithWhiteText(() => ImGui.Button($"Untrust##{entry.Key}"))) {
-                        this.Plugin.Config.TrustedKeys.Remove(entry.Key);
-                        this.Plugin.Config.Save();
-                    }
-
-                    ImGui.NextColumn();
-                }
-
-                ImGui.SetColumnWidth(0, maxKeyLength + ImGui.GetStyle().ItemSpacing.X * 2);
-                ImGui.Columns(1);
-            }
-
-
-            if (WithWhiteText(() => ImGui.CollapsingHeader("Connected clients"))) {
-                var clients = this.Plugin.Server.Clients
-                    .Where(client => client.Value.Connected)
-                    .ToList();
-                if (clients.Count == 0) {
-                    ImGui.TextUnformatted("None");
-                } else {
-                    ImGui.Columns(3);
-
-                    TextWhite("IP");
-                    ImGui.NextColumn();
-                    TextWhite("Key");
-                    ImGui.NextColumn();
-                    ImGui.NextColumn();
-
-                    foreach (var client in clients) {
-                        if (!client.Value.Connected) {
-                            continue;
-                        }
-
-                        IPAddress? remote;
-                        try {
-                            remote = client.Value.Remote;
-                        } catch (ObjectDisposedException) {
-                            continue;
-                        }
-
-                        var ipAddress = remote?.ToString() ?? "Unknown";
-
-                        if (client.Value is RelayConnected) {
-                            ipAddress = "(R) " + ipAddress;
-                        }
-
-                        ImGui.TextUnformatted(ipAddress);
-
-                        ImGui.NextColumn();
-
-                        var trustedKey = this.Plugin.Config.TrustedKeys.Values.FirstOrDefault(entry => client.Value.Handshake != null && entry.Item2.SequenceEqual(client.Value.Handshake.RemotePublicKey));
-                        if (trustedKey != null && !trustedKey.Equals(default(Tuple<string, byte[]>))) {
-                            ImGui.TextUnformatted(trustedKey!.Item1);
-                            if (ImGui.IsItemHovered()) {
-                                ImGui.BeginTooltip();
-
-                                var hex = trustedKey.Item2.ToHexString(true);
-                                ImGui.TextUnformatted(hex);
-                                DrawColours(trustedKey.Item2, hex);
-
-                                ImGui.EndTooltip();
-                            }
-                        }
-
-                        ImGui.NextColumn();
-
-                        if (WithWhiteText(() => ImGui.Button($"Disconnect##{client.Key}"))) {
-                            if (client.Value is RelayConnected) {
-                                Task.Run(() => this.Plugin.Relay?.DisconnectClient(client.Value.Handshake!.RemotePublicKey))
-                                    .ContinueWith(_ => client.Value.Disconnect());
-                            } else {
-                                client.Value.Disconnect();
-                            }
-                        }
-
-                        ImGui.NextColumn();
-                    }
-
-                    ImGui.Columns(1);
-                }
-            }
-
             ImGui.End();
         }
 
+        private void DrawConnection() {
+            ImGui.SetNextItemWidth(160);
+            ImGui.InputInt(this.T("端口", "Port") + "##port", ref this.portDraft);
+            ImGui.SameLine();
+            var validPort = this.portDraft is >= 1 and <= 65535;
+            ImGui.BeginDisabled(!validPort || this.portDraft == this.Plugin.Config.Port);
+            if (ImGui.Button(this.T("应用", "Apply") + "##apply-port")) {
+                this.portError = this.Plugin.ApplyPort((ushort)this.portDraft);
+            }
+            ImGui.EndDisabled();
+            ImGui.TextWrapped(this.T("点击应用会重启监听并断开当前连接。请同时更新客户端连接端口。", "Apply restarts the listener and disconnects current clients. Update the client connection port too."));
+            if (!validPort) ImGui.TextUnformatted(this.T("端口范围为 1–65535。", "Port must be between 1 and 65535."));
+            if (this.portError != null) ImGui.TextWrapped(this.T("应用失败，已恢复原端口：", "Apply failed; the previous port was restored: ") + this.portError);
+            ImGui.Separator();
+            var acceptNew = this.Plugin.Config.AcceptNewClients;
+            if (ImGui.Checkbox(this.T("允许新设备请求连接", "Allow new device requests") + "##accept-new", ref acceptNew)) {
+                this.Plugin.Config.AcceptNewClients = acceptNew; this.Plugin.Config.Save();
+            }
+            ImGui.TextWrapped(this.T("新设备仍需要核对公钥并确认信任。关闭后仅允许已信任设备。", "New devices still require matching public keys and trust approval. When disabled, only trusted devices can connect."));
+            if (ImGui.CollapsingHeader(this.T("中继连接", "Relay") + "###relay")) {
+                var allowRelay = this.Plugin.Config.AllowRelayConnections;
+                if (ImGui.Checkbox(this.T("启用中继", "Enable relay") + "##allow-relay", ref allowRelay)) {
+                    this.Plugin.Config.AllowRelayConnections = allowRelay; this.Plugin.Config.Save();
+                    if (allowRelay) this.Plugin.StartRelay(); else this.Plugin.StopRelay();
+                }
+                var relayAuth = this.Plugin.Config.RelayAuth ?? "";
+                if (ImGui.InputText(this.T("中继认证码", "Relay authentication code") + "##relay-auth", ref relayAuth, 100, ImGuiInputTextFlags.Password)) {
+                    this.Plugin.Config.RelayAuth = string.IsNullOrWhiteSpace(relayAuth) ? null : relayAuth.Trim();
+                    this.Plugin.Config.Save();
+                }
+                if (ImGui.Button(this.T("重新连接中继", "Reconnect relay") + "##restart-relay")) {
+                    this.Plugin.StopRelay(); if (this.Plugin.Config.AllowRelayConnections) this.Plugin.StartRelay();
+                }
+                var status = this.Plugin.Relay?.Status ?? ConnectionStatus.Disconnected;
+                ImGui.TextUnformatted(this.T("中继状态：", "Relay status: ") + this.RelayStatus(status));
+                if (Relay.ConnectionError != null) ImGui.TextWrapped(Relay.ConnectionError);
+            }
+            if (ImGui.CollapsingHeader(this.T("服务器公钥", "Server public key") + "###public-key")) {
+                var key = this.Plugin.Config.KeyPair!.PublicKey;
+                var hex = key.ToHexString(true);
+                ImGui.TextUnformatted(hex); DrawColours(key, hex);
+                if (ImGui.Button(this.T("复制", "Copy") + "##copy-key")) ImGui.SetClipboardText(hex);
+                ImGui.SameLine();
+                if (ImGui.Button(this.T("重新生成", "Regenerate") + "##regenerate-key")) {
+                    this.Plugin.Server.RegenerateKeyPair(); this.Plugin.Relay?.ResendPublicKey();
+                }
+                ImGui.TextWrapped(this.T("重新生成后，客户端需要重新核对服务器身份。", "After regeneration, clients must verify the server identity again."));
+            }
+        }
+
+        private string RelayStatus(ConnectionStatus status) => status switch {
+            ConnectionStatus.Connecting => this.T("正在连接", "Connecting"),
+            ConnectionStatus.Negotiating => this.T("正在协商", "Negotiating"),
+            ConnectionStatus.Connected => this.T("已连接", "Connected"),
+            _ => this.T("已断开", "Disconnected"),
+        };
+
+        private void DrawMessages() {
+            var backlog = this.Plugin.Config.BacklogEnabled;
+            if (ImGui.Checkbox(this.T("保存插件内存历史", "Keep plugin memory history") + "##backlog", ref backlog)) {
+                this.Plugin.Config.BacklogEnabled = backlog; this.SaveMessageSettings();
+            }
+            ImGui.TextWrapped(this.T("关闭会立即清空插件内存历史。客户端已有的本地历史不受影响。", "Disabling immediately clears plugin memory history. Existing local client history is unaffected."));
+            var count = (int)this.Plugin.Config.BacklogCount;
+            if (ImGui.InputInt(this.T("最多记录条数", "Maximum history messages") + "##history-count", ref count)) {
+                this.Plugin.Config.BacklogCount = (ushort)Math.Clamp(count, 0, ushort.MaxValue); this.SaveMessageSettings();
+            }
+            var mib = this.Plugin.Config.BacklogMaxMiB;
+            if (ImGui.InputInt(this.T("历史容量上限 (MiB)", "History size limit (MiB)") + "##history-bytes", ref mib)) {
+                this.Plugin.Config.BacklogMaxMiB = Math.Clamp(mib, 1, 256); this.SaveMessageSettings();
+            }
+            var battle = this.Plugin.Config.SendBattle;
+            if (ImGui.Checkbox(this.T("记录并发送战斗消息", "Record and send battle messages") + "##battle", ref battle)) {
+                this.Plugin.Config.SendBattle = battle; this.SaveMessageSettings();
+            }
+            ImGui.TextWrapped(this.T("战斗过滤仅影响新消息；历史中的已有记录保留。其他频道按客户端历史、视图和通知需要订阅。", "Battle filtering affects new messages; existing history remains. Other channels follow client history, view and notification subscriptions."));
+            var input = this.Plugin.Config.MessagesCountAsInput;
+            if (ImGui.Checkbox(this.T("发送消息重置离席计时", "Sending messages resets the AFK timer") + "##input", ref input)) {
+                this.Plugin.Config.MessagesCountAsInput = input; this.Plugin.Config.Save();
+            }
+        }
+        private void SaveMessageSettings() { this.Plugin.Server.ApplyMessageSettings(); this.Plugin.Config.Save(); }
+
+        private void DrawDevices() {
+            TextWhite(this.T("已连接设备", "Connected devices"));
+            var clients = this.Plugin.Server.Clients.Where(c => c.Value.Ready).ToArray();
+            if (clients.Length == 0) ImGui.TextUnformatted(this.T("无", "None"));
+            foreach (var entry in clients) {
+                var trusted = this.Plugin.Config.TrustedKeys.Values.FirstOrDefault(k => entry.Value.Handshake != null && k.Item2.SequenceEqual(entry.Value.Handshake.RemotePublicKey));
+                ImGui.TextUnformatted((trusted?.Item1 ?? this.T("未命名", "Unnamed")) + " · " + entry.Value.Remote);
+                ImGui.SameLine();
+                if (ImGui.Button(this.T("断开", "Disconnect") + "##" + entry.Key)) this.Plugin.Server.RemoveClient(entry.Key);
+            }
+            ImGui.Separator();
+            TextWhite(this.T("已信任设备", "Trusted devices"));
+            if (this.Plugin.Config.TrustedKeys.Count == 0) ImGui.TextUnformatted(this.T("无", "None"));
+            foreach (var entry in this.Plugin.Config.TrustedKeys.ToArray()) {
+                ImGui.TextUnformatted(entry.Value.Item1);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.BeginTooltip(); ImGui.TextUnformatted(entry.Value.Item2.ToHexString(true)); ImGui.EndTooltip();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button(this.T("取消信任", "Untrust") + "##" + entry.Key)) {
+                    this.Plugin.Config.TrustedKeys.TryRemove(entry.Key, out _); this.Plugin.Config.Save();
+                }
+            }
+        }
+
+        private void DrawDiagnostics() {
+            var server = this.Plugin.Server;
+            ImGui.TextUnformatted(this.T("监听：", "Listener: ") + (server.Running ? this.T("运行中", "Running") : this.T("已停止", "Stopped")) + " · " + this.Plugin.Config.Port);
+            ImGui.TextUnformatted(this.T("设备（含协商中）：", "Devices (including handshakes): ") + server.Clients.Count + " / 32");
+            var history = server.BacklogUsage;
+            ImGui.TextUnformatted(this.T("内存历史：", "Memory history: ") + $"{history.Count} · {history.Bytes / 1048576d:F2} MiB");
+            var game = server.GameQueueUsage;
+            ImGui.TextUnformatted(this.T("待交给游戏：", "Pending game commands: ") + $"{game.Count} / 128 · {game.Bytes} B");
+            var outgoing = server.Clients.Values.Select(c => c.Queue.Usage).ToArray();
+            ImGui.TextUnformatted(this.T("发送积压（含正在写入）：", "Outgoing backlog (including active writes): ") + $"{outgoing.Sum(q => q.Count)} · {outgoing.Sum(q => q.Bytes) / 1048576d:F2} MiB");
+            ImGui.TextWrapped(this.T("每个设备最多 512 个包、8 MiB；单次写入最多等待 10 秒。超限会断开该设备并取消其待发送内容。", "Each device allows 512 packets and 8 MiB, with a 10-second write timeout. Exceeding a limit disconnects that device and cancels its pending commands."));
+            var cache = server.CacheUsage;
+            ImGui.TextUnformatted(this.T("物品 / 地图缓存：", "Item / map cache: ") + $"{cache.Items} / {cache.Maps}");
+            ImGui.TextUnformatted(this.T("缓存命中 / 未命中：", "Cache hits / misses: ") + $"{cache.Hits} / {cache.Misses}");
+            ImGui.Separator();
+            ImGui.TextWrapped(this.T("最近连接错误：", "Last connection error: ") + (server.LastError ?? this.T("无", "None")));
+        }
         private static void DrawColours(byte[] bytes, string widthOf) {
             DrawColours(bytes, ImGui.CalcTextSize(widthOf).X);
         }
@@ -396,44 +311,45 @@ namespace XIVChatPlugin {
 
             var width = Math.Max(ImGui.CalcTextSize(clientPublicHex).X, ImGui.CalcTextSize(serverPublicHex).X) + (ImGui.GetStyle().WindowPadding.X * 2);
 
-            if (!Begin($"Incoming XIVChat connection##{clientPublic}", ImGuiWindowFlags.AlwaysAutoResize)) {
+            if (!Begin(this.T("新设备连接请求", "Incoming XIVChat connection") + "##" + id, ImGuiWindowFlags.AlwaysAutoResize)) {
+                ImGui.End();
                 return false;
             }
 
             ImGui.PushTextWrapPos(width);
 
-            ImGui.TextUnformatted("A client that has not previously connected is attempting to connect to XIVChat. If this is you, please check the two keys below and make sure that they match what is displayed by the client.");
+            ImGui.TextUnformatted(this.T("一个新设备请求连接 XIVChat。若是你的设备，请核对以下两个公钥与客户端显示的一致。", "A new device is requesting access to XIVChat. If it is yours, verify both public keys match the client."));
 
             ImGui.Separator();
 
-            TextWhite("Server");
+            TextWhite(this.T("服务器", "Server"));
             ImGui.TextUnformatted(serverPublicHex);
             DrawColours(serverPublic, serverPublicHex);
 
             ImGui.Spacing();
 
-            TextWhite("Client");
+            TextWhite(this.T("客户端", "Client"));
             ImGui.TextUnformatted(clientPublicHex);
             DrawColours(clientPublic, clientPublicHex);
 
             ImGui.Separator();
 
-            ImGui.TextUnformatted("Give this client a name to remember it more easily if you trust it.");
+            ImGui.TextUnformatted(this.T("确认信任后，可以给设备起一个便于辨认的名字。", "Give this device a recognizable name if you trust it."));
 
             ImGui.PopTextWrapPos();
 
             if (!this._pendingNames.TryGetValue(id, out var name)) {
-                name = "No name";
+                name = this.T("未命名", "Unnamed");
             }
 
-            if (WithWhiteText(() => ImGui.InputText("Client name", ref name, 100, ImGuiInputTextFlags.AutoSelectAll))) {
+            if (WithWhiteText(() => ImGui.InputText(this.T("设备名称", "Device name") + "##client-name", ref name, 100, ImGuiInputTextFlags.AutoSelectAll))) {
                 this._pendingNames[id] = name;
             }
 
             ImGui.Separator();
 
-            ImGui.TextUnformatted("Do both keys match?");
-            if (WithWhiteText(() => ImGui.Button("Yes"))) {
+            ImGui.TextUnformatted(this.T("两个公钥是否都一致？", "Do both keys match?"));
+            if (WithWhiteText(() => ImGui.Button(this.T("是，信任", "Yes, trust")))) {
                 accepted.Writer.TryWrite(true);
                 this.Plugin.Config.TrustedKeys[Guid.NewGuid()] = Tuple.Create(name, client.Handshake.RemotePublicKey);
                 this.Plugin.Config.Save();
@@ -442,7 +358,7 @@ namespace XIVChatPlugin {
             }
 
             ImGui.SameLine();
-            if (WithWhiteText(() => ImGui.Button("No"))) {
+            if (WithWhiteText(() => ImGui.Button(this.T("否，拒绝", "No, reject")))) {
                 accepted.Writer.TryWrite(false);
                 this._pendingNames.Remove(id);
                 ret = true;

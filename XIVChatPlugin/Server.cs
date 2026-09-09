@@ -41,36 +41,43 @@ namespace XIVChatPlugin {
         ];
 
         private readonly Plugin _plugin;
+        private readonly LinkMetadataCache _metadata;
+        internal (int Items, int Maps, long Hits, long Misses) CacheUsage => this._metadata.Usage;
 
         private readonly Stopwatch _sendWatch = new();
 
         private readonly CancellationTokenSource _tokenSource = new();
-        private readonly ConcurrentQueue<string> _toGame = new();
+        private readonly GameCommandQueue _toGame = new();
+        private GameCommandContext _gameContext = new(null, "", 0);
+        private long _channelRevision;
+        private ServerChannel _channelSnapshot = new(InputChannel.Say, "");
 
         private readonly ConcurrentDictionary<Guid, BaseClient> _clients = new();
         internal IReadOnlyDictionary<Guid, BaseClient> Clients => this._clients;
-        internal readonly Channel<Tuple<BaseClient, Channel<bool>>> PendingClients = Channel.CreateUnbounded<Tuple<BaseClient, Channel<bool>>>();
+        internal readonly Channel<Tuple<BaseClient, Channel<bool>>> PendingClients = Channel.CreateBounded<Tuple<BaseClient, Channel<bool>>>(32);
+        private readonly object _clientGate = new();
 
         internal FriendListCoordinator FriendLists { get; }
         private string _ownerEpoch = Guid.NewGuid().ToString("N");
 
-        private readonly LinkedList<ServerMessage> _backlog = [];
-        private readonly object _historyLock = new();
+        private readonly MessageBacklog _backlog;
         private readonly string _runId = Guid.NewGuid().ToString("N");
-        private long _messageSequence;
 
         private TcpListener? _listener;
 
         private bool _sendPlayerData;
-        private readonly ConcurrentQueue<Guid> _awaitingPlayerData = new();
-        private readonly ConcurrentQueue<Guid> _awaitingAvailability = new();
-        private readonly ConcurrentQueue<Guid> _awaitingHousingLocation = new();
+        private readonly ConcurrentDictionary<Guid, byte> _awaitingState = new();
 
         private volatile bool _running;
-        private bool Running => this._running;
+        internal bool Running => this._running;
+        internal string? LastError { get; private set; }
+        internal (int Count, long Bytes) BacklogUsage => this._backlog.Usage;
+        internal (int Count, int Bytes) GameQueueUsage => this._toGame.Usage;
+        private long _nextHousingCheck;
 
         private InputChannel _currentChannel = InputChannel.Say;
         private SeString? _currentChannelName;
+        private string? _currentTellTarget;
 
         private ServerHousingLocation _lastHousingLocation;
 
@@ -78,6 +85,7 @@ namespace XIVChatPlugin {
 
         internal Server(Plugin plugin) {
             this._plugin = plugin;
+            this._metadata = new LinkMetadataCache(plugin.DataManager);
             if (string.IsNullOrWhiteSpace(plugin.Config.ServiceId)) plugin.Config.ServiceId = Guid.NewGuid().ToString("N");
             plugin.Config.Save();
             if (this._plugin.Config.KeyPair == null) {
@@ -85,12 +93,16 @@ namespace XIVChatPlugin {
             }
 
             this._lastHousingLocation = this._plugin.Functions.HousingLocation;
+            this._backlog = new MessageBacklog(plugin.Config.ServiceId, this._runId);
+            this.ApplyMessageSettings();
+            this._channelSnapshot = new ServerChannel(this._currentChannel, this.LocalisedChannelName(this._currentChannel));
+            this.RefreshGameContext();
 
             this._sendWatch.Start();
 
             this.FriendLists = new FriendListCoordinator(new GameFriendListReader(plugin), (request, message) => {
                 if (!request.Cancellation.IsCancellationRequested && this._clients.TryGetValue(request.ClientId, out var client))
-                    client.Queue.Writer.TryWrite(message);
+                    client.Send(message);
             });
         }
 
@@ -101,6 +113,7 @@ namespace XIVChatPlugin {
             try {
                 listener.Start();
             } catch (SocketException ex) {
+                this.LastError = ex.Message;
                 Plugin.Log.Error($"Could not start XIVChat server: {ex.Message}");
                 listener.Stop();
                 return;
@@ -116,6 +129,7 @@ namespace XIVChatPlugin {
                 } catch (Exception) when (this._tokenSource.IsCancellationRequested) {
                     // Stopping the listener also interrupts a pending accept.
                 } catch (Exception ex) {
+                    this.LastError = ex.Message;
                     Plugin.Log.Error($"XIVChat listener stopped: {ex.Message}");
                 } finally {
                     listener.Stop();
@@ -144,7 +158,11 @@ namespace XIVChatPlugin {
                 return;
             }
 
+            var recipients = this._clients.Values.Where(c => c.Ready && c.Subscription.Allows((ushort)type)).ToArray();
+            if (!this._backlog.Enabled && recipients.Length == 0) return;
+
             var chunks = new List<Chunk>();
+            if (this._metadata.RefreshScope()) this.Formats.Clear();
 
             var colour = this._plugin.Functions.GetChannelColour(chatCode) ?? chatCode.DefaultColour();
 
@@ -179,85 +197,63 @@ namespace XIVChatPlugin {
                     HomeWorld = peer.World.Value.Name.ExtractText(),
                 };
             }
-            lock (this._historyLock) {
-                msg.ServiceId = this._plugin.Config.ServiceId;
-                msg.RunId = this._runId;
-                msg.Sequence = ++this._messageSequence;
-                msg.MessageId = $"{msg.ServiceId}:{msg.RunId}:{msg.Sequence}";
-                if (this._plugin.Config.BacklogEnabled) this._backlog.AddLast(msg);
-                while (this._backlog.Count > (this._plugin.Config.BacklogEnabled ? this._plugin.Config.BacklogCount : 0)) {
-                    this._backlog.RemoveFirst();
-                }
-            }
-
-            foreach (var client in this._clients.Values) {
-                client.Queue.Writer.TryWrite(msg);
-            }
+            var encoded = this._backlog.Record(msg);
+            foreach (var client in recipients) client.SendEncoded(encoded);
         }
 
+        internal void ApplyMessageSettings() => this._backlog.Configure(this._plugin.Config.BacklogEnabled,
+            this._plugin.Config.BacklogCount, Math.Clamp(this._plugin.Config.BacklogMaxMiB, 1, 256) * 1024L * 1024);
+
         internal void OnFrameworkUpdate(IFramework framework) {
+            if (!this._awaitingState.IsEmpty || this._toGame.Usage.Count > 0 || Environment.TickCount64 >= this._nextHousingCheck)
+                this._plugin.Functions.RefreshChatChannel();
+            this.RefreshGameContext();
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
-            lock (this._historyLock) {
-                while (this._backlog.Count > (this._plugin.Config.BacklogEnabled ? this._plugin.Config.BacklogCount : 0)) this._backlog.RemoveFirst();
-            }
             var player = this._plugin.ObjectTable.LocalPlayer;
             if (player != null && this._sendPlayerData) {
                 this.BroadcastPlayerData();
                 this._sendPlayerData = false;
             }
 
-            var housingLocation = this._plugin.Functions.HousingLocation;
-            if (!Equals(housingLocation, this._lastHousingLocation)) {
-                this.BroadcastMessage(housingLocation, ClientPreference.HousingLocationSupport);
-                this._lastHousingLocation = housingLocation;
+            if (Environment.TickCount64 >= this._nextHousingCheck) {
+                this._nextHousingCheck = Environment.TickCount64 + 2_000;
+                var housingLocation = this._plugin.Functions.HousingLocation;
+                if (!Equals(housingLocation, this._lastHousingLocation)) {
+                    this.BroadcastMessage(housingLocation, ClientPreference.HousingLocationSupport);
+                    this._lastHousingLocation = housingLocation;
+                }
             }
-
-            while (this._awaitingPlayerData.TryDequeue(out var id)) {
-                if (!this.Clients.TryGetValue(id, out var client)) {
+            foreach (var id in this._awaitingState.Keys.Take(32)) {
+                if (!this._awaitingState.TryRemove(id, out _) || !this.Clients.TryGetValue(id, out var client) || !client.Ready) continue;
+                client.Send(new Availability(player != null));
+                client.Send((Encodable?)this.GeneratePlayerData() ?? EmptyPlayerData.Instance);
+                client.Send(Volatile.Read(ref this._channelSnapshot));
+                if (client.GetPreference(ClientPreference.HousingLocationSupport, false)) client.Send(this._lastHousingLocation);
+            }
+            // Remove invalid work promptly, but bound per-frame processing and execute at most one command.
+            for (var i = 0; i < 32; i++) {
+                var command = this._toGame.Peek();
+                if (command == null) return;
+                var failure = GameCommandQueue.Validate(command, Volatile.Read(ref this._gameContext));
+                if (failure != null) {
+                    if (this._toGame.Take(command) != null) this.RejectCommand(command.ClientId, command.RequestId, failure.Value);
                     continue;
                 }
-
-                var playerData = (Encodable?) this.GeneratePlayerData() ?? EmptyPlayerData.Instance;
-                client.Queue.Writer.TryWrite(playerData);
-            }
-
-            while (this._awaitingAvailability.TryDequeue(out var id)) {
-                if (!this.Clients.TryGetValue(id, out var client) || client.Handshake == null) {
-                    continue;
-                }
-
-                var available = player != null;
-                client.Queue.Writer.TryWrite(new Availability(available));
-            }
-
-            while (this._awaitingHousingLocation.TryDequeue(out var id)) {
-                if (!this.Clients.TryGetValue(id, out var client) || client.Handshake == null) {
-                    continue;
-                }
-
-                client.Queue.Writer.TryWrite(this._lastHousingLocation);
-            }
-
-            int time;
-            if (this._toGame.TryPeek(out var peek) && PublicPrefixes.Any(prefix => peek.StartsWith(prefix))) {
-                time = 1_000;
-            } else if (this._currentChannel is InputChannel.Tell or InputChannel.Say or InputChannel.Shout or InputChannel.Yell) {
-                time = 1_000;
-            } else {
-                time = 250;
-            }
-
-            if (this._sendWatch.Elapsed < TimeSpan.FromMilliseconds(time)) {
+                var time = command.Channel != null ? 250 :
+                    PublicPrefixes.Any(prefix => command.Text!.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ||
+                    this._currentChannel is InputChannel.Tell or InputChannel.Say or InputChannel.Shout or InputChannel.Yell ? 1_000 : 250;
+                if (this._sendWatch.ElapsedMilliseconds < time) return;
+                // Cancellation can remove the head between Peek and Take; revalidate the actual dequeued work.
+                command = this._toGame.Take(command);
+                if (command == null) continue;
+                failure = GameCommandQueue.Validate(command, Volatile.Read(ref this._gameContext));
+                if (failure != null) { this.RejectCommand(command.ClientId, command.RequestId, failure.Value); continue; }
+                this._sendWatch.Restart();
+                if (command.Channel is { } channel) {
+                    if (!this._plugin.Functions.ChangeChatChannel(channel)) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.Unavailable);
+                } else this._plugin.Functions.ProcessChatBox(command.Text!);
                 return;
             }
-
-            if (!this._toGame.TryDequeue(out var message)) {
-                return;
-            }
-
-            this._sendWatch.Restart();
-
-            this._plugin.Functions.ProcessChatBox(message);
         }
 
         private static readonly IReadOnlyList<byte> Magic = new byte[] {
@@ -266,11 +262,18 @@ namespace XIVChatPlugin {
 
         internal void SpawnClientTask(BaseClient client, bool requiresMagic) {
             var id = Guid.NewGuid();
-            this._clients[id] = client;
+            client.OnFailure = reason => { this.LastError = reason; Plugin.Log.Warning("Client {Id} disconnected: {Reason}", id, reason); };
+            lock (this._clientGate) {
+                if (this._tokenSource.IsCancellationRequested || this._clients.Count >= 32) {
+                    client.Disconnect("Connection limit reached or server stopped.");
+                    return;
+                }
+                this._clients[id] = client;
+            }
 
             _ = Task.Run(async () => {
                 Task? listen = null;
-                using var stopRegistration = this._tokenSource.Token.Register(client.Disconnect);
+                using var stopRegistration = this._tokenSource.Token.Register(() => client.Disconnect());
                 try {
                     using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
                     handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
@@ -287,16 +290,15 @@ namespace XIVChatPlugin {
                     if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(handshake.RemotePublicKey))) {
                         if (!this._plugin.Config.AcceptNewClients) return;
                         var accepted = Channel.CreateBounded<bool>(1);
-                        await this.PendingClients.Writer.WriteAsync(Tuple.Create(client, accepted), client.TokenSource.Token);
-                        if (!await accepted.Reader.ReadAsync(client.TokenSource.Token)) return;
+                        using var trustTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
+                        trustTimeout.CancelAfter(TimeSpan.FromSeconds(60));
+                        await this.PendingClients.Writer.WriteAsync(Tuple.Create(client, accepted), trustTimeout.Token);
+                        if (!await accepted.Reader.ReadAsync(trustTimeout.Token)) return;
                     }
 
                     client.Connected = true;
-                    this._awaitingAvailability.Enqueue(id);
-                    this._awaitingPlayerData.Enqueue(id);
-                    await SecretMessage.SendSecretMessage(client, handshake.Keys.tx,
-                        new ServerChannel(this._currentChannel, this._currentChannelName?.TextValue ?? this.LocalisedChannelName(this._currentChannel)),
-                        client.TokenSource.Token);
+                    client.Ready = true;
+                    this._awaitingState[id] = 0;
 
                     listen = Task.Run(async () => {
                         try {
@@ -312,8 +314,14 @@ namespace XIVChatPlugin {
 
                     this._plugin.Events.FireNewClientEvent(id, client);
                     while (!client.TokenSource.IsCancellationRequested) {
-                        var msg = await client.Queue.Reader.ReadAsync(client.TokenSource.Token);
-                        await SecretMessage.SendSecretMessage(client, handshake.Keys.tx, msg, client.TokenSource.Token);
+                        using var packet = await client.Queue.ReadAsync(client.TokenSource.Token);
+                        using var writeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
+                        writeTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+                        try {
+                            await SecretMessage.SendSecretMessage(client, handshake.Keys.tx, packet.Bytes, writeTimeout.Token);
+                        } catch (OperationCanceledException) when (!client.TokenSource.IsCancellationRequested) {
+                            client.Disconnect("Outgoing write timed out after 10 seconds.");
+                        }
                     }
                 } catch (Exception) when (client.TokenSource.IsCancellationRequested) {
                 } catch (EndOfStreamException) {
@@ -341,9 +349,12 @@ namespace XIVChatPlugin {
             }
 
             client.Disconnect();
+            this._toGame.CancelClient(id);
+            this._awaitingState.TryRemove(id, out _);
         }
 
         private async Task ProcessMessage(Guid id, BaseClient client, byte[] msg) {
+            if (msg.Length == 0) throw new InvalidDataException("Empty client packet.");
             var op = (ClientOperation) msg[0];
 
             var payload = new byte[msg.Length - 1];
@@ -351,22 +362,27 @@ namespace XIVChatPlugin {
 
             switch (op) {
                 case ClientOperation.Ping:
-                    try {
-                        await client.Queue.Writer.WriteAsync(Pong.Instance);
-                    } catch (Exception ex) {
-                        Plugin.Log.Error($"Could not send message: {ex.Message}");
-                    }
-
+                    client.Send(Pong.Instance);
                     break;
                 case ClientOperation.Message:
                     var clientMessage = ClientMessage.Decode(payload);
+                    if (clientMessage.Content == null || Encoding.UTF8.GetByteCount(clientMessage.Content) > 8 * 1024) {
+                        this.RejectCommand(id, clientMessage.RequestId, CommandFailure.InvalidRequest); break;
+                    }
+                    var context = this.CommandContext(id, client, clientMessage.RequestId, clientMessage.ExpectedOwnerKey,
+                        clientMessage.ExpectedOwnerEpoch, clientMessage.ExpectedChannelRevision, true);
+                    if (context == null) break;
                     var sanitised = clientMessage.Content
                         .Replace("\r\n", " ")
                         .Replace('\r', ' ')
                         .Replace('\n', ' ');
-                    foreach (var part in Wrap(sanitised)) {
-                        this._toGame.Enqueue(part);
-                    }
+                    if (string.IsNullOrWhiteSpace(sanitised)) break;
+                    GameCommand[] commands;
+                    try {
+                        commands = ChatTextSplitter.Split(sanitised).Select(part => new GameCommand(id, clientMessage.RequestId, context,
+                            part, null, client.TokenSource.Token)).ToArray();
+                    } catch (ArgumentException) { this.RejectCommand(id, clientMessage.RequestId, CommandFailure.InvalidRequest); break; }
+                    if (!this._toGame.TryEnqueue(commands)) this.RejectCommand(id, clientMessage.RequestId, CommandFailure.QueueFull);
 
                     break;
                 case ClientOperation.Shutdown:
@@ -376,19 +392,8 @@ namespace XIVChatPlugin {
                     // ReSharper disable once LocalVariableHidesMember
                     var backlog = ClientBacklog.Decode(payload);
 
-                    var backlogMessages = new List<ServerMessage>();
-
-                    lock (this._historyLock) {
-                        var node = this._backlog.Last;
-                        while (node != null) {
-                            if (backlogMessages.Count >= backlog.Amount) {
-                                break;
-                            }
-
-                            backlogMessages.Add(node.Value);
-                            node = node.Previous;
-                        }
-                    }
+                    var backlogMessages = this._backlog.Snapshot().Messages.Reverse()
+                        .Where(m => client.Subscription.Allows((ushort)m.Channel)).Take(backlog.Amount).ToList();
 
                     if (!client.GetPreference(ClientPreference.BacklogNewestMessagesFirst, false)) {
                         backlogMessages.Reverse();
@@ -414,22 +419,25 @@ namespace XIVChatPlugin {
                     if (playerList.Type == PlayerListType.Friend) {
                         if (playerList.RequestId?.Length > 64 || playerList.ExpectedOwnerKey?.Length > 128 || playerList.ExpectedOwnerEpoch?.Length > 64) break;
                         if (!this.FriendLists.Enqueue(new FriendRequest(id, playerList, client.TokenSource.Token)))
-                            client.Queue.Writer.TryWrite(FriendListProtocol.Error(playerList.RequestId, null, null, FriendListStatus.Busy));
+                            client.Send(FriendListProtocol.Error(playerList.RequestId, null, null, FriendListStatus.Busy));
                     }
 
                     break;
                 case ClientOperation.Preferences:
                     var preferences = ClientPreferences.Decode(payload);
+                    var hadWorkbench = client.GetPreference(ClientPreference.WorkbenchSupport, false);
+                    client.Subscription = new ChannelSubscription(preferences.Channels);
                     client.Preferences = preferences;
-                    if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
-                        client.Queue.Writer.TryWrite(new ServerCapabilities {
+                    if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
+                        client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
+                            ChannelSubscriptions = true, GuardedCommands = true,
                         });
                     }
 
                     // immediately queue housing location
                     if (client.GetPreference(ClientPreference.HousingLocationSupport, false)) {
-                        this._awaitingHousingLocation.Enqueue(id);
+                        this._awaitingState[id] = 0;
                     }
 
                     break;
@@ -437,15 +445,44 @@ namespace XIVChatPlugin {
                     if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         var request = ClientHistory.Decode(payload);
                         var page = this.HistoryPage(request);
-                        await client.Queue.Writer.WriteAsync(page, client.TokenSource.Token);
+                        client.Send(page);
                     }
                     break;
                 case ClientOperation.Channel:
                     var channel = ClientChannel.Decode(payload);
-                    this._plugin.Functions.ChangeChatChannel(channel.Channel);
+                    if (!Enum.IsDefined(channel.Channel)) { this.RejectCommand(id, channel.RequestId, CommandFailure.InvalidRequest); break; }
+                    var channelContext = this.CommandContext(id, client, channel.RequestId, channel.ExpectedOwnerKey, channel.ExpectedOwnerEpoch, null, false);
+                    if (channelContext != null && !this._toGame.TryEnqueue(new[] {
+                        new GameCommand(id, channel.RequestId, channelContext, null, channel.Channel, client.TokenSource.Token),
+                    })) this.RejectCommand(id, channel.RequestId, CommandFailure.QueueFull);
 
                     break;
             }
+        }
+
+        private GameCommandContext? CommandContext(Guid id, BaseClient client, string? request, string? owner,
+            string? epoch, long? channelRevision, bool checkChannel) {
+            var context = Volatile.Read(ref this._gameContext);
+            var failure = GameCommandQueue.ValidateRequest(context, client.GetPreference(ClientPreference.GuardedCommandsSupport, false),
+                request, owner, epoch, channelRevision, checkChannel);
+            if (failure == null) return context;
+            this.RejectCommand(id, request, failure.Value);
+            return null;
+        }
+
+        private void RejectCommand(Guid id, string? request, CommandFailure failure) {
+            if (!this._clients.TryGetValue(id, out var client) || !client.Ready) return;
+            if (client.GetPreference(ClientPreference.GuardedCommandsSupport, false))
+                client.Send(new ServerCommandResult { RequestId = request?.Length <= 64 ? request : null, Failure = failure });
+            else client.Send(new ServerMessage(DateTime.UtcNow, 0, Array.Empty<byte>(), Array.Empty<byte>(),
+                new List<Chunk> { new TextChunk($"XIVChat: command cancelled ({failure}).") }));
+        }
+
+        private void RefreshGameContext() {
+            var owner = this._plugin.PlayerState.IsLoaded ? this.CurrentIdentity()?.Key : null;
+            var previous = Volatile.Read(ref this._gameContext);
+            if (previous.OwnerKey == owner && previous.Epoch == this._ownerEpoch && previous.ChannelRevision == this._channelRevision) return;
+            Volatile.Write(ref this._gameContext, new GameCommandContext(owner, this._ownerEpoch, this._channelRevision));
         }
 
         internal class NameFormatting {
@@ -477,7 +514,7 @@ namespace XIVChatPlugin {
             var logKind = this._plugin.DataManager.GetExcelSheet<LogKind>().GetRowOrDefault((ushort) type);
 
             if (logKind == null) {
-                return null;
+                return this.Formats[type] = NameFormatting.Empty();
             }
 
             var format = logKind.Value.Format.ToDalamudString();
@@ -485,8 +522,8 @@ namespace XIVChatPlugin {
             var firstStringParam = format.Payloads.FindIndex(payload => IsStringParam(payload, 1));
             var secondStringParam = format.Payloads.FindIndex(payload => IsStringParam(payload, 2));
 
-            if (firstStringParam == -1 || secondStringParam == -1) {
-                return NameFormatting.Empty();
+            if (firstStringParam == -1 || secondStringParam <= firstStringParam) {
+                return this.Formats[type] = NameFormatting.Empty();
             }
 
             var before = format.Payloads
@@ -516,26 +553,22 @@ namespace XIVChatPlugin {
             }
         }
 
-        private static async Task SendBacklogs(IEnumerable<ServerMessage> messages, BaseClient client) {
+        private static Task SendBacklogs(IEnumerable<ServerMessage> messages, BaseClient client) {
             const int defaultSize = 5 + SecretMessage.NonceSize + SecretMessage.MacSize;
             var size = defaultSize;
             var responseMessages = new List<ServerMessage>();
 
-            async Task SendBacklog() {
+            bool SendBacklog() {
                 var resp = new ServerBacklog(responseMessages.ToArray(), ++client.BacklogSequence);
-                try {
-                    await client.Queue.Writer.WriteAsync(resp);
-                } catch (Exception ex) {
-                    Plugin.Log.Error($"Could not send backlog: {ex.Message}");
-                }
+                return client.Send(resp);
             }
 
-            foreach (var catchUpMessage in messages) {
+            foreach (var catchUpMessage in messages.Where(m => client.Subscription.Allows((ushort)m.Channel))) {
                 // FIXME: this is very gross
                 var len = MessagePackSerializer.Serialize(catchUpMessage).Length;
                 // send message if it would've gone over length
                 if (size + len >= MaxMessageSize) {
-                    await SendBacklog();
+                    if (!SendBacklog()) return Task.CompletedTask;
 
                     size = defaultSize;
                     responseMessages.Clear();
@@ -546,8 +579,9 @@ namespace XIVChatPlugin {
             }
 
             if (responseMessages.Count > 0) {
-                await SendBacklog();
+                SendBacklog();
             }
+            return Task.CompletedTask;
         }
 
         private IEnumerable<Chunk> ToChunks(SeString msg, uint? defaultColour) {
@@ -564,6 +598,7 @@ namespace XIVChatPlugin {
             ushort? currentMapSizeFactor = null;
             string? currentMapPlaceName = null;
             uint? currentItemId = null;
+            uint? currentItemKind = null;
             bool? currentIsHq = null;
             string? currentItemName = null;
             string? currentItemDesc = null;
@@ -589,6 +624,7 @@ namespace XIVChatPlugin {
                     MapSizeFactor = currentMapSizeFactor,
                     MapPlaceName = currentMapPlaceName,
                     ItemId = currentItemId,
+                    ItemKind = currentItemKind,
                     IsHq = currentIsHq,
                     ItemName = currentItemName,
                     ItemDescription = currentItemDesc,
@@ -644,89 +680,23 @@ namespace XIVChatPlugin {
                         });
                         break;
                     case PayloadType.MapLink:
-                        var mapLink = (Dalamud.Game.Text.SeStringHandling.Payloads.MapLinkPayload) payload;
-                        uint mId = mapLink.Map.RowId;
-                        if (mId == 0) {
-                            var territoryRow = this._plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>().GetRowOrDefault(mapLink.TerritoryType.RowId);
-                            if (territoryRow.HasValue) {
-                                mId = territoryRow.Value.Map.RowId;
-                            }
-                        }
-                        currentMapId = mId > 0 ? mId : null;
-                        currentMapX = mapLink.XCoord;
-                        currentMapY = mapLink.YCoord;
-                        if (currentMapId.HasValue && currentMapId.Value > 0) {
-                            var mapRow = this._plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Map>().GetRowOrDefault(currentMapId.Value);
-                            if (mapRow.HasValue) {
-                                currentMapFilenameId = mapRow.Value.Id.ExtractText();
-                                currentMapSizeFactor = mapRow.Value.SizeFactor;
-                                var pName = mapRow.Value.PlaceName.ValueNullable?.Name.ExtractText();
-                                if (!string.IsNullOrEmpty(pName)) currentMapPlaceName = pName;
-                            }
-                        }
+                        var mapLink = (MapLinkPayload)payload;
+                        var map = this._metadata.Map(mapLink.Map.RowId, mapLink.TerritoryType.RowId);
+                        currentMapId = map.Id > 0 ? map.Id : null;
+                        currentMapX = mapLink.XCoord; currentMapY = mapLink.YCoord;
+                        currentMapFilenameId = map.Filename; currentMapSizeFactor = map.SizeFactor;
+                        currentMapPlaceName = map.PlaceName;
                         break;
                     case PayloadType.Item:
-                        var itemLink = (Dalamud.Game.Text.SeStringHandling.Payloads.ItemPayload) payload;
-                        uint rawItemId = itemLink.ItemId;
-                        bool rawIsHq = itemLink.IsHQ;
-                        if (rawItemId > 1000000) {
-                            rawIsHq = true;
-                            rawItemId -= 1000000;
-                        } else if (rawItemId > 500000) {
-                            rawIsHq = true;
-                            rawItemId -= 500000;
-                        }
-                        currentItemId = rawItemId;
-                        currentIsHq = rawIsHq;
-                        if (currentItemId.HasValue && currentItemId.Value > 0) {
-                            try {
-                                var itemRow = this._plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>().GetRowOrDefault(currentItemId.Value);
-                                if (itemRow.HasValue) {
-                                    var row = itemRow.Value;
-                                    currentItemName = row.Name.ExtractText();
-                                    currentItemDesc = row.Description.ExtractText();
-                                    currentItemIcon = row.Icon;
-                                    currentItemLevel = (ushort)row.LevelItem.RowId;
-                                    currentItemRarity = row.Rarity;
-                                    currentItemCategory = row.ItemUICategory.ValueNullable?.Name.ExtractText() ?? "";
-                                    currentItemEquipLevel = row.LevelEquip;
-                                    currentItemMateriaSlots = row.MateriaSlotCount;
-                                    currentItemIsAdvancedMeldingPermitted = row.IsAdvancedMeldingPermitted;
-
-                                    var statsList = new List<string>();
-                                    if (row.DamagePhys > 0) statsList.Add($"物理基本性能 {row.DamagePhys}");
-                                    if (row.DamageMag > 0 && row.DamageMag != row.DamagePhys) statsList.Add($"魔法基本性能 {row.DamageMag}");
-                                    if (row.DefensePhys > 0) statsList.Add($"物理防御力 {row.DefensePhys}");
-                                    if (row.DefenseMag > 0 && row.DefenseMag != row.DefensePhys) statsList.Add($"魔法防御力 {row.DefenseMag}");
-
-                                    if (row.BaseParam.Count > 0 && row.BaseParamValue.Count > 0) {
-                                        for (int i = 0; i < row.BaseParam.Count && i < row.BaseParamValue.Count; i++) {
-                                            var bp = row.BaseParam[i].ValueNullable;
-                                            if (bp.HasValue && bp.Value.RowId > 0) {
-                                                string sName = bp.Value.Name.ExtractText();
-                                                int sVal = row.BaseParamValue[i];
-                                                if (!string.IsNullOrEmpty(sName) && sVal > 0) {
-                                                    statsList.Add($"{sName} +{sVal}");
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if (currentIsHq == true && row.BaseParamSpecial.Count > 0 && row.BaseParamValueSpecial.Count > 0) {
-                                        for (int i = 0; i < row.BaseParamSpecial.Count && i < row.BaseParamValueSpecial.Count; i++) {
-                                            var bpSpec = row.BaseParamSpecial[i].ValueNullable;
-                                            if (bpSpec.HasValue && bpSpec.Value.RowId > 0) {
-                                                string sName = bpSpec.Value.Name.ExtractText();
-                                                int sVal = row.BaseParamValueSpecial[i];
-                                                if (!string.IsNullOrEmpty(sName) && sVal > 0) {
-                                                    statsList.Add($"{sName} +{sVal} (HQ)");
-                                                }
-                                            }
-                                        }
-                                    }
-                                    currentItemStats = statsList;
-                                }
-                            } catch { }
-                        }
+                        var itemLink = (ItemPayload)payload;
+                        currentItemId = itemLink.ItemId; currentIsHq = itemLink.IsHQ;
+                        currentItemKind = (uint)itemLink.Kind;
+                        var item = this._metadata.Item(itemLink.ItemId, itemLink.Kind);
+                        currentItemName = item?.Name; currentItemDesc = item?.Description;
+                        currentItemIcon = item?.Icon; currentItemLevel = item?.Level;
+                        currentItemRarity = item?.Rarity; currentItemCategory = item?.Category;
+                        currentItemEquipLevel = item?.EquipLevel; currentItemMateriaSlots = item?.MateriaSlots;
+                        currentItemIsAdvancedMeldingPermitted = item?.AdvancedMelding; currentItemStats = item?.Stats;
                         break;
                     case PayloadType.Unknown:
                         var rawPayload = (RawPayload) payload;
@@ -747,6 +717,7 @@ namespace XIVChatPlugin {
                             currentMapSizeFactor = null;
                             currentMapPlaceName = null;
                             currentItemId = null;
+                            currentItemKind = null;
                             currentIsHq = null;
                             currentItemName = null;
                             currentItemDesc = null;
@@ -774,59 +745,26 @@ namespace XIVChatPlugin {
         }
 
         private IEnumerable<ServerMessage> MessagesAfter(DateTime time) {
-            lock (this._historyLock) return this._backlog.Where(msg => msg.Timestamp > time).ToArray();
+            return this._backlog.Snapshot().Messages.Where(msg => msg.Timestamp > time).ToArray();
         }
 
         private ServerHistory HistoryPage(ClientHistory request) {
-            ServerMessage[] snapshot;
-            long latest;
-            lock (this._historyLock) {
-                snapshot = this._backlog.ToArray();
-                latest = this._messageSequence;
-            }
-            return HistoryPager.Create(snapshot, this._plugin.Config.ServiceId, this._runId, latest, request);
-        }
-
-        private static IEnumerable<string> Wrap(string input) {
-            if (input.Length <= MaxMessageLength) {
-                return new[] {
-                    input,
-                };
-            }
-
-            string prefix = string.Empty;
-            if (input.StartsWith("/")) {
-                var space = input.IndexOf(' ');
-                if (space != -1) {
-                    prefix = input[..space];
-                    // handle wrapping tells
-                    if (prefix is "/tell" or "/t") {
-                        var tellSpace = input.IndexOfCount(' ', 3);
-                        if (tellSpace != -1) {
-                            prefix = input[..tellSpace];
-                            input = input[(tellSpace + 1)..];
-                        }
-                    } else {
-                        input = input[(space + 1)..];
-                    }
-                }
-            }
-
-            return NativeTools.Wrap(input, MaxMessageLength)
-                .Select(text => $"{prefix} {text}")
-                .ToArray();
+            var snapshot = this._backlog.Snapshot();
+            return HistoryPager.Create(snapshot.Messages, this._plugin.Config.ServiceId, this._runId, snapshot.Latest, request);
         }
 
         private void BroadcastMessage(Encodable message) {
+            var encoded = message.Encode();
             foreach (var client in this.Clients.Values) {
-                client.Queue.Writer.TryWrite(message);
+                if (client.Ready) client.SendEncoded(encoded);
             }
         }
 
         private void BroadcastMessage(Encodable message, ClientPreference preference) {
+            var encoded = message.Encode();
             foreach (var client in this.Clients.Values) {
-                if (client.GetPreference(preference, false)) {
-                    client.Queue.Writer.TryWrite(message);
+                if (client.Ready && client.GetPreference(preference, false)) {
+                    client.SendEncoded(encoded);
                 }
             }
         }
@@ -864,7 +802,7 @@ namespace XIVChatPlugin {
             return this._plugin.DataManager.GetExcelSheet<LogFilter>().GetRowOrDefault(rowId)?.Name.ExtractText() ?? string.Empty;
         }
 
-        internal void OnChatChannelChange(uint channel, SeString name) {
+        internal void OnChatChannelChange(uint channel, SeString name, string? tellTarget = null) {
             // for now, to avoid changing the protocol further, convert crossworld icon into font icon
             for (var i = 0; i < name.Payloads.Count; i++) {
                 var payload = name.Payloads[i];
@@ -874,14 +812,17 @@ namespace XIVChatPlugin {
             }
 
             var inputChannel = (InputChannel) channel;
-            if (inputChannel == this._currentChannel && name.Encode().SequenceEqual(this._currentChannelName?.Encode() ?? [])) {
+            if (inputChannel == this._currentChannel && tellTarget == this._currentTellTarget && name.Encode().SequenceEqual(this._currentChannelName?.Encode() ?? [])) {
                 return;
             }
 
             this._currentChannel = inputChannel;
             this._currentChannelName = name;
+            this._currentTellTarget = tellTarget;
 
-            var msg = new ServerChannel(inputChannel, name.TextValue);
+            var msg = new ServerChannel(inputChannel, name.TextValue) { Revision = ++this._channelRevision };
+            Volatile.Write(ref this._channelSnapshot, msg);
+            this.RefreshGameContext();
             this.BroadcastMessage(msg);
         }
 
@@ -944,6 +885,8 @@ namespace XIVChatPlugin {
 
         internal void OnLogIn() {
             this._ownerEpoch = Guid.NewGuid().ToString("N");
+            this.RefreshGameContext();
+            this._nextHousingCheck = 0;
             this.BroadcastAvailability(true);
             // send player data on next framework update
             this._sendPlayerData = true;
@@ -951,12 +894,15 @@ namespace XIVChatPlugin {
 
         internal void OnLogOut(int type, int code) {
             this._ownerEpoch = Guid.NewGuid().ToString("N");
+            Volatile.Write(ref this._gameContext, new GameCommandContext(null, this._ownerEpoch, this._channelRevision));
+            foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn);
+            this._nextHousingCheck = 0;
             this.FriendLists.Tick(null, this._ownerEpoch, DateTime.UtcNow);
             this.BroadcastAvailability(false);
             this.BroadcastMessage(EmptyPlayerData.Instance);
         }
 
-        internal void OnTerritoryChange(uint territory) => this._sendPlayerData = true;
+        internal void OnTerritoryChange(uint territory) { this._sendPlayerData = true; this._nextHousingCheck = 0; }
 
         public void Dispose() {
             this._tokenSource.Cancel();
@@ -967,6 +913,8 @@ namespace XIVChatPlugin {
             }
 
             this.FriendLists.Dispose();
+            this._toGame.Clear();
+            this.PendingClients.Writer.TryComplete();
         }
     }
 }

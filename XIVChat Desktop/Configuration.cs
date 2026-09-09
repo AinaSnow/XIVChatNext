@@ -18,6 +18,7 @@ namespace XIVChat_Desktop {
     [JsonObject]
     public class Configuration : INotifyPropertyChanged {
         public event PropertyChangedEventHandler? PropertyChanged;
+        public event Action? Saved;
 
         public string? LicenceKey { get; set; }
 
@@ -45,7 +46,11 @@ namespace XIVChat_Desktop {
 
         public uint LocalBacklogMessages { get; set; } = 10_000;
 
-        public bool HistoryEnabled { get; set; } = true;
+        private bool historyEnabled = true;
+        public bool HistoryEnabled {
+            get => this.historyEnabled;
+            set { if (this.historyEnabled == value) return; this.historyEnabled = value; this.OnPropertyChanged(nameof(this.HistoryEnabled)); }
+        }
         // Zero means keep forever. Turning history off stops new persistence.
         public int HistoryRetentionDays { get; set; } = 90;
 
@@ -133,6 +138,7 @@ namespace XIVChat_Desktop {
         public void Save() {
             var contents = JsonConvert.SerializeObject(this, Formatting.Indented);
             ConfigurationFile.Save(FilePath(), contents, text => { _ = Deserialize(text); });
+            this.Saved?.Invoke();
         }
 
         #endregion

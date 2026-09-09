@@ -6,6 +6,11 @@ namespace XIVChatCommon.Message.Client {
         [Key(0)]
         public string Content { get; set; }
 
+        [Key(1)] public string? RequestId { get; set; }
+        [Key(2)] public string? ExpectedOwnerKey { get; set; }
+        [Key(3)] public string? ExpectedOwnerEpoch { get; set; }
+        [Key(4)] public long? ExpectedChannelRevision { get; set; }
+
         [IgnoreMember]
         protected override byte Code => (byte) ClientOperation.Message;
 

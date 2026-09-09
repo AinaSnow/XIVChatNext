@@ -195,8 +195,21 @@ namespace XIVChatPlugin {
         }
 
         internal void RelaunchServer() {
+            this.StopRelay();
             this.StopServer();
             this.LaunchServer();
+            if (this.Config.AllowRelayConnections) this.StartRelay();
+        }
+
+        internal string? ApplyPort(ushort port) {
+            var previous = this.Config.Port;
+            this.Config.Port = port;
+            this.RelaunchServer();
+            if (this.Server.Running) { this.Config.Save(); return null; }
+            var error = this.Server.LastError ?? "Listener did not start.";
+            this.Config.Port = previous;
+            this.RelaunchServer();
+            return error;
         }
 
         private void OnCommand(string command, string args) {

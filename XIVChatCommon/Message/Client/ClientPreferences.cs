@@ -9,6 +9,8 @@ namespace XIVChatCommon.Message.Client {
         [Key(0)]
         public Dictionary<ClientPreference, object> Preferences { get; set; } = new();
 
+        [Key(1)] public ushort[]? Channels { get; set; }
+
         protected override byte Code => (byte) ClientOperation.Preferences;
 
         protected override byte[] PayloadEncode() {
@@ -32,6 +34,9 @@ namespace XIVChatCommon.Message.Client {
 
         [Preference(typeof(bool))]
         WorkbenchSupport = 3,
+
+        [Preference(typeof(bool))]
+        GuardedCommandsSupport = 4,
     }
 
     public static class ClientPreferencesExtension {
@@ -47,7 +52,7 @@ namespace XIVChatCommon.Message.Client {
                 .GetField(pref.ToString())
                 ?.GetCustomAttribute<PreferenceAttribute>(false);
 
-            if (obj.GetType() != typeof(T) || obj.GetType() != attr?.ValueType) {
+            if (obj == null || obj.GetType() != typeof(T) || obj.GetType() != attr?.ValueType) {
                 return false;
             }
 

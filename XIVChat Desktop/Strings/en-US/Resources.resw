@@ -304,4 +304,11 @@
   <data name="FriendList.Updated" xml:space="preserve"><value>Friend list updated: {0} friends.</value></data>
   <data name="FriendList.Failed" xml:space="preserve"><value>Friend refresh failed. The last complete snapshot was kept.</value></data>
   <data name="FriendList.NotReady" xml:space="preserve"><value>Cannot refresh friends yet. Sign in to a supported server or wait for the current refresh.</value></data>
+  <data name="Command.NotLoggedIn" xml:space="preserve"><value>Command cancelled: wait until your character is ready.</value></data>
+  <data name="Command.IdentityChanged" xml:space="preserve"><value>Command cancelled: the character or login session changed.</value></data>
+  <data name="Command.ChannelChanged" xml:space="preserve"><value>Command cancelled: the channel or target changed. Check the target before sending again.</value></data>
+  <data name="Command.QueueFull" xml:space="preserve"><value>Command was not sent: the send queue is full. Check the connection before trying again.</value></data>
+  <data name="Command.InvalidRequest" xml:space="preserve"><value>Command was not sent: invalid request or more than 8 KiB of text.</value></data>
+  <data name="Command.Disconnected" xml:space="preserve"><value>Command cancelled: the connection ended.</value></data>
+  <data name="Command.Unavailable" xml:space="preserve"><value>Command could not be applied: this game channel is unavailable.</value></data>
 </root>

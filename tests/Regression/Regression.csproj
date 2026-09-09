@@ -10,6 +10,10 @@
     <ProjectReference Include="../../XIVChatStorage/XIVChatStorage.csproj" />
     <Compile Include="../../XIVChat Desktop/ConfigurationFile.cs" Link="ConfigurationFile.cs" />
     <Compile Include="../../XIVChatPlugin/Client.cs" Link="Client.cs" />
+    <Compile Include="../../XIVChatPlugin/GameCommandQueue.cs" Link="GameCommandQueue.cs" />
+    <Compile Include="../../XIVChatPlugin/MessageBacklog.cs" Link="MessageBacklog.cs" />
+    <Compile Include="../../XIVChatPlugin/BoundedCache.cs" Link="BoundedCache.cs" />
+    <Compile Include="../../XIVChatPlugin/ChatTextSplitter.cs" Link="ChatTextSplitter.cs" />
     <Compile Include="../../XIVChatPlugin/FriendListCoordinator.cs" Link="FriendListCoordinator.cs" />
     <Compile Include="../../XIVChat Desktop/FriendListSession.cs" Link="FriendListSession.cs" />
   </ItemGroup>

@@ -17,6 +17,7 @@ using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using XIVChatCommon.Message;
+using XIVChatCommon.Message.Client;
 using XIVChatCommon.Message.Server;
 using XIVChat_Desktop.Controls;
 
@@ -161,9 +162,13 @@ namespace XIVChat_Desktop {
                     var preferences = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx);
                     this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
-                        new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true });
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true,
+                            ChannelSubscriptions = true, GuardedCommands = true });
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
                     var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(request[0] == (byte)ClientOperation.Preferences && ClientPreferences.Decode(request[1..]).Channels == null,
+                        "History-enabled desktop negotiates all channels");
+                    request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(request[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.History, "Capabilities enable cursor recovery");
                     var owner = new CharacterIdentity { ContentId = 1, Name = "Aina Snow", HomeWorldId = 1, HomeWorld = "Home" };
                     var live = Message(2); live.Owner = owner; live.ServiceId = "smoke"; live.RunId = "run"; live.Sequence = 2; live.MessageId = "smoke:run:2";
@@ -171,6 +176,8 @@ namespace XIVChat_Desktop {
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, live);
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
                         new PlayerData("Home", "Visiting", "Area", "Aina Snow") { Identity = owner, OwnerEpoch = "login1" });
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new Availability(true));
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new ServerChannel(InputChannel.Say, "Say") { Revision = 42 });
                     var older = Message(1); older.Owner = owner; older.ServiceId = "smoke"; older.RunId = "run"; older.Sequence = 1; older.MessageId = "smoke:run:1";
                     var foreign = Message(3); foreign.Owner = new CharacterIdentity { ContentId = 2, Name = "Aina Snow", HomeWorldId = 2 };
                     foreign.ServiceId = "smoke"; foreign.RunId = "run"; foreign.Sequence = 3; foreign.MessageId = "smoke:run:3";
@@ -193,6 +200,7 @@ namespace XIVChat_Desktop {
                         new Player { ContentId = (ulong)i, Name = "Friend " + i, HomeWorld = 1 }).ToArray()) {
                         Owner = owner, OwnerEpoch = "login1", SnapshotId = "snapshot1", CapturedAt = DateTime.UtcNow,
                     };
+                    snapshot.Players[69].Name = ""; snapshot.Players[69].HomeWorld = 0; snapshot.Players[69].IdentityUnavailable = true;
                     var pages = FriendListProtocol.Pages(snapshot, friendRequest.RequestId);
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, pages[0]);
                     await Task.Delay(150);
@@ -201,13 +209,44 @@ namespace XIVChat_Desktop {
                     foreach (var page in pages.Skip(1)) await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, page);
                     for (int i = 0; i < 100 && await store.GetFriendSnapshotAsync(source, owner.Key!) == null; i++) await Task.Delay(30);
                     this.Check(this.Session.Friends.Snapshot?.Players.Length == 70 && !this.Session.Friends.IsStale &&
-                        (await store.GetFriendSnapshotAsync(source, owner.Key!))?.Players.Length == 70, "Complete friend snapshot reaches shared state and SQLite");
+                        (await store.GetFriendSnapshotAsync(source, owner.Key!))?.Players[69].IdentityUnavailable == true,
+                        "Complete friend snapshot including unavailable identity reaches shared state and SQLite");
                     this.Check(this.Connection!.RefreshFriends(), "Manual friend refresh is available");
                     friendRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     friendRequest = XIVChatCommon.Message.Client.ClientPlayerList.Decode(friendRaw[1..]);
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, FriendListProtocol.Error(friendRequest.RequestId, owner, "login1", FriendListStatus.Busy));
                     await Task.Delay(150);
                     this.Check(this.Session.Friends.Snapshot?.Players.Length == 70 && this.Session.Friends.IsStale, "Refresh error keeps the last complete snapshot");
+
+                    this.Connection!.ChangeChannel(InputChannel.Party);
+                    this.Check(this.Connection.SendMessage("smoke message"), "Ready desktop queues a guarded message");
+                    var channelRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    var messageRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    var command = ClientMessage.Decode(messageRaw[1..]);
+                    this.Check(channelRaw[0] == (byte)ClientOperation.Channel && messageRaw[0] == (byte)ClientOperation.Message &&
+                        ClientChannel.Decode(channelRaw[1..]).ExpectedOwnerEpoch == "login1" && command.ExpectedOwnerKey == owner.Key &&
+                        command.ExpectedOwnerEpoch == "login1" && command.ExpectedChannelRevision == 42,
+                        "Channel and message preserve submission order and captured owner / target revision");
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new ServerCommandResult {
+                        RequestId = command.RequestId, Failure = CommandFailure.ChannelChanged,
+                    });
+                    await Task.Delay(150);
+                    this.Check(this.Session.Messages.Any(m => m.ContentText == LocalizationHelper.GetString("Command.ChannelChanged")),
+                        "Rejected guarded command displays a localized cancellation reason");
+                    foreach (var tab in this.Config.Tabs) tab.Filter.Types = new HashSet<FilterType> { FilterType.Say };
+                    this.Config.Notifications.Add(new Notification("Tell alert") { MatchAll = true, Channels = new List<ChatType> { ChatType.TellIncoming } });
+                    this.Config.HistoryEnabled = false;
+                    var subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.OrderBy(x => x).SequenceEqual(new ushort[] { (ushort)ChatType.Say, (ushort)ChatType.TellIncoming }.OrderBy(x => x)),
+                        "Disabling local history retains the union of visible and notification channels");
+                    foreach (var tab in this.Config.Tabs) tab.Filter.Types.Clear();
+                    this.Connection.UpdateSubscriptions();
+                    subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.SequenceEqual(new ushort[] { (ushort)ChatType.TellIncoming }),
+                        "Removing visible channels preserves notification subscriptions");
+                    this.Config.HistoryEnabled = true;
+                    subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels == null, "Re-enabling history restores all-channel delivery");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new PlayerData("Home", "Home", "Area", "Other") {
                         Identity = foreign.Owner, OwnerEpoch = "login2",
                     });

@@ -8,6 +8,12 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Outgoing budgets include active writes and disconnect overflowing peers", StabilityTests.OutgoingBudget),
+    ("Game commands are bounded, atomic and tied to connection / owner / target", StabilityTests.GameCommands),
+    ("History limits apply immediately and cleared history reports a gap", StabilityTests.Backlog),
+    ("Subscriptions preserve history / notifications and old wire layouts", StabilityTests.SubscriptionsAndWire),
+    ("Metadata cache is bounded and UTF-8 chat splitting retains tell targets", StabilityTests.CacheAndSplit),
+    ("Relay writes wait for transport and incoming bytes are bounded", StabilityTests.RelayBackpressure),
     ("Friend wire compatibility and complete bounded assembly", FriendTests.Protocol),
     ("Friend refresh preserves snapshots and isolates login episodes", FriendTests.Session),
     ("Friend reader coalesces requests, times out and rejects old roles", FriendTests.Coordinator),

@@ -9,6 +9,8 @@ namespace XIVChatCommon.Message.Server {
         [Key(1)]
         public readonly string name;
 
+        [Key(2)] public long Revision { get; set; }
+
         [IgnoreMember]
         public InputChannel InputChannel => (InputChannel)this.channel;
 

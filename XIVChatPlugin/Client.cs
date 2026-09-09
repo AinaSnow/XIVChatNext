@@ -24,13 +24,31 @@ namespace XIVChatPlugin {
 
         internal CancellationTokenSource TokenSource { get; } = new();
 
-        internal Channel<Encodable> Queue { get; } = Channel.CreateUnbounded<Encodable>();
+        internal BoundedByteQueue Queue { get; } = new(512, 8 * 1024 * 1024);
+        internal bool Ready { get; set; }
+        internal ChannelSubscription Subscription { get; set; } = ChannelSubscription.All;
+        internal Action<string>? OnFailure { get; set; }
+        private int disconnected;
+        internal string? DisconnectReason { get; private set; }
+
+        internal bool Send(Encodable message) => this.SendEncoded(message.Encode());
+        internal bool SendEncoded(byte[] bytes) {
+            if (this.TokenSource.IsCancellationRequested) return false;
+            if (bytes.Length + SecretMessage.MacSize <= 128_000 && this.Queue.TryWrite(bytes)) return true;
+            this.Disconnect("Outgoing queue exceeded 512 packets / 8 MiB, or one packet exceeded the frame limit.");
+            return false;
+        }
 
         internal uint BacklogSequence { get; set; }
 
-        internal void Disconnect() {
+        internal void Disconnect(string? reason = null) {
+            if (Interlocked.Exchange(ref this.disconnected, 1) != 0) return;
+            this.DisconnectReason = reason;
+            this.Ready = false;
             this.Connected = false;
+            this.Queue.Close();
             this.TokenSource.Cancel();
+            if (reason != null) this.OnFailure?.Invoke(reason);
 
             try {
                 this.Close();
@@ -138,125 +156,58 @@ namespace XIVChatPlugin {
 
     internal sealed class RelayConnected : BaseClient {
         internal byte[] PublicKey { get; }
+        private readonly Func<IToRelay, CancellationToken, Task> send;
+        private readonly BoundedByteQueue incoming = new(128, 2 * 1024 * 1024);
+        private readonly MemoryStream writeBuffer = new();
+        private BoundedByteQueue.Lease? readPacket;
+        private int readOffset;
 
-        private ChannelWriter<IToRelay> ToRelay { get; }
-        private Channel<byte[]> FromRelay { get; }
-
-        internal ChannelWriter<byte[]> FromRelayWriter => this.FromRelay.Writer;
-
-        private List<byte> ReadBuffer { get; } = [];
-        private List<byte> WriteBuffer { get; } = [];
-
-        internal RelayConnected(byte[] publicKey, IPAddress? remote, ChannelWriter<IToRelay> toRelay, Channel<byte[]> fromRelay) {
-            this.PublicKey = publicKey;
-            this.Remote = remote;
-            this.Connected = true;
-            this.ToRelay = toRelay;
-            this.FromRelay = fromRelay;
+        internal RelayConnected(byte[] publicKey, IPAddress? remote, Func<IToRelay, CancellationToken, Task> send) {
+            this.PublicKey = publicKey; this.Remote = remote; this.send = send; this.Connected = true;
         }
-
-        public override void Flush() {
-            if (this.WriteBuffer.Count == 0) {
-                return;
-            }
-
-            var message = new RelayedMessage {
-                PublicKey = this.PublicKey.ToList(),
-                Message = this.WriteBuffer.ToList(),
-            };
-            this.WriteBuffer.Clear();
-
-            // write the contents of the write buffer to the relay
-            this.ToRelay.WriteAsync(message).AsTask().Wait();
+        internal void Receive(byte[] bytes) {
+            if (bytes.Length > 128_028 || !this.incoming.TryWrite(bytes)) this.Disconnect("Relay input exceeded its packet / byte budget.");
         }
-
-        public override long Seek(long offset, SeekOrigin origin) {
-            throw new NotSupportedException();
+        public override void Flush() => this.FlushAsync(this.TokenSource.Token).GetAwaiter().GetResult();
+        public override async Task FlushAsync(CancellationToken cancellationToken) {
+            if (this.writeBuffer.Length == 0) return;
+            var bytes = this.writeBuffer.ToArray(); this.writeBuffer.SetLength(0);
+            // Keep the base client's outgoing lease reserved until the websocket has sent this packet.
+            await this.send(new RelayedMessage { PublicKey = this.PublicKey.ToList(), Message = bytes.ToList() }, cancellationToken);
         }
-
-        public override void SetLength(long value) {
-            throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count) {
-            var read = 0;
-
-            // if there are bytes in the buffer, take from them first
-            if (this.ReadBuffer.Count > 0) {
-                // determine how many bytes to take from the buffer
-                var toRead = count > this.ReadBuffer.Count ? this.ReadBuffer.Count : count;
-
-                // copy bytes, then remove them
-                this.ReadBuffer.CopyTo(0, buffer, offset, toRead);
-                this.ReadBuffer.RemoveRange(0, toRead);
-                // increment the read count
-                read += toRead;
-            }
-
-            // if we've read everything, return
-            if (read == count) {
-                return read;
-            }
-
-            // get new bytes
-            var readTask = this.FromRelay.Reader.ReadAsync().AsTask();
-            readTask.Wait();
-            var bytes = readTask.Result;
-
-            // add new bytes to buffer
-            this.ReadBuffer.AddRange(bytes);
-
-            // and keep going
-            return read + this.Read(buffer, offset + read, count - read);
-        }
-
+        public override int Read(byte[] buffer, int offset, int count) =>
+            this.ReadAsync(buffer, offset, count, this.TokenSource.Token).GetAwaiter().GetResult();
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) {
-            var read = 0;
-
-            // if there are bytes in the buffer, take from them first
-            if (this.ReadBuffer.Count > 0) {
-                // determine how many bytes to take from the buffer
-                var toRead = count > this.ReadBuffer.Count ? this.ReadBuffer.Count : count;
-
-                // copy bytes, then remove them
-                this.ReadBuffer.CopyTo(0, buffer, offset, toRead);
-                this.ReadBuffer.RemoveRange(0, toRead);
-                // increment the read count
-                read += toRead;
+            if (count == 0) return 0;
+            while (this.readPacket == null) {
+                this.readPacket = await this.incoming.ReadAsync(cancellationToken);
+                this.readOffset = 0;
+                if (this.readPacket.Bytes.Length == 0) { this.readPacket.Dispose(); this.readPacket = null; }
             }
-
-            // if we've read everything, return
-            if (read == count) {
-                return read;
-            }
-
-            // get new bytes
-            var bytes = await this.FromRelay.Reader.ReadAsync(cancellationToken);
-
-            // add new bytes to buffer
-            this.ReadBuffer.AddRange(bytes);
-
-            // and keep going
-            return read + await this.ReadAsync(buffer, offset + read, count - read, cancellationToken);
+            var packet = this.readPacket;
+            var take = Math.Min(count, packet.Bytes.Length - this.readOffset);
+            Array.Copy(packet.Bytes, this.readOffset, buffer, offset, take); this.readOffset += take;
+            if (this.readOffset == packet.Bytes.Length) { this.readPacket = null; packet.Dispose(); }
+            return take;
         }
-
         public override void Write(byte[] buffer, int offset, int count) {
-            // create a new array of the bytes to send
-            var bytes = new byte[count];
-            // copy bytes over
-            Array.Copy(buffer, 0, bytes, 0, count);
-            // push them into the write buffer
-            this.WriteBuffer.AddRange(bytes);
+            this.TokenSource.Token.ThrowIfCancellationRequested();
+            if (count > 128_028 - this.writeBuffer.Length) throw new IOException("Relay frame exceeds the frame budget.");
+            this.writeBuffer.Write(buffer, offset, count);
         }
-
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) {
+            cancellationToken.ThrowIfCancellationRequested(); this.Write(buffer, offset, count); return Task.CompletedTask;
+        }
+        protected override void Dispose(bool disposing) {
+            if (disposing) { this.incoming.Close(); this.readPacket?.Dispose(); this.writeBuffer.Dispose(); }
+            base.Dispose(disposing);
+        }
         public override bool CanRead => true;
         public override bool CanWrite => true;
         public override bool CanSeek => false;
         public override long Length => throw new NotSupportedException();
-
-        public override long Position {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
     }
 }

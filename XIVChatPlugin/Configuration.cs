@@ -2,6 +2,7 @@ using Dalamud.Configuration;
 using Sodium;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace XIVChatPlugin {
     [Serializable]
@@ -14,6 +15,9 @@ namespace XIVChatPlugin {
 
         public bool BacklogEnabled { get; set; } = true;
         public ushort BacklogCount { get; set; } = 100;
+        public int BacklogMaxMiB { get; set; } = 32;
+        // Auto, Chinese, English. Plugin UI language is independent of game data language.
+        public int UiLanguage { get; set; }
 
         public bool SendBattle { get; set; } = true;
 
@@ -24,11 +28,12 @@ namespace XIVChatPlugin {
         public bool AllowRelayConnections { get; set; }
         public string? RelayAuth { get; set; }
 
-        public Dictionary<Guid, Tuple<string, byte[]>> TrustedKeys { get; set; } = new();
+        public ConcurrentDictionary<Guid, Tuple<string, byte[]>> TrustedKeys { get; set; } = new();
         public KeyPair? KeyPair { get; set; }
 
         internal void Initialise(Plugin plugin) {
             this._plugin = plugin;
+            this.BacklogMaxMiB = Math.Clamp(this.BacklogMaxMiB, 1, 256);
         }
 
         internal void Save() {

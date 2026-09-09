@@ -13,6 +13,7 @@ using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using Lumina.Excel.Sheets;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
@@ -27,8 +28,6 @@ namespace XIVChatPlugin {
 
             internal const string GetColour = "48 89 5C 24 ?? 48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 8B F2 48 8D B9";
 
-            internal const string Channel = "E8 ?? ?? ?? ?? 33 C0 EB ?? 85 D2";
-            internal const string ChannelCommand = "E8 ?? ?? ?? ?? 0F B7 44 37";
             internal const string ChannelNameChange = "E8 ?? ?? ?? ?? BA ?? ?? ?? ?? 48 8D 4D B0 48 8B F8 E8 ?? ?? ?? ?? 41 8B D6";
             internal const string ColourLookup = "48 8D 0D ?? ?? ?? ?? ?? ?? ?? 85 D2 7E";
         }
@@ -45,11 +44,9 @@ namespace XIVChatPlugin {
 
         private delegate nint GetColourInfoDelegate(nint handler, uint lookupResult);
 
-        private delegate byte ChatChannelChangeDelegate(nint a1, uint channel);
 
         private delegate nint ChatChannelChangeNameDelegate(nint a1);
 
-        private delegate nint ChannelChangeCommandDelegate(nint a1, int inputChannel, uint linkshellIdx, nint tellTarget, char canChangeChannel);
 
         #endregion
 
@@ -61,8 +58,6 @@ namespace XIVChatPlugin {
         [Signature(Signatures.InputAfk, DetourName = nameof(IsInputAfkDetour))]
         private readonly Hook<IsInputAfkDelegate>? _isInputAfkHook;
 
-        [Signature(Signatures.Channel, DetourName = nameof(ChangeChatChannelDetour))]
-        private readonly Hook<ChatChannelChangeDelegate>? _chatChannelChangeHook;
 
         [Signature(Signatures.ChannelNameChange, DetourName = nameof(ChangeChatChannelNameDetour))]
         private readonly Hook<ChatChannelChangeNameDelegate>? _chatChannelChangeNameHook;
@@ -77,8 +72,6 @@ namespace XIVChatPlugin {
         [Signature(Signatures.GetColour)]
         private readonly GetColourInfoDelegate? _getColourInfo;
 
-        [Signature(Signatures.ChannelCommand)]
-        private readonly ChannelChangeCommandDelegate? _channelChangeCommand;
 
         #endregion
 
@@ -113,14 +106,12 @@ namespace XIVChatPlugin {
         }
 
         private InputSetters HadInput { get; set; } = InputSetters.None;
-        private nint _chatManager = nint.Zero;
         private readonly nint _emptyXivString;
 
         internal GameFunctions(Plugin plugin) {
             this.Plugin = plugin;
 
             this.Plugin.GameInteropProvider.InitializeFromAttributes(this);
-            this._chatChannelChangeHook?.Enable();
             this._chatChannelChangeNameHook?.Enable();
             this._isInputHook?.Enable();
             this._isInputAfkHook?.Enable();
@@ -146,12 +137,11 @@ namespace XIVChatPlugin {
             return 1;
         }
 
-        internal void ChangeChatChannel(InputChannel channel) {
-            if (this._chatManager == nint.Zero || this._channelChangeCommand == null || this._emptyXivString == nint.Zero) {
-                return;
-            }
-
-            this._channelChangeCommand(this._chatManager, (int) channel, channel.LinkshellIndex(), this._emptyXivString, '\x01');
+        internal bool ChangeChatChannel(InputChannel channel) {
+            if (!this.Plugin.Framework.IsInFrameworkUpdateThread) return false;
+            var shell = RaptureShellModule.Instance();
+            if (shell == null || this._emptyXivString == nint.Zero) return false;
+            return shell->ChangeChatChannel((int)channel, channel.LinkshellIndex(), (Utf8String*)this._emptyXivString, true);
         }
 
         // This function looks up a channel's user-defined colour.
@@ -207,24 +197,16 @@ namespace XIVChatPlugin {
             Marshal.FreeHGlobal(mem1);
         }
 
-        private byte ChangeChatChannelDetour(nint a1, uint channel) {
-            this._chatManager = a1;
-            // Last ShB patch
-            // a1 + 0xfd0 is the chat channel byte (including for when clicking on shout)
-            return this._chatChannelChangeHook!.Original(a1, channel);
+        private nint ChangeChatChannelNameDetour(nint a1) {
+            var ret = this._chatChannelChangeNameHook!.Original(a1);
+            this.RefreshChatChannel();
+            return ret;
         }
 
-        private nint ChangeChatChannelNameDetour(nint a1) {
-            // Last ShB patch
-            // +0x40 = chat channel (byte or uint?)
-            //         channel is 17 (maybe 18?) for tells
-            // +0x48 = pointer to channel name string
-            var ret = this._chatChannelChangeNameHook!.Original(a1);
-            if (a1 == nint.Zero) {
-                return ret;
-            }
-
+        internal bool RefreshChatChannel() {
+            if (!this.Plugin.Framework.IsInFrameworkUpdateThread) return false;
             var agent = AgentChatLog.Instance();
+            if (agent == null) return false;
             var channel = (uint) agent->CurrentChannel;
             var label = SeString.Parse(agent->ChannelLabel.AsSpan());
 
@@ -232,13 +214,12 @@ namespace XIVChatPlugin {
                 channel = 0;
             }
 
-            this.Plugin.Server.OnChatChannelChange(channel, label);
-
-            return ret;
+            var target = channel == 0 ? agent->TellPlayerName.ToString() + "@" + agent->TellWorldId : null;
+            this.Plugin.Server?.OnChatChannelChange(channel, label, target);
+            return true;
         }
 
         public void Dispose() {
-            this._chatChannelChangeHook?.Dispose();
             this._chatChannelChangeNameHook?.Dispose();
             this._isInputHook?.Dispose();
             this._isInputAfkHook?.Dispose();

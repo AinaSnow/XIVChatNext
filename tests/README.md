@@ -21,6 +21,11 @@ Friend coverage checks bounded complete pagination, legacy fields, duplicate IDs
 cached/empty snapshots, refresh failures, concurrent request coalescing, timeout, queue limits,
 and the v1-to-v2 database migration with its pre-migration backup and source/owner partitions.
 
+Stability coverage checks outgoing byte/count budgets including active writes, atomic game-command
+batches, owner/login/channel guards, disconnect cancellation, immediate memory-history limits,
+subscription unions and legacy layouts, bounded metadata caches, UTF-8 splitting with complete
+Tell targets, and relay buffering/transport completion. The regression runner has 30 checks.
+
 ## WinUI desktop smoke test
 
 ```powershell
@@ -46,6 +51,10 @@ The modern server also sends a 70-person friend snapshot in three pages. Checks 
 and manual requests, ownership fields, no partial publication/persistence, error preservation,
 and rejection of pages from the previous character.
 
+The stability additions verify channel/message submission order, captured owner/channel guards,
+localized command rejection, and the history/view/notification subscription union. There are
+36 desktop checks, followed by the completion marker.
+
 Rebuild without the test targets before running the regular desktop app:
 
 ```powershell
@@ -57,6 +66,10 @@ dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
 The live single-character send/receive, SQLite persistence, offline replay and two reconnect checks
 performed on 2026-09-09 are recorded in [the integration report](../docs/LIVE_INTEGRATION_2026-09-09.md),
 including the scenarios that still need real-game verification.
+
+The 2026-09-10 stability run additionally verifies plugin reload, native channel initialization and
+change/restoration, concurrent friend requests from two clients, stale-command rejection,
+live channel subscriptions and explicit port application. See [the stability report](../docs/PHASE2_STABILITY_2026-09-10.md).
 
 Before loading a Debug build, check the real plugin entry point using the same uninitialized-object
 constructor invocation used by Dalamud:

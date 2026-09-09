@@ -12,5 +12,6 @@
         HousingLocation = 10,
         Capabilities = 11,
         History = 12,
+        CommandResult = 13,
     }
 }

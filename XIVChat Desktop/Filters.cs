@@ -346,7 +346,7 @@ namespace XIVChat_Desktop {
 
         public static string? Name(this FilterType filter) => filter.Info()?.Name;
 
-        private static IEnumerable<ChatType> Types(this FilterType filter) => filter.Info()?.Types ?? new ChatType[0];
+        public static IEnumerable<ChatType> Types(this FilterType filter) => filter.Info()?.Types ?? new ChatType[0];
 
         private static ChatSource[] Sources(this FilterType filter) => filter.Info()?.Source switch {
             FilterSource.Self => new[] {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Lumina.Excel.Sheets;
 using PeepingTom.Ipc;
@@ -14,6 +15,8 @@ namespace XIVChatPlugin.Ipc {
     internal class PeepingTom : IDisposable {
         private Plugin Plugin { get; }
         private List<TargeterWithStatus> Targeters { get; } = [];
+        private byte[] latest = new ServerPlayerList(PlayerListType.Targeting, Array.Empty<Player>()).Encode();
+        private bool disposed;
 
         private class TargeterWithStatus {
             public Targeter Targeter { get; set; } = null!;
@@ -29,15 +32,21 @@ namespace XIVChatPlugin.Ipc {
         }
 
         public void Dispose() {
+            this.disposed = true;
             this.Plugin.Events.NewClient -= this.OnNewClient;
             IpcInfo.GetSubscriber(this.Plugin.Interface).Unsubscribe(this.ReceiveMessage);
         }
 
         private void ReceiveMessage(IFromMessage message) {
+            if (this.disposed) return;
+            if (!this.Plugin.Framework.IsInFrameworkUpdateThread) {
+                _ = this.Plugin.Framework.RunOnFrameworkThread(() => this.ReceiveMessage(message));
+                return;
+            }
             switch (message) {
                 case AllTargetersMessage allMessage: {
                     this.Targeters.Clear();
-                    this.Targeters.AddRange(allMessage.Targeters
+                    this.Targeters.AddRange(allMessage.Targeters.Take(200)
                         .Select(t => new TargeterWithStatus {
                             Targeter = t.targeter,
                             Targeting = t.currentlyTargeting,
@@ -56,7 +65,8 @@ namespace XIVChatPlugin.Ipc {
                 }
             }
 
-            var xivChatMessage = this.GetMessage();
+            var xivChatMessage = this.GetMessage().Encode();
+            Volatile.Write(ref this.latest, xivChatMessage);
             foreach (var client in this.Plugin.Server.Clients.Values) {
                 this.SendToClient(client, xivChatMessage);
             }
@@ -65,6 +75,7 @@ namespace XIVChatPlugin.Ipc {
         private void UpdateTargeter(Targeter targeter, bool targeting) {
             var existing = this.Targeters.FirstOrDefault(t => t.Targeter.GameObjectId == targeter.GameObjectId);
             if (existing == default) {
+                if (this.Targeters.Count >= 200) this.Targeters.RemoveAt(0);
                 this.Targeters.Add(new TargeterWithStatus {
                     Targeter = targeter,
                     Targeting = targeting,
@@ -102,16 +113,16 @@ namespace XIVChatPlugin.Ipc {
             return new ServerPlayerList(PlayerListType.Targeting, players);
         }
 
-        private void SendToClient(BaseClient client, ServerPlayerList list) {
-            if (!client.GetPreference(ClientPreference.TargetingListSupport, false)) {
+        private void SendToClient(BaseClient client, byte[] list) {
+            if (!client.Ready || !client.GetPreference(ClientPreference.TargetingListSupport, false)) {
                 return;
             }
 
-            client.Queue.Writer.TryWrite(list);
+            client.SendEncoded(list);
         }
 
         private void OnNewClient(Guid id, BaseClient client) {
-            this.SendToClient(client, this.GetMessage());
+            this.SendToClient(client, Volatile.Read(ref this.latest));
         }
     }
 }
