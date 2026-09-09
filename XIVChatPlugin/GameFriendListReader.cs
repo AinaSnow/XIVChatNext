@@ -93,9 +93,16 @@ namespace XIVChatPlugin {
                         Job = entry.Job, JobName = jobs.GetRowOrDefault(entry.Job)?.Name.ExtractText(),
                         Territory = entry.Location, TerritoryName = territories.GetRowOrDefault(entry.Location)?.PlaceName.ValueNullable?.Name.ExtractText(),
                         GrandCompany = (byte)entry.GrandCompany, MainLanguage = (byte)entry.ClientLanguage, Languages = (byte)entry.Languages,
+                        IdentityUnavailable = entry.HomeWorld == 0 || string.IsNullOrWhiteSpace(entry.NameString),
                     };
                 }
                 var status = FriendListProtocol.ValidPlayers(players) ? FriendListStatus.Success : FriendListStatus.Failed;
+                if (status != FriendListStatus.Success) {
+                    Plugin.Log.Warning("Friend snapshot rejected: count={Count}, zeroCid={ZeroCid}, zeroHomeWorld={ZeroHomeWorld}, invalidName={InvalidName}, duplicateCid={DuplicateCid}",
+                        players.Length, players.Count(p => p.ContentId == 0), players.Count(p => p.HomeWorld == 0),
+                        players.Count(p => string.IsNullOrWhiteSpace(p.Name) || p.Name.Length > 64),
+                        players.Length - players.Select(p => p.ContentId).Distinct().Count());
+                }
                 Interlocked.Exchange(ref this.result, new FriendReadResult(requestEpoch, players, status));
             } catch (Exception ex) {
                 Plugin.Log.Warning(ex, "Friend list completed but its snapshot could not be read.");

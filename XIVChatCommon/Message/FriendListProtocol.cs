@@ -13,7 +13,8 @@ namespace XIVChatCommon.Message {
         public const int MaxPages = (MaxFriends + PageSize - 1) / PageSize;
 
         public static bool ValidPlayers(Player[]? players) => players != null && players.Length <= MaxFriends &&
-            players.All(p => p != null && p.ContentId != 0 && p.HomeWorld != 0 && !string.IsNullOrWhiteSpace(p.Name) && p.Name.Length <= 64) &&
+            players.All(p => p != null && p.ContentId != 0 && p.Name != null && p.Name.Length <= 64 &&
+                p.IdentityUnavailable == (p.HomeWorld == 0 || string.IsNullOrWhiteSpace(p.Name))) &&
             players.Select(p => p.ContentId).Distinct().Count() == players.Length;
 
         public static ServerPlayerList Error(string? requestId, CharacterIdentity? owner, string? epoch, FriendListStatus status) =>

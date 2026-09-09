@@ -39,6 +39,18 @@ internal static class FriendTests {
         var duplicate = FriendListProtocol.Pages(Snapshot(33), "dup"); duplicate[1].Players[0].ContentId = 1;
         assembler = new("dup", "cid:1", "login1"); assembler.Add(duplicate[0]); assembler.Add(duplicate[1]);
         Check(assembler.Failure == FriendListStatus.Failed, "Cross-page duplicate accepted");
+        var unavailable = Snapshot(42);
+        unavailable.Players[41].Name = ""; unavailable.Players[41].HomeWorld = 0;
+        Check(!FriendListProtocol.ValidPlayers(unavailable.Players), "Unmarked missing identity accepted");
+        unavailable.Players[41].IdentityUnavailable = true;
+        assembler = new("unavailable", "cid:1", "login1");
+        ServerPlayerList? restored = null;
+        foreach (var page in FriendListProtocol.Pages(unavailable, "unavailable"))
+            restored = assembler.Add(ServerPlayerList.Decode(page.Encode()[1..]));
+        Check(restored?.Players.Length == 42 && restored.Players[41].IdentityUnavailable && restored.Players[41].ContentId == 42,
+            "Unavailable identity slot did not survive paging");
+        unavailable.Players[41].ContentId = 0;
+        Check(!FriendListProtocol.ValidPlayers(unavailable.Players), "Unavailable flag allowed a missing CID");
         return Task.CompletedTask;
     }
     public static Task Session() {

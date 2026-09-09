@@ -266,7 +266,7 @@
     <value>Friend List</value>
   </data>
   <data name="FriendList.Refresh" xml:space="preserve">
-    <value>Refresh</value>
+    <value>Refresh friend list</value>
   </data>
   <data name="ServerScan.Title" xml:space="preserve">
     <value>Server Scan</value>

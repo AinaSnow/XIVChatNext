@@ -266,7 +266,7 @@
     <value>好友列表</value>
   </data>
   <data name="FriendList.Refresh" xml:space="preserve">
-    <value>刷新</value>
+    <value>刷新好友列表</value>
   </data>
   <data name="ServerScan.Title" xml:space="preserve">
     <value>服务扫描</value>

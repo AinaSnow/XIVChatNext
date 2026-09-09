@@ -734,6 +734,9 @@ namespace XIVChatCommon.Message {
         public byte MainLanguage { get; set; }
 
         [Key(15)] public ulong ContentId { get; set; }
+        // The game can retain a friend's CID while its name/world cannot be retrieved.
+        // Preserve this slot without inventing a name or a usable chat target.
+        [Key(16)] public bool IdentityUnavailable { get; set; }
 
         public bool HasStatus(PlayerStatus status) => (this.Status & ((ulong) 1 << (int) status)) > 0;
     }
