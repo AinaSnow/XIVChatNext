@@ -304,8 +304,9 @@ namespace XIVChat_Desktop {
             SendButton.IsEnabled = !string.IsNullOrWhiteSpace(Composer.Text) && (model != null ? canTell : connection?.Available == true && selectedChannel != null);
             ChannelSwitchButton.Visibility = V(model == null); ChannelSwitchButton.Content = connection?.CurrentChannel ?? L("Workbench.Channel"); ChannelSwitchButton.IsEnabled = connection?.Available == true;
             ComposerTarget.Text = model != null ? string.Format(L("Conversation.Target"), model.Name, model.World) : L("Workbench.ChannelTarget");
-            ComposerStatus.Text = model?.SendStatus is { Length: > 0 } status ? status : model != null && !canTell
-                ? L(connection?.Available == true && !connection.SupportsDirectedTell ? "Conversation.UpgradeRequired" : "Conversation.ReadOnly") : L("Workbench.EnterHint");
+            ComposerStatus.Text = model != null && !canTell
+                ? L(connection?.Available == true && !connection.SupportsDirectedTell ? "Conversation.UpgradeRequired" : "Conversation.ReadOnly")
+                : model?.SendStatus is { Length: > 0 } status ? status : L("Workbench.EnterHint");
             RestoreDraftButton.Visibility = V(model?.FailedDraft != null); PinConversationButton.IsChecked = model?.Pinned == true;
             FooterStatus.Text = App.Workbench.Error is { } error ? L("History.Unavailable") + " " + error :
                 (App.Config.HistoryEnabled ? string.Format(L("Workbench.HistoryRetention"), App.Config.HistoryRetentionDays == 0 ? L("Workbench.Forever") : App.Config.HistoryRetentionDays.ToString()) : L("Workbench.HistoryOff"));

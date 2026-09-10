@@ -31,7 +31,8 @@ Tell targets, and relay buffering/transport completion. The regression runner ha
 Localization resources can be checked with `./tests/LocalizationAudit.ps1`. This verifies
 key parity, duplicate/empty values, format arguments and static resource references.
 The desktop smoke suite also checks language changes on already open dialogs, generated
-channel options and preservation of unsaved input (62 checks as of 2026-09-10).
+channel options and preservation of unsaved input. The live integration follow-up adds
+offline composer guidance after a prior send result (63 checks as of 2026-09-10).
 
 ```powershell
 $smokeTargets = Join-Path (Get-Location) 'tests/DesktopSmoke.targets'

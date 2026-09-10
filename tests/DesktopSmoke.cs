@@ -342,6 +342,11 @@ namespace XIVChat_Desktop {
             await SecretMessage.SendSecretMessage(stream, tx, new ServerCommandResult { RequestId = sent.RequestId, Stage = CommandStage.Submitted });
             await Task.Delay(80);
             this.Check(model.SendStatus == LocalizationHelper.GetString("Conversation.Submitted"), "Game submission status is shown separately");
+            var connectedSession = this.Connection;
+            this.Connection = null;
+            this.Check(Find<TextBlock>(root, b => b.Name == "ComposerStatus").Text == LocalizationHelper.GetString("Conversation.ReadOnly")
+                && !Find<Button>(root, b => b.Name == "SendButton").IsEnabled, "Disconnected composer shows read-only guidance instead of the previous send result");
+            this.Connection = connectedSession;
             this.Check(this.Workbench.Send(model, "recover me"), "Second Tell queues");
             raw = await SecretMessage.ReadSecretMessage(stream, rx, token); sent = ClientMessage.Decode(raw[1..]);
             composer.Text = "new draft";
