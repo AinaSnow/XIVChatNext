@@ -34,7 +34,7 @@ namespace XIVChat_Desktop {
         public void Restore(ConversationSnapshot snapshot) {
             if (!locallyEdited) State = snapshot.State;
             if (snapshot.Latest != null && (Latest == null || ChatSession.Compare(snapshot.Latest.Message, Latest) > 0)) Latest = snapshot.Latest.Message;
-            Unread = Math.Max(Unread, snapshot.Unread); Notify();
+            Unread = Math.Max(Unread, snapshot.Unread); Notify(nameof(Draft));
         }
         public void Observe(ServerMessage message, bool live) {
             if (Latest == null || ChatSession.Compare(message, Latest) > 0) Latest = message;
@@ -45,7 +45,10 @@ namespace XIVChat_Desktop {
         public void UpdatePeer(CharacterIdentity peer) { State = State with { Peer = ConversationIdentity.Copy(peer) }; Notify(); }
         public void SetStatus(string status, string? failed = null) { SendStatus = status; FailedDraft = failed; Notify(); }
         public event PropertyChangedEventHandler? PropertyChanged;
-        private void Notify([CallerMemberName] string? property = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
+        private void Notify([CallerMemberName] string? property = null) {
+            if (property == nameof(Draft)) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Draft)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(""));
+        }
     }
 
     /// <summary>Shared UI-thread conversation state. Storage and protocol replies keep their original source and owner.</summary>

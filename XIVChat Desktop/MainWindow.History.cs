@@ -15,6 +15,7 @@ namespace XIVChat_Desktop {
     public sealed record HistoryOwnerOption(string Label, HistoryOwner? Owner);
     public sealed record HistoryChannelOption(string Label, ushort? Channel);
     public sealed record HistoryResult(HistoryRow Row, string Query) {
+        public override string ToString() => Heading + ": " + Content;
         public string Heading => (Row.Bookmarked ? "★  " : "") + Row.Message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " + Row.Message.Owner?.Name + " · " + Row.Message.SenderText + " · " + Row.Message.Channel;
         public string Content => Row.Message.ContentText;
         public string Note => Row.Note;

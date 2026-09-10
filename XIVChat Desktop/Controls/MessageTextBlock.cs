@@ -15,6 +15,8 @@ namespace XIVChat_Desktop.Controls {
             });
             this.FontFamily = new FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK");
             this.TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap;
+            this.ActualThemeChanged += (_, _) => Render();
+            this.Loaded += (_, _) => Render();
         }
 
         public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(
@@ -57,6 +59,11 @@ namespace XIVChat_Desktop.Controls {
             if (!(d is MessageTextBlock textBlock)) {
                 return;
             }
+            textBlock.Render();
+        }
+
+        private void Render() {
+            var textBlock = this;
 
             textBlock.Blocks.Clear();
             textBlock.Background = null;
@@ -75,7 +82,8 @@ namespace XIVChat_Desktop.Controls {
                 message,
                 textBlock.FontSize,
                 textBlock.ProcessMarkdown,
-                textBlock.ShowTimestamps
+                textBlock.ShowTimestamps,
+                textBlock.ActualTheme == ElementTheme.Light
             );
             
             var paragraph = new Microsoft.UI.Xaml.Documents.Paragraph();

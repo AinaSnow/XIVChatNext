@@ -92,14 +92,27 @@ namespace XIVChat_Desktop {
             }
         }
 
-        public static IEnumerable<Inline> ChunksToTextBlock(ServerMessage message, double fontSize, bool processMarkdown, bool showTimestamp) {
+        internal static Color ReadableColor(Color color, bool lightTheme) {
+            static double Linear(byte value) { var s = value / 255d; return s <= .04045 ? s / 12.92 : Math.Pow((s + .055) / 1.055, 2.4); }
+            static double Luminance(Color value) => .2126 * Linear(value.R) + .7152 * Linear(value.G) + .0722 * Linear(value.B);
+            color.A = 255;
+            for (var i = 0; i < 32; i++) {
+                var lum = Luminance(color);
+                if (lightTheme ? (Luminance(Color.FromArgb(255, 243, 243, 243)) + .05) / (lum + .05) >= 4.5 : (lum + .05) / (Luminance(Color.FromArgb(255, 32, 32, 32)) + .05) >= 4.5) break;
+                byte Blend(byte value) => lightTheme ? (byte)(value * .9) : (byte)(value + Math.Max(1, (255 - value) * .1));
+                color.R = Blend(color.R); color.G = Blend(color.G); color.B = Blend(color.B);
+            }
+            return color;
+        }
+
+        public static IEnumerable<Inline> ChunksToTextBlock(ServerMessage message, double fontSize, bool processMarkdown, bool showTimestamp, bool lightTheme = false) {
             var elements = new List<Inline>();
 
             if (showTimestamp) {
                 var timestampString = message.Timestamp.ToLocalTime().ToString("t", CultureInfo.CurrentUICulture);
                 var tsRun = new Run {
                     Text = $"[{timestampString}]",
-                    Foreground = new SolidColorBrush(Colors.White),
+                    Foreground = new SolidColorBrush(ReadableColor(Colors.White, lightTheme)),
                 };
                 ApplyFontFamily(tsRun);
                 elements.Add(tsRun);
@@ -112,14 +125,14 @@ namespace XIVChat_Desktop {
 
                         SolidColorBrush brush;
                         if (colour == 0) {
-                            brush = new SolidColorBrush(Colors.White);
+                            brush = new SolidColorBrush(ReadableColor(Colors.White, lightTheme));
                         } else {
                             var r = (byte)((colour >> 24) & 0xFF);
                             var g = (byte)((colour >> 16) & 0xFF);
                             var b = (byte)((colour >> 8) & 0xFF);
                             var a = (byte)(colour & 0xFF);
                             if (a == 0) a = 255;
-                            brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+                            brush = new SolidColorBrush(ReadableColor(Color.FromArgb(a, r, g, b), lightTheme));
                         }
                         var style = textChunk.Italic ? FontStyle.Italic : FontStyle.Normal;
 
@@ -134,7 +147,7 @@ namespace XIVChat_Desktop {
                         }
 
                         if (isMapLink) {
-                            var linkBrush = new SolidColorBrush(Color.FromArgb(255, 100, 180, 255));
+                            var linkBrush = new SolidColorBrush(ReadableColor(Color.FromArgb(255, 100, 180, 255), lightTheme));
                             var linkRun = new Run {
                                 Text = textChunk.Content,
                                 Foreground = linkBrush,
@@ -192,7 +205,7 @@ namespace XIVChat_Desktop {
                                 7 => Color.FromArgb(255, 255, 115, 190), // 粉装
                                 _ => Color.FromArgb(255, 255, 205, 90)   // 默认金色
                             };
-                            var linkBrush = new SolidColorBrush(linkColor);
+                            var linkBrush = new SolidColorBrush(ReadableColor(linkColor, lightTheme));
                             var linkRun = new Run {
                                 Text = textChunk.Content,
                                 Foreground = linkBrush,

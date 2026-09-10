@@ -244,7 +244,7 @@ namespace XIVChat_Desktop {
         }
         private void SelectedConversationChanged(object? sender, PropertyChangedEventArgs e) {
             if (selectedConversation == null) return;
-            if (Composer.Text != selectedConversation.Draft) { syncing = true; Composer.Text = selectedConversation.Draft; syncing = false; }
+            if (e.PropertyName == nameof(ConversationModel.Draft) && Composer.Text != selectedConversation.Draft) { syncing = true; Composer.Text = selectedConversation.Draft; syncing = false; }
             UpdateReady();
         }
         private async Task LoadConversationAsync(bool older) {
@@ -297,6 +297,7 @@ namespace XIVChat_Desktop {
             MenuConnect.IsEnabled = !App.Connected; MenuDisconnect.IsEnabled = App.Connected; MenuRefreshFriends.IsEnabled = connection?.Available == true;
             ConnectionLabel.Text = connection?.Available == true ? L("Workbench.Connected") : L("Workbench.Disconnected");
             OwnAvatar.Identity = player?.Identity ?? App.Workbench.Owner;
+            if (player == null) LoggedInAs.Text = App.Workbench.Owner?.Name ?? L("Status.Disconnected");
             Composer.PlaceholderText = L("Workbench.TypeMessage");
             Composer.IsEnabled = model != null || connection?.Available == true;
             var canTell = model != null && model.State.Source == App.Session.Source && model.State.OwnerKey == player?.Identity?.Key && connection?.Available == true && connection.SupportsDirectedTell;
@@ -314,7 +315,7 @@ namespace XIVChat_Desktop {
             if (selectedConversation != null) { if (selectedConversation.Draft != Composer.Text) selectedConversation.Draft = Composer.Text; if (selectedConversation.Dirty) App.Workbench.Save(selectedConversation); }
             else if (activeChannelDraftKey != null && section == "channels") channelDrafts[activeChannelDraftKey] = Composer.Text;
         }
-        private void Composer_TextChanged(object sender, TextChangedEventArgs e) {
+        private void Composer_TextChanging(TextBox sender, TextBoxTextChangingEventArgs e) {
             if (!initialized || syncing) return;
             if (selectedConversation != null) { selectedConversation.Draft = Composer.Text; App.Workbench.Save(selectedConversation, true); }
             UpdateReady();

@@ -50,6 +50,14 @@ namespace XIVChat_Desktop {
                 this.Check(migrated.Tabs.Count == 2 && migrated.Tabs.Select(t => t.Name).SequenceEqual(new[] { "General", "Also general" }) && migrated.Tabs.Select(t => t.Id).Distinct().Count() == 2 && migrated.Tabs[0].Filter.Types.SetEquals(first.Filter.Types),
                     "Legacy channel names, filters and order survive generated view IDs");
                 LocalizationHelper.Initialize(AppLanguage.English);
+                foreach (var light in new[] { true, false }) {
+                    var adjusted = new[] { Microsoft.UI.Colors.White, Microsoft.UI.Colors.Black, Windows.UI.Color.FromArgb(255, 255, 180, 220) }
+                        .Select(c => MessageFormatter.ReadableColor(c, light));
+                    double Linear(byte b) => b / 255d <= .04045 ? b / 255d / 12.92 : Math.Pow((b / 255d + .055) / 1.055, 2.4);
+                    double Lum(Windows.UI.Color c) => .2126 * Linear(c.R) + .7152 * Linear(c.G) + .0722 * Linear(c.B);
+                    var bg = light ? Windows.UI.Color.FromArgb(255, 243, 243, 243) : Windows.UI.Color.FromArgb(255, 32, 32, 32);
+                    this.Check(adjusted.All(c => (Math.Max(Lum(c), Lum(bg)) + .05) / (Math.Min(Lum(c), Lum(bg)) + .05) >= 4.5), "Chat colors meet readable contrast in " + (light ? "light" : "dark") + " theme");
+                }
                 var window = new MainWindow();
                 typeof(App).GetProperty(nameof(Window))!.SetValue(this, window);
                 window.Activate();
@@ -322,7 +330,8 @@ namespace XIVChat_Desktop {
             await Task.Delay(80);
             this.Check(model.Draft == "new draft" && model.FailedDraft == "recover me", "Rejection retains both the new draft and failed text");
             var restore = Find<Button>(root, b => b.Name == "RestoreDraftButton"); Invoke(restore);
-            this.Check(composer.Text == "new draft\nrecover me", "Failed text restores without overwriting newer typing");
+            await Task.Delay(100);
+            this.Check(composer.Text.Replace("\r\n", "\n").Replace('\r', '\n') == "new draft\nrecover me", "Failed text restores without overwriting newer typing: " + Newtonsoft.Json.JsonConvert.SerializeObject(composer.Text));
             this.Window.Navigate("channels");
             var incoming = Message(10); incoming.Channel = ChatType.TellIncoming; incoming.Owner = owner; incoming.TellPeer = target;
             incoming.ServiceId = "smoke"; incoming.RunId = "run"; incoming.Sequence = 10; incoming.MessageId = "smoke:run:10";
