@@ -1,7 +1,7 @@
 # XIVChat Next
 
 <p align="center">
-  <img src="logo.svg" width="100" alt="XIVChat Logo" />
+  <img src="assets/branding/logo-c1.png" width="100" alt="XIVChat Next Logo" />
 </p>
 
 基于原版 [XIVChat](https://xiv.chat/) 改进

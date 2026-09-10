@@ -17,7 +17,9 @@
         <Border Padding="10,8" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <MenuBar VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Image Source="ms-appx:///Resources/logo-c1.png" Width="30" Height="30" Stretch="Uniform" AutomationProperties.Name="XIVChat Next"/>
+                    <MenuBar VerticalAlignment="Center">
                     <MenuBarItem x:Name="MenuMain" Title="XIVChat Next">
                         <MenuFlyoutItem x:Name="MenuConnect" Click="Connect_Click"/>
                         <MenuFlyoutItem x:Name="MenuDisconnect" Click="Disconnect_Click"/>
@@ -29,7 +31,8 @@
                         <MenuFlyoutItem x:Name="MenuConfig" Click="Configuration_Click"/>
                         <MenuFlyoutItem x:Name="MenuExit" Click="Exit_Click"/>
                     </MenuBarItem>
-                </MenuBar>
+                    </MenuBar>
+                </StackPanel>
                 <AutoSuggestBox x:Name="GlobalSearch" Grid.Column="1" MaxWidth="480" HorizontalAlignment="Stretch"
                                 QueryIcon="Find" QuerySubmitted="GlobalSearch_QuerySubmitted" VerticalAlignment="Center"/>
                 <Button x:Name="AccountButton" Grid.Column="2" Click="Account_Click" Background="Transparent" BorderThickness="0" Padding="6,2">

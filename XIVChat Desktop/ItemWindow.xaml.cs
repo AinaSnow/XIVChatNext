@@ -13,6 +13,7 @@ namespace XIVChat_Desktop {
 
         public ItemWindow() {
             this.InitializeComponent();
+            Branding.ApplyWindowIcon(this);
             Localize.BindWindow(this, () => { if (refreshLocalizedItem != null) refreshLocalizedItem(); else this.Title = LocalizationHelper.GetString("Item.Title"); });
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 620));
             this.Closed += ItemWindow_Closed;

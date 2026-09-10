@@ -23,6 +23,9 @@
     <ItemGroup>
         <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <None Include="Resources\icon.png" CopyToOutputDirectory="PreserveNewest" TargetPath="images\icon.png" />
+    </ItemGroup>
     <Target Name="CopyNativeLibraries" AfterTargets="AfterBuild">
         <Copy SourceFiles="$(OutDir)runtimes\win-x64\native\libsodium.dll" DestinationFolder="$(OutDir)" />
         <Copy SourceFiles="Resources\lib\xivchat_native_tools.dll" DestinationFolder="$(OutDir)" />

@@ -10,6 +10,7 @@ namespace XIVChat_Desktop {
         private static readonly HashSet<Window> ActiveWindows = new HashSet<Window>();
 
         public static void InitializeWindow(Window window) {
+            Branding.ApplyWindowIcon(window);
             lock (ActiveWindows) {
                 ActiveWindows.Add(window);
             }

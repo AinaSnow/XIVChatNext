@@ -14,6 +14,7 @@ namespace XIVChat_Desktop {
 
         public MapWindow() {
             this.InitializeComponent();
+            Branding.ApplyWindowIcon(this);
             Localize.BindWindow(this, () => this.Title = string.IsNullOrEmpty(localizedPlaceName) ? LocalizationHelper.GetString("Map.Title") : $"XIVChat - {localizedPlaceName}");
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(950, 750));
             this.Closed += MapWindow_Closed;
