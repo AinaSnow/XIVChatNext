@@ -48,6 +48,7 @@ namespace XIVChat_Desktop {
         private bool allowClose;
         private string? activeChannelDraftKey;
         private bool active;
+        private readonly DispatcherTimer presenceTimer = new() { Interval = TimeSpan.FromSeconds(2) };
         private string? selectedOwner;
         private Connection? observedConnection;
         private static string L(string key) => LocalizationHelper.GetString(key);
@@ -66,6 +67,9 @@ namespace XIVChat_Desktop {
             App.Session.MessagesChanged += SessionMessagesChanged;
             App.Session.Cleared += SessionCleared;
             App.Session.Friends.Changed += RefreshFriendRows;
+            App.Session.Friends.Presence.Changed += RefreshFriendRows;
+            presenceTimer.Tick += PresenceTick;
+            presenceTimer.Start();
             Root.SizeChanged += (_, _) => SidebarColumn.Width = new GridLength(Root.ActualWidth < 1000 ? 212 : 252);
             Activated += (_, args) => { active = args.WindowActivationState != WindowActivationState.Deactivated; ReadCurrent(); };
             AppWindow.Closing += async (_, args) => {
@@ -189,28 +193,72 @@ namespace XIVChat_Desktop {
             var state = App.Session.Friends;
             var search = section == "friends" ? ListSearch.Text.Trim() : "";
             var snapshot = state.Snapshot;
-            syncing = true; visibleFriends.Clear();
+            syncing = true;
+            var selectedFriendCid = (FriendList.SelectedItem as FriendRow)?.Player.ContentId;
+            var desiredFriends = new List<FriendRow>();
             if (snapshot != null && snapshot.Owner?.Key == App.Workbench.OwnerKey && state.Source == App.Workbench.Source) {
                 foreach (var player in snapshot.Players.OrderByDescending(p => p.HasStatus(PlayerStatus.Online)).ThenBy(p => p.IdentityUnavailable).ThenBy(p => p.Name)) {
                     var world = player.HomeWorld > 0 ? player.HomeWorldName ?? Util.WorldName(player.HomeWorld) ?? "" : "";
                     var identity = player.IdentityUnavailable ? null : new CharacterIdentity { Name = player.Name ?? "", HomeWorldId = player.HomeWorld, HomeWorld = world, ContentId = player.ContentId };
                     var name = identity == null ? L("FriendList.IdentityUnavailable") : player.Name ?? "";
                     if (search.Length > 0 && !(name + " " + world).Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
-                    var status = L(player.HasStatus(PlayerStatus.Offline) ? "FriendList.Offline" : player.HasStatus(PlayerStatus.Online) ? "FriendList.Online" : "FriendList.Unknown");
+                    var status = PresenceText(player.ContentId);
                     if (state.IsStale) status = L("FriendList.Cached") + " · " + status;
-                    visibleFriends.Add(new FriendRow(player, identity, name, world, status));
+                    desiredFriends.Add(new FriendRow(player, identity, name, world, status));
                 }
             }
+            for (int i = 0; i < desiredFriends.Count; i++) {
+                if (i >= visibleFriends.Count) visibleFriends.Add(desiredFriends[i]);
+                else if (visibleFriends[i].Player != desiredFriends[i].Player || visibleFriends[i].Status != desiredFriends[i].Status || visibleFriends[i].Name != desiredFriends[i].Name || visibleFriends[i].World != desiredFriends[i].World) visibleFriends[i] = desiredFriends[i];
+            }
+            while (visibleFriends.Count > desiredFriends.Count) visibleFriends.RemoveAt(visibleFriends.Count - 1);
+            if (selectedFriendCid != null) FriendList.SelectedItem = visibleFriends.FirstOrDefault(f => f.Player.ContentId == selectedFriendCid);
             syncing = false;
             RefreshFriendsButton.IsEnabled = App.Connection?.Available == true && state.Supported && state.RequestId == null;
             if (section == "friends") SidebarStatus.Text = state.RequestId != null ? L("FriendList.Refreshing") : snapshot != null
                 ? string.Format(L("FriendList.Snapshot"), snapshot.Players.Length, snapshot.CapturedAt.ToLocalTime().ToString("MM-dd HH:mm")) + "\n" + L(state.IsStale ? "FriendList.Stale" : "FriendList.Timing")
                 : L(state.Supported ? "FriendList.NotReady" : "FriendList.Unsupported");
             UpdateNavigation();
+            UpdateConversationPresence();
+        }
+        private string PresenceText(ulong cid) {
+            var state = App.Session.Friends.Presence;
+            var value = state.Get(cid);
+            if (state.IsPending(cid)) return L("Presence.Checking");
+            if (value == null) return L("FriendList.Unknown");
+            if (value.Status != FriendListStatus.Success) return L("FriendList.Unknown") + " · " + L(value.Status == FriendListStatus.TimedOut ? "Presence.Timeout" : "Presence.Unavailable");
+            var label = L(value.Presence == PresenceState.Online ? "FriendList.Online" : value.Presence == PresenceState.Offline ? "FriendList.Offline" : "FriendList.Unknown");
+            return label + " · " + (FriendPresenceSession.Fresh(value, DateTime.UtcNow) ? value.CheckedAt.ToLocalTime().ToString("HH:mm:ss") : L("Presence.Expired"));
+        }
+        private Player? ConversationFriend() {
+            var state = App.Session.Friends;
+            if (selectedConversation == null || string.IsNullOrEmpty(state.OwnerEpoch) || state.OwnerKey != App.Workbench.OwnerKey || state.Source != App.Workbench.Source) return null;
+            return state.Snapshot?.Players.FirstOrDefault(p => !p.IdentityUnavailable && p.HomeWorld == selectedConversation.Peer.HomeWorldId &&
+                string.Equals(p.Name, selectedConversation.Peer.Name, StringComparison.OrdinalIgnoreCase));
+        }
+        private void UpdateConversationPresence() {
+            var friend = ConversationFriend();
+            ChatPresenceText.Visibility = V(friend != null);
+            ChatPresenceText.Text = friend == null ? "" : PresenceText(friend.ContentId);
+        }
+        private void PresenceTick(object? sender, object e) {
+            App.Session.Friends.Presence.Expire(DateTime.UtcNow);
+            UpdateConversationPresence();
+            if (!active || App.Connection?.Available != true) return;
+            if (ConversationFriend() is { } peer && App.Connection.RefreshFriendPresence(peer.ContentId)) return;
+            if (section != "friends" || App.Session.Friends.IsStale) return;
+            foreach (var row in visibleFriends) {
+                if (row.Peer == null || FriendList.ContainerFromItem(row) is not FrameworkElement container) continue;
+                var position = container.TransformToVisual(FriendList).TransformPoint(new Windows.Foundation.Point());
+                if (position.Y + container.ActualHeight <= 0 || position.Y >= FriendList.ActualHeight) continue;
+                if (App.Connection.RefreshFriendPresence(row.Player.ContentId)) return;
+            }
+            RefreshFriendRows();
         }
         private void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (initialized && !syncing && ChannelList.SelectedItem is Tab tab) SelectChannel(tab); }
         internal void SelectChannel(Tab tab) {
             SaveComposer(); UnselectConversation(); selectedChannel = tab;
+            ChatPresenceText.Visibility = Visibility.Collapsed;
             ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; ComposerPanel.Visibility = Visibility.Visible;
             if (!channelViews.TryGetValue(tab, out var view)) { view = new Controls.ChatMessageList(tab); channelViews.Add(tab, view); }
             ChatHost.Content = view; ChatTitle.Text = tab.Name; ChatSubtitle.Text = L("Workbench.ChannelView");
@@ -226,13 +274,15 @@ namespace XIVChat_Desktop {
             var model = App.Workbench.Open(friend.Peer); if (model != null) ShowConversation(model);
         }
         internal void ShowConversation(ConversationModel model) {
-            if (ReferenceEquals(selectedConversation, model) && conversationView != null) { ChatHost.Content = conversationView; UpdateReady(); return; }
+            if (ReferenceEquals(selectedConversation, model) && conversationView != null) { ChatHost.Content = conversationView; UpdateReady(); UpdateConversationPresence(); if (ConversationFriend() is { } current) App.Connection?.RefreshFriendPresence(current.ContentId); return; }
             SaveComposer(); UnselectConversation(); selectedConversation = model; model.PropertyChanged += SelectedConversationChanged;
             conversationTab = new Tab(model.Name) { Filter = new EverythingFilter() };
             conversationView = new Controls.ChatMessageList(conversationTab); conversationView.ReadingChanged += ReadCurrent;
             ChatHost.Content = conversationView; ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; ComposerPanel.Visibility = Visibility.Visible;
             ChatTitle.Text = model.Name; ChatSubtitle.Text = model.World + (model.Pinned ? " · " + L("Conversation.Pinned") : "");
             PeerAvatar.Identity = model.Peer;
+            UpdateConversationPresence();
+            if (ConversationFriend() is { } friend) App.Connection?.RefreshFriendPresence(friend.ContentId);
             syncing = true; Composer.Text = model.Draft; syncing = false;
             UpdateChatActions(true); UpdateReady();
             _ = LoadConversationAsync(false);
@@ -363,6 +413,8 @@ namespace XIVChat_Desktop {
             return flyout;
         }
         private void DisposeViews() {
+            presenceTimer.Stop(); presenceTimer.Tick -= PresenceTick;
+            App.Session.Friends.Presence.Changed -= RefreshFriendRows;
             App.Config.Tabs.CollectionChanged -= TabsChanged; App.Config.Saved -= ConfigSaved; App.PropertyChanged -= AppChanged;
             App.Workbench.Changed -= WorkbenchChanged; App.Session.MessagesChanged -= SessionMessagesChanged; App.Session.Cleared -= SessionCleared; App.Session.Friends.Changed -= RefreshFriendRows;
             if (observedConnection != null) observedConnection.PropertyChanged -= ConnectionChanged;

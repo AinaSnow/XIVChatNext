@@ -16,6 +16,8 @@
     <Compile Include="../../XIVChatPlugin/ChatTextSplitter.cs" Link="ChatTextSplitter.cs" />
     <Compile Include="../../XIVChatPlugin/FriendListCoordinator.cs" Link="FriendListCoordinator.cs" />
     <Compile Include="../../XIVChat Desktop/FriendListSession.cs" Link="FriendListSession.cs" />
+    <Compile Include="../../XIVChat Desktop/FriendPresenceSession.cs" Link="FriendPresenceSession.cs" />
+    <Compile Include="../../XIVChatPlugin/FriendPresenceCoordinator.cs" Link="FriendPresenceCoordinator.cs" />
     <Compile Include="../../XIVChat Desktop/LodestoneAvatars.cs" Link="LodestoneAvatars.cs" />
   </ItemGroup>
 </Project>

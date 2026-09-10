@@ -150,6 +150,8 @@
 
 数据库：`%LOCALAPPDATA%/XIVChatDesktop/history.sqlite3`。配置 JSON 保留旧格式；新增 `HistoryEnabled=true` 与 `HistoryRetentionDays=90`，0 表示永久。关闭历史停止新记录持久化，不删除已有库；默认保留有备注的消息。启动失败保留原库并显示临时聊天提示，写入失败后不推进持久游标。
 
+2026-09-10 补充主动好友状态查询：会话和可见好友按需查询，原生请求间隔 5 秒，同一好友 30 秒重试、结果一分钟过期；查询失败显示未知。实机验证 El Cid 在线与多位同服／跨服好友离线，会话标题与列表状态一致；36 组回归、69 项 WinUI 检查通过。详见 [状态查询与验证记录](friend-presence.md)。第四阶段事件与通知仍待实现。
+
 ### 本次验证
 
 - `dotnet run --project tests/Regression/Regression.csproj --no-restore`：20/20 通过。十万条测试历史写入约 9.3 秒，三次中文筛选查询约 26 毫秒（本机结果）。

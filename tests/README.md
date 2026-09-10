@@ -21,6 +21,12 @@ Friend coverage checks bounded complete pagination, legacy fields, duplicate IDs
 cached/empty snapshots, refresh failures, concurrent request coalescing, timeout, queue limits,
 and the v1-to-v2 database migration with its pre-migration backup and source/owner partitions.
 
+Active presence adds wire/CID/request/epoch validation, thirty-second retry limits,
+one-minute freshness, cache timestamps, coalescing, bounded queues and timeout/reconnect
+isolation. The full regression runner has 36 groups. The WinUI suite now has 69 checks,
+including encrypted presence requests, friend-row/conversation-header status, and role
+changes. Native integration findings are in [friend presence](../docs/friend-presence.md).
+
 Stability coverage checks outgoing byte/count budgets including active writes, atomic game-command
 batches, owner/login/channel guards, disconnect cancellation, immediate memory-history limits,
 subscription unions and legacy layouts, bounded metadata caches, UTF-8 splitting with complete

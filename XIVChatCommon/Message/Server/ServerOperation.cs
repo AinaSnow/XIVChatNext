@@ -13,5 +13,6 @@
         Capabilities = 11,
         History = 12,
         CommandResult = 13,
+        FriendPresence = 14,
     }
 }

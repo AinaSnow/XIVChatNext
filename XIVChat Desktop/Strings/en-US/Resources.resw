@@ -370,8 +370,8 @@
   <data name="History.Unbookmark" xml:space="preserve"><value>Remove bookmark</value></data>
   <data name="History.Removed" xml:space="preserve"><value>This record has been removed.</value></data>
   <data name="FriendList.Cached" xml:space="preserve"><value>Cached snapshot</value></data>
-  <data name="FriendList.Online" xml:space="preserve"><value>Online (snapshot)</value></data>
-  <data name="FriendList.Offline" xml:space="preserve"><value>Offline (snapshot)</value></data>
+  <data name="FriendList.Online" xml:space="preserve"><value>Online</value></data>
+  <data name="FriendList.Offline" xml:space="preserve"><value>Offline</value></data>
   <data name="FriendList.Select" xml:space="preserve"><value>Select a friend to open a fixed-target Tell</value></data>
   <data name="Avatar.Title" xml:space="preserve"><value>Character avatar</value></data>
   <data name="Avatar.Online" xml:space="preserve"><value>Allow online Lodestone avatar lookups</value></data>
@@ -391,7 +391,7 @@
   <data name="FriendList.Refreshing" xml:space="preserve"><value>Refreshing friends…</value></data>
   <data name="FriendList.Snapshot" xml:space="preserve"><value>{0} friends · Snapshot {1}</value></data>
   <data name="FriendList.Stale" xml:space="preserve"><value>Cached snapshot; status may have changed.</value></data>
-  <data name="FriendList.Timing" xml:space="preserve"><value>Status reflects this complete snapshot.</value></data>
+  <data name="FriendList.Timing" xml:space="preserve"><value>Visible friends are checked on demand; results expire after one minute.</value></data>
   <data name="FriendList.Unsupported" xml:space="preserve"><value>This connection does not support friend snapshots.</value></data>
   <data name="FriendList.Unknown" xml:space="preserve"><value>Status unknown</value></data>
   <data name="ChatType.Action" xml:space="preserve"><value>Actions used</value></data>
@@ -562,4 +562,8 @@
   <data name="Item.Stats" xml:space="preserve"><value>Attributes and bonuses</value></data>
   <data name="Item.Title" xml:space="preserve"><value>Item information</value></data>
   <data name="Map.Title" xml:space="preserve"><value>Map</value></data>
+  <data name="Presence.Expired" xml:space="preserve"><value>Expired</value></data>
+  <data name="Presence.Timeout" xml:space="preserve"><value>Query timed out</value></data>
+  <data name="Presence.Unavailable" xml:space="preserve"><value>Currently unavailable</value></data>
+  <data name="Presence.Checking" xml:space="preserve"><value>Checking…</value></data>
 </root>

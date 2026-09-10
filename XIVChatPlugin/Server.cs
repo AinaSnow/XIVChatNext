@@ -58,6 +58,7 @@ namespace XIVChatPlugin {
         private readonly object _clientGate = new();
 
         internal FriendListCoordinator FriendLists { get; }
+        private FriendPresenceCoordinator FriendPresence { get; }
         private string _ownerEpoch = Guid.NewGuid().ToString("N");
 
         private readonly MessageBacklog _backlog;
@@ -103,6 +104,9 @@ namespace XIVChatPlugin {
             this.FriendLists = new FriendListCoordinator(new GameFriendListReader(plugin), (request, message) => {
                 if (!request.Cancellation.IsCancellationRequested && this._clients.TryGetValue(request.ClientId, out var client))
                     client.Send(message);
+            });
+            this.FriendPresence = new FriendPresenceCoordinator(new GameFriendPresenceReader(plugin), (request, message) => {
+                if (!request.Cancellation.IsCancellationRequested && this._clients.TryGetValue(request.ClientId, out var client)) client.Send(message);
             });
         }
 
@@ -209,6 +213,7 @@ namespace XIVChatPlugin {
                 this._plugin.Functions.RefreshChatChannel();
             this.RefreshGameContext();
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
+            this.FriendPresence.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             var player = this._plugin.ObjectTable.LocalPlayer;
             if (player != null && this._sendPlayerData) {
                 this.BroadcastPlayerData();
@@ -430,6 +435,14 @@ namespace XIVChatPlugin {
 
                     await SendBacklogs(msgs, client);
                     break;
+                case ClientOperation.FriendPresence:
+                    if (!client.GetPreference(ClientPreference.WorkbenchSupport, false) || payload.Length > 1024) break;
+                    var presenceRequest = ClientFriendPresence.Decode(payload);
+                    if (!presenceRequest.Valid) break;
+                    if (!this.FriendPresence.Enqueue(new PresenceRequest(id, presenceRequest, client.TokenSource.Token)))
+                        client.Send(new ServerFriendPresence { RequestId = presenceRequest.RequestId, OwnerKey = presenceRequest.OwnerKey,
+                            OwnerEpoch = presenceRequest.OwnerEpoch, ContentId = presenceRequest.ContentId, Status = FriendListStatus.Busy });
+                    break;
                 case ClientOperation.PlayerList:
                     var playerList = ClientPlayerList.Decode(payload);
 
@@ -448,7 +461,7 @@ namespace XIVChatPlugin {
                     if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true,
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true,
                         });
                     }
 
@@ -921,6 +934,7 @@ namespace XIVChatPlugin {
             foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn, command.PartIndex);
             this._nextHousingCheck = 0;
             this.FriendLists.Tick(null, this._ownerEpoch, DateTime.UtcNow);
+            this.FriendPresence.Tick(null, this._ownerEpoch, DateTime.UtcNow);
             this.BroadcastAvailability(false);
             this.BroadcastMessage(EmptyPlayerData.Instance);
         }
@@ -936,6 +950,7 @@ namespace XIVChatPlugin {
             }
 
             this.FriendLists.Dispose();
+            this.FriendPresence.Dispose();
             this._toGame.Clear();
             this.PendingClients.Writer.TryComplete();
         }

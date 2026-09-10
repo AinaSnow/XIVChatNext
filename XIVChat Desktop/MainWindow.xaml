@@ -93,7 +93,7 @@
                     <Border Padding="20,15" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
                         <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <cc:CharacterAvatar x:Name="PeerAvatar" Visibility="Collapsed" Margin="0,0,4,0"/>
-                            <StackPanel Grid.Column="1" Spacing="4"><TextBlock x:Name="ChatTitle" FontSize="18" FontWeight="SemiBold"/><TextBlock x:Name="ChatSubtitle" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/></StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4"><TextBlock x:Name="ChatTitle" FontSize="18" FontWeight="SemiBold"/><TextBlock x:Name="ChatSubtitle" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/><TextBlock x:Name="ChatPresenceText" FontSize="11" Opacity="0.75" Visibility="Collapsed"/></StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3">
                                 <Button x:Name="BackHistoryButton" Click="BackHistory_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE72B;" FontSize="15"/></Button>
                                 <Button x:Name="LoadOlderButton" Click="LoadOlder_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE81C;" FontSize="15"/></Button>

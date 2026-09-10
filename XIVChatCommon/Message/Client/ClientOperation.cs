@@ -10,5 +10,6 @@ namespace XIVChatCommon.Message.Client {
         Preferences = 8,
         Channel = 9,
         History = 10,
+        FriendPresence = 11,
     }
 }

@@ -196,7 +196,7 @@ namespace XIVChat_Desktop {
                     this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
                         new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true });
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true });
                     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
                     var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(request[0] == (byte)ClientOperation.Preferences && ClientPreferences.Decode(request[1..]).Channels == null,
@@ -245,6 +245,16 @@ namespace XIVChat_Desktop {
                     this.Check(this.Session.Friends.Snapshot?.Players.Length == 70 && !this.Session.Friends.IsStale &&
                         (await store.GetFriendSnapshotAsync(source, owner.Key!))?.Players[69].IdentityUnavailable == true,
                         "Complete friend snapshot including unavailable identity reaches shared state and SQLite");
+                    this.Check(this.Connection!.RefreshFriendPresence(1), "Modern desktop can actively query one friend");
+                    var presenceRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
+                    var presenceRequest = ClientFriendPresence.Decode(presenceRaw[1..]);
+                    this.Check(presenceRaw[0] == (byte)ClientOperation.FriendPresence && presenceRequest.ContentId == 1 && presenceRequest.OwnerKey == owner.Key && presenceRequest.OwnerEpoch == "login1", "Presence request preserves CID and login ownership");
+                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new ServerFriendPresence {
+                        RequestId = presenceRequest.RequestId, OwnerKey = owner.Key!, OwnerEpoch = "login1", ContentId = 1,
+                        Presence = PresenceState.Online, Status = FriendListStatus.Success, CheckedAt = DateTime.UtcNow,
+                    });
+                    for (int i = 0; i < 50 && this.Session.Friends.Presence.Get(1) == null; i++) await Task.Delay(30);
+                    this.Check(this.Session.Friends.Presence.Get(1)?.Presence == PresenceState.Online && !this.Connection.RefreshFriendPresence(1), "Presence response becomes visible and repeated queries are limited");
                     this.Check(this.Connection!.RefreshFriends(), "Manual friend refresh is available");
                     friendRaw = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     friendRequest = XIVChatCommon.Message.Client.ClientPlayerList.Decode(friendRaw[1..]);
@@ -293,6 +303,7 @@ namespace XIVChat_Desktop {
                     await Task.Delay(150);
                     this.Check(this.Session.Friends.OwnerKey == "cid:2" && this.Session.Friends.Snapshot == null,
                         "Late friend pages cannot enter the next role");
+                    this.Check(this.Session.Friends.Presence.Get(1) == null, "Role changes clear previously online friends");
                     this.Check(channelComposer.Text.Length == 0, "Changing characters isolates channel drafts");
                 }
                 for (int i = 0; i < 100 && this.Connected; i++) await Task.Delay(30);
@@ -316,10 +327,12 @@ namespace XIVChat_Desktop {
             this.Window.Navigate("friends");
             var friends = Find<ListView>(root, v => v.Name == "FriendList");
             this.Check(friends.Items.Count == 70 && friends.Items.OfType<FriendRow>().Count(f => f.Peer == null) == 1, "Friend sidebar retains all snapshot rows with unavailable identities marked");
+            this.Check(friends.Items.OfType<FriendRow>().Single(f => f.Name == "Peer Name").Status.Contains(LocalizationHelper.GetString("FriendList.Online")), "Friend sidebar displays queried online status");
             friends.SelectedItem = friends.Items.OfType<FriendRow>().Single(f => f.Peer == null);
             this.Check(this.Workbench.Conversations.Count == 0, "Unavailable friend cannot open a guessed Tell target");
             friends.SelectedItem = friends.Items.OfType<FriendRow>().Single(f => f.Name == "Peer Name");
             var model = this.Workbench.Conversations.Single();
+            this.Check(Find<TextBlock>(root, t => t.Name == "ChatPresenceText").Text.Contains(LocalizationHelper.GetString("FriendList.Online")), "Conversation header displays queried presence even when list refresh fails");
             this.Check(TellTarget.From(model.Peer) == TellTarget.From(target), "Complete friend opens its exact home-world conversation");
             this.Window.Navigate("conversations"); this.Window.ShowConversation(model);
             await Task.Delay(100);

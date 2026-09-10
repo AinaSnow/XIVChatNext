@@ -8,6 +8,8 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Active presence validates replies, limits requests and expires across reconnects", PresenceTests.Session),
+    ("Native presence queries coalesce, bound queues and fence timeout/login replies", PresenceTests.Coordinator),
     ("Fixed Tell wire targets reject injection and remain independent of current channel", Phase3Tests.DirectedTell),
     ("V2 history migration preserves annotations and isolates conversations", Phase3Tests.Storage),
     ("Lodestone exact matching, pagination and official URL validation", Phase3Tests.Parser),

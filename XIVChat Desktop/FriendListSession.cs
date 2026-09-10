@@ -6,6 +6,7 @@ using XIVChatCommon.Message.Server;
 namespace XIVChat_Desktop {
     /// <summary>UI-thread state. A snapshot becomes visible only when every page has passed validation.</summary>
     public sealed class FriendListSession {
+        public FriendPresenceSession Presence { get; } = new();
         public string Source { get; private set; } = "";
         public string? OwnerKey { get; private set; }
         public string? OwnerEpoch { get; private set; }
@@ -23,6 +24,7 @@ namespace XIVChat_Desktop {
             if (source == this.Source && owner == this.OwnerKey && epoch == this.OwnerEpoch && supported == this.Supported) return false;
             if (source != this.Source || (owner != null && owner != this.Snapshot?.Owner?.Key)) this.Snapshot = null;
             this.Source = source; this.OwnerKey = owner; this.OwnerEpoch = epoch; this.Supported = supported;
+            if (owner == null || epoch == null || !supported) this.Presence.SetContext(source, null, null, false);
             this.Version++; this.pending = null; this.IsStale = true; this.Status = null; this.Manual = false;
             this.Changed?.Invoke();
             return true;

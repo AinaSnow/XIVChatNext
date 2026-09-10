@@ -393,6 +393,11 @@ namespace XIVChat_Desktop {
                     }
                     if (history.HasMore) this.QueuePacket(new ClientHistory { After = history.Cursor, Through = history.Through }.Encode());
                     break;
+                case ServerOperation.FriendPresence:
+                    if (this.capabilities?.FriendPresence != true || rawMessage.Length > 1024) break;
+                    var presence = ServerFriendPresence.Decode(payload);
+                    this.DispatchIfCurrent(() => this.app.Session.Friends.Presence.Add(presence, DateTime.UtcNow));
+                    break;
                 case ServerOperation.PlayerList:
                     if (this.capabilities?.FriendSnapshots != true || rawMessage.Length > FriendListProtocol.MaxPageBytes) break;
                     var friends = ServerPlayerList.Decode(payload);
@@ -429,6 +434,7 @@ namespace XIVChat_Desktop {
         private void UpdateFriendsContext() {
             var player = this.app.Session.Player;
             var state = this.app.Session.Friends;
+            state.Presence.SetContext(this.source, player?.Identity?.Key, player?.OwnerEpoch, this.capabilities?.FriendPresence == true);
             if (!state.SetContext(this.source, player?.Identity?.Key, player?.OwnerEpoch, this.capabilities?.FriendSnapshots == true)) return;
             if (state.OwnerKey != null) _ = this.RestoreFriendsAsync(state.Version, state.OwnerKey);
             this.RefreshFriends(false);
@@ -455,6 +461,13 @@ namespace XIVChat_Desktop {
             this.QueuePacket(request.Encode());
             _ = this.FriendTimeoutAsync(request.RequestId!);
             return true;
+        }
+
+        public bool RefreshFriendPresence(ulong contentId) {
+            if (!ReferenceEquals(this.app.Connection, this) || this.cancel.IsCancellationRequested || !this.Available || this.capabilities?.FriendPresence != true) return false;
+            var request = this.app.Session.Friends.Presence.Begin(contentId, DateTime.UtcNow);
+            if (request == null) return false;
+            this.QueuePacket(request.Encode()); return true;
         }
 
         private async Task FriendTimeoutAsync(string requestId) {
