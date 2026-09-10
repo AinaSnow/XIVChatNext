@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -95,7 +95,7 @@ namespace XIVChat_Desktop {
             .GetField(filter.ToString())
             ?.GetCustomAttribute<CategoryAttribute>(false);
 
-        public static string? Name(this FilterCategory category) => category.Info()?.Name;
+        public static string? Name(this FilterCategory category) => LocalizationHelper.GetString("FilterCategory." + category);
 
         public static IEnumerable<FilterType> Types(this FilterCategory category) => category.Info()?.Types ?? new FilterType[0];
     }
@@ -344,7 +344,7 @@ namespace XIVChat_Desktop {
             .GetField(filter.ToString())
             ?.GetCustomAttribute<FilterAttribute>(false);
 
-        public static string? Name(this FilterType filter) => filter.Info()?.Name;
+        public static string? Name(this FilterType filter) => LocalizationHelper.GetString("Filter." + filter);
 
         public static IEnumerable<ChatType> Types(this FilterType filter) => filter.Info()?.Types ?? new ChatType[0];
 

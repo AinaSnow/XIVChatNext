@@ -5,7 +5,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="using:XIVChat_Desktop"
         mc:Ignorable="d"
-        Title="管理标签"
         d:DataContext="{d:DesignInstance local:ManageTabs}">
     <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.ColumnDefinitions>
@@ -27,18 +26,12 @@
                    Margin="8,0,0,0">
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
-                    Click="AddTab_Click">
-                添加
-            </Button>
+                    Click="AddTab_Click" local:Localize.Content="Dialog.Add" />
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
-                    Click="EditTab_Click">
-                编辑
-            </Button>
+                    Click="EditTab_Click" local:Localize.Content="Dialog.Edit" />
             <Button HorizontalAlignment="Stretch"
-                    Click="DeleteTab_Click">
-                删除
-            </Button>
+                    Click="DeleteTab_Click" local:Localize.Content="Dialog.Delete" />
         </StackPanel>
     </Grid>
 </Window>

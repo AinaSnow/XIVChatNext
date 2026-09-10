@@ -36,7 +36,7 @@ namespace XIVChat_Desktop {
             var selected = (HistoryChannelPicker.SelectedItem as HistoryChannelOption)?.Channel;
             historySyncing = true;
             var channels = new List<HistoryChannelOption> { new(L("History.AllChannels"), null) };
-            channels.AddRange(Enum.GetValues<ChatType>().Distinct().Select(c => new HistoryChannelOption(c.ToString(), (ushort)c)));
+            channels.AddRange(Enum.GetValues<ChatType>().Distinct().Select(c => new HistoryChannelOption(LocalizationHelper.GetString("ChatType." + c), (ushort)c)));
             HistoryChannelPicker.ItemsSource = channels;
             HistoryChannelPicker.SelectedItem = channels.FirstOrDefault(c => c.Channel == selected) ?? channels[0];
             historySyncing = false;

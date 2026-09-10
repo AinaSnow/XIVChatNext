@@ -63,6 +63,25 @@ namespace XIVChat_Desktop {
                 window.Activate();
                 await Task.Delay(300);
 
+                var editServer = new ManageServer(null);
+                var editView = new ManageTab(first);
+                editServer.Activate(); editView.Activate();
+                await Task.Delay(250);
+                var serverName = Find<TextBox>((DependencyObject)editServer.Content, c => c.Name == "ServerName");
+                serverName.Text = "Unsaved server name";
+                var sayOption = Descendants<CheckBox>((DependencyObject)editView.Content).First(c => Localize.GetContent(c) == "Filter.Say");
+                sayOption.IsChecked = true;
+                Check(editServer.Title == "Add server" && sayOption.Content?.ToString() == "Say", "English resources reach legacy dialogs and generated filters");
+                LocalizationHelper.ApplyLanguage(AppLanguage.ChineseSimplified);
+                await Task.Delay(100);
+                Check(editServer.Title == "添加服务器" && sayOption.Content?.ToString() == "说话" && Find<Button>((DependencyObject)editServer.Content, b => Localize.GetContent(b) == "Dialog.Save").Content?.ToString() == "保存", "Open dialog titles, XAML bindings and generated options switch to Chinese");
+                Check(serverName.Text == "Unsaved server name" && sayOption.IsChecked == true, "Language switching preserves unsaved input and filter selection");
+                Check(Enum.GetValues<FilterType>().All(t => LocalizationHelper.GetString("Filter." + t) != "Filter." + t) && Enum.GetValues<ChatType>().All(t => LocalizationHelper.GetString("ChatType." + t) != "ChatType." + t), "Packaged Chinese resources cover every filter and chat channel");
+                LocalizationHelper.ApplyLanguage(AppLanguage.English);
+                await Task.Delay(100);
+                Check(editServer.Title == "Add server" && sayOption.Content?.ToString() == "Say", "Existing dialogs switch back to English");
+                editServer.Close(); editView.Close(); window.Activate();
+
                 for (int i = 0; i < 10_000; i++) window.AddMessage(Message(i));
                 await Task.Delay(1500);
                 var tabs = Find<ListView>((DependencyObject)window.Content, v => v.Name == "ChannelList");

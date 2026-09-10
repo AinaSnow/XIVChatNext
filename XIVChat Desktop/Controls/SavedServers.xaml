@@ -38,18 +38,12 @@
                    Visibility="{x:Bind ControlsVisibility, Mode=OneWay}">
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
-                    Click="AddServer_Click">
-                Add
-            </Button>
+                    Click="AddServer_Click" local:Localize.Content="Dialog.Add" />
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
-                    Click="EditServer_Click">
-                Edit
-            </Button>
+                    Click="EditServer_Click" local:Localize.Content="Dialog.Edit" />
             <Button HorizontalAlignment="Stretch"
-                    Click="DeleteServer_Click">
-                Delete
-            </Button>
+                    Click="DeleteServer_Click" local:Localize.Content="Dialog.Delete" />
         </StackPanel>
     </Grid>
 </UserControl>

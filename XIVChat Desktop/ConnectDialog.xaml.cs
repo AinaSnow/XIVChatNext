@@ -8,6 +8,7 @@ namespace XIVChat_Desktop {
         public ConnectDialog() {
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString("Dialog.Connect"));
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 400));
         }
 

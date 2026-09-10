@@ -274,7 +274,7 @@ namespace XIVChat_Desktop {
             } catch (Exception ex) {
                 if (!this.cancel.IsCancellationRequested && !(ex is OperationCanceledException)) {
                     this.DispatchIfCurrent(() => {
-                        this.app.Window.AddSystemMessage($"连接或通信中断: {ex.Message}");
+                        this.app.Window.AddSystemMessage(string.Format(LocalizationHelper.GetString("Status.CommunicationError"), ex.Message));
                         if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
                     });
                 }

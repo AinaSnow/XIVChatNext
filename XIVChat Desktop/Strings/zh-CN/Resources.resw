@@ -185,10 +185,10 @@
     <value>日志字体大小</value>
   </data>
   <data name="Config.LocalBacklogMessages" xml:space="preserve">
-    <value>本地存储的消息</value>
+    <value>每个视图缓存的消息数</value>
   </data>
   <data name="Config.BacklogMessages" xml:space="preserve">
-    <value>请求的积压消息数量</value>
+    <value>从旧版服务端请求的历史消息数</value>
   </data>
   <data name="ManageServer.Name" xml:space="preserve">
     <value>名称</value>
@@ -248,19 +248,19 @@
     <value>密钥验证</value>
   </data>
   <data name="TrustDialog.Description" xml:space="preserve">
-    <value>您正在尝试连接到以前从未连接过的服务器。 请检查服务器并确保以下两个键匹配。</value>
+    <value>请核对下方服务端公钥是否与游戏插件显示的服务端公钥一致。客户端公钥用于识别此客户端，服务端与客户端的公钥并不相同。</value>
   </data>
   <data name="TrustDialog.Server" xml:space="preserve">
-    <value>服务器:</value>
+    <value>服务端公钥：</value>
   </data>
   <data name="TrustDialog.Client" xml:space="preserve">
-    <value>客户端:</value>
+    <value>客户端公钥：</value>
   </data>
   <data name="TrustDialog.KeyName" xml:space="preserve">
-    <value>给这个key起个名</value>
+    <value>为此受信任的服务器命名</value>
   </data>
   <data name="TrustDialog.Question" xml:space="preserve">
-    <value>两个键是否匹配?</value>
+    <value>服务端公钥是否与游戏插件中显示的一致？</value>
   </data>
   <data name="FriendList.Title" xml:space="preserve">
     <value>好友列表</value>
@@ -394,4 +394,172 @@
   <data name="FriendList.Timing" xml:space="preserve"><value>状态以此次完整快照为准。</value></data>
   <data name="FriendList.Unsupported" xml:space="preserve"><value>当前连接不支持好友快照。</value></data>
   <data name="FriendList.Unknown" xml:space="preserve"><value>状态未知</value></data>
+  <data name="ChatType.Action" xml:space="preserve"><value>技能</value></data>
+  <data name="ChatType.Alarm" xml:space="preserve"><value>闹钟通知</value></data>
+  <data name="ChatType.Alliance" xml:space="preserve"><value>团队</value></data>
+  <data name="ChatType.BattleSystem" xml:space="preserve"><value>战斗系统消息</value></data>
+  <data name="ChatType.Crafting" xml:space="preserve"><value>制作</value></data>
+  <data name="ChatType.CrossLinkshell1" xml:space="preserve"><value>跨界通讯贝 [1]</value></data>
+  <data name="ChatType.CrossLinkshell2" xml:space="preserve"><value>跨界通讯贝 [2]</value></data>
+  <data name="ChatType.CrossLinkshell3" xml:space="preserve"><value>跨界通讯贝 [3]</value></data>
+  <data name="ChatType.CrossLinkshell4" xml:space="preserve"><value>跨界通讯贝 [4]</value></data>
+  <data name="ChatType.CrossLinkshell5" xml:space="preserve"><value>跨界通讯贝 [5]</value></data>
+  <data name="ChatType.CrossLinkshell6" xml:space="preserve"><value>跨界通讯贝 [6]</value></data>
+  <data name="ChatType.CrossLinkshell7" xml:space="preserve"><value>跨界通讯贝 [7]</value></data>
+  <data name="ChatType.CrossLinkshell8" xml:space="preserve"><value>跨界通讯贝 [8]</value></data>
+  <data name="ChatType.CrossParty" xml:space="preserve"><value>跨界小队</value></data>
+  <data name="ChatType.CustomEmote" xml:space="preserve"><value>自定义情感动作</value></data>
+  <data name="ChatType.Damage" xml:space="preserve"><value>伤害</value></data>
+  <data name="ChatType.Debug" xml:space="preserve"><value>调试</value></data>
+  <data name="ChatType.Echo" xml:space="preserve"><value>本地回显</value></data>
+  <data name="ChatType.Error" xml:space="preserve"><value>错误消息</value></data>
+  <data name="ChatType.FreeCompany" xml:space="preserve"><value>部队</value></data>
+  <data name="ChatType.FreeCompanyAnnouncement" xml:space="preserve"><value>部队公告</value></data>
+  <data name="ChatType.FreeCompanyLoginLogout" xml:space="preserve"><value>部队成员登录通知</value></data>
+  <data name="ChatType.GainBuff" xml:space="preserve"><value>获得增益效果</value></data>
+  <data name="ChatType.GainDebuff" xml:space="preserve"><value>获得减益效果</value></data>
+  <data name="ChatType.Gathering" xml:space="preserve"><value>采集</value></data>
+  <data name="ChatType.GatheringSystem" xml:space="preserve"><value>采集系统消息</value></data>
+  <data name="ChatType.GmFreeCompany" xml:space="preserve"><value>部队（GM）</value></data>
+  <data name="ChatType.GmLinkshell1" xml:space="preserve"><value>通讯贝 [1]（GM）</value></data>
+  <data name="ChatType.GmLinkshell2" xml:space="preserve"><value>通讯贝 [2]（GM）</value></data>
+  <data name="ChatType.GmLinkshell3" xml:space="preserve"><value>通讯贝 [3]（GM）</value></data>
+  <data name="ChatType.GmLinkshell4" xml:space="preserve"><value>通讯贝 [4]（GM）</value></data>
+  <data name="ChatType.GmLinkshell5" xml:space="preserve"><value>通讯贝 [5]（GM）</value></data>
+  <data name="ChatType.GmLinkshell6" xml:space="preserve"><value>通讯贝 [6]（GM）</value></data>
+  <data name="ChatType.GmLinkshell7" xml:space="preserve"><value>通讯贝 [7]（GM）</value></data>
+  <data name="ChatType.GmLinkshell8" xml:space="preserve"><value>通讯贝 [8]（GM）</value></data>
+  <data name="ChatType.GmNoviceNetwork" xml:space="preserve"><value>新人频道（GM）</value></data>
+  <data name="ChatType.GmParty" xml:space="preserve"><value>小队（GM）</value></data>
+  <data name="ChatType.GmSay" xml:space="preserve"><value>说话（GM）</value></data>
+  <data name="ChatType.GmShout" xml:space="preserve"><value>喊话（GM）</value></data>
+  <data name="ChatType.GmTell" xml:space="preserve"><value>私聊（GM）</value></data>
+  <data name="ChatType.GmYell" xml:space="preserve"><value>呼喊（GM）</value></data>
+  <data name="ChatType.Healing" xml:space="preserve"><value>治疗</value></data>
+  <data name="ChatType.Item" xml:space="preserve"><value>物品使用</value></data>
+  <data name="ChatType.Linkshell1" xml:space="preserve"><value>通讯贝 [1]</value></data>
+  <data name="ChatType.Linkshell2" xml:space="preserve"><value>通讯贝 [2]</value></data>
+  <data name="ChatType.Linkshell3" xml:space="preserve"><value>通讯贝 [3]</value></data>
+  <data name="ChatType.Linkshell4" xml:space="preserve"><value>通讯贝 [4]</value></data>
+  <data name="ChatType.Linkshell5" xml:space="preserve"><value>通讯贝 [5]</value></data>
+  <data name="ChatType.Linkshell6" xml:space="preserve"><value>通讯贝 [6]</value></data>
+  <data name="ChatType.Linkshell7" xml:space="preserve"><value>通讯贝 [7]</value></data>
+  <data name="ChatType.Linkshell8" xml:space="preserve"><value>通讯贝 [8]</value></data>
+  <data name="ChatType.LootNotice" xml:space="preserve"><value>战利品通知</value></data>
+  <data name="ChatType.LootRoll" xml:space="preserve"><value>战利品掷点</value></data>
+  <data name="ChatType.LoseBuff" xml:space="preserve"><value>失去增益效果</value></data>
+  <data name="ChatType.LoseDebuff" xml:space="preserve"><value>失去减益效果</value></data>
+  <data name="ChatType.MessageBook" xml:space="preserve"><value>留言簿提示</value></data>
+  <data name="ChatType.Miss" xml:space="preserve"><value>未命中</value></data>
+  <data name="ChatType.Notice" xml:space="preserve"><value>通知</value></data>
+  <data name="ChatType.NoviceNetwork" xml:space="preserve"><value>新人频道</value></data>
+  <data name="ChatType.NoviceNetworkSystem" xml:space="preserve"><value>新人频道系统消息</value></data>
+  <data name="ChatType.NpcAnnouncement" xml:space="preserve"><value>NPC 公告</value></data>
+  <data name="ChatType.NpcDialogue" xml:space="preserve"><value>NPC 对话</value></data>
+  <data name="ChatType.Orchestrion" xml:space="preserve"><value>管弦乐曲目</value></data>
+  <data name="ChatType.Party" xml:space="preserve"><value>小队</value></data>
+  <data name="ChatType.PeriodicRecruitmentNotification" xml:space="preserve"><value>招募定期通知</value></data>
+  <data name="ChatType.Progress" xml:space="preserve"><value>进度消息</value></data>
+  <data name="ChatType.PvpTeam" xml:space="preserve"><value>战队</value></data>
+  <data name="ChatType.PvpTeamAnnouncement" xml:space="preserve"><value>战队公告</value></data>
+  <data name="ChatType.PvpTeamLoginLogout" xml:space="preserve"><value>战队成员登录通知</value></data>
+  <data name="ChatType.RandomNumber" xml:space="preserve"><value>随机数消息</value></data>
+  <data name="ChatType.RetainerSale" xml:space="preserve"><value>雇员出售通知</value></data>
+  <data name="ChatType.Say" xml:space="preserve"><value>说话</value></data>
+  <data name="ChatType.Shout" xml:space="preserve"><value>喊话</value></data>
+  <data name="ChatType.Sign" xml:space="preserve"><value>玩家目标标记</value></data>
+  <data name="ChatType.StandardEmote" xml:space="preserve"><value>情感动作</value></data>
+  <data name="ChatType.System" xml:space="preserve"><value>系统消息</value></data>
+  <data name="ChatType.TellIncoming" xml:space="preserve"><value>私聊（接收）</value></data>
+  <data name="ChatType.TellOutgoing" xml:space="preserve"><value>私聊（发送）</value></data>
+  <data name="ChatType.Urgent" xml:space="preserve"><value>紧急消息</value></data>
+  <data name="ChatType.Yell" xml:space="preserve"><value>呼喊</value></data>
+  <data name="Filter.Alarm" xml:space="preserve"><value>闹钟通知</value></data>
+  <data name="Filter.Alliance" xml:space="preserve"><value>团队</value></data>
+  <data name="Filter.Battle" xml:space="preserve"><value>战斗</value></data>
+  <data name="Filter.CrossLinkshell1" xml:space="preserve"><value>跨界通讯贝 [1]</value></data>
+  <data name="Filter.CrossLinkshell2" xml:space="preserve"><value>跨界通讯贝 [2]</value></data>
+  <data name="Filter.CrossLinkshell3" xml:space="preserve"><value>跨界通讯贝 [3]</value></data>
+  <data name="Filter.CrossLinkshell4" xml:space="preserve"><value>跨界通讯贝 [4]</value></data>
+  <data name="Filter.CrossLinkshell5" xml:space="preserve"><value>跨界通讯贝 [5]</value></data>
+  <data name="Filter.CrossLinkshell6" xml:space="preserve"><value>跨界通讯贝 [6]</value></data>
+  <data name="Filter.CrossLinkshell7" xml:space="preserve"><value>跨界通讯贝 [7]</value></data>
+  <data name="Filter.CrossLinkshell8" xml:space="preserve"><value>跨界通讯贝 [8]</value></data>
+  <data name="Filter.CustomEmote" xml:space="preserve"><value>自定义情感动作</value></data>
+  <data name="Filter.Debug" xml:space="preserve"><value>调试</value></data>
+  <data name="Filter.Echo" xml:space="preserve"><value>本地回显</value></data>
+  <data name="Filter.ErrorMessages" xml:space="preserve"><value>错误消息</value></data>
+  <data name="Filter.FreeCompany" xml:space="preserve"><value>部队</value></data>
+  <data name="Filter.FreeCompanyAnnouncements" xml:space="preserve"><value>部队公告</value></data>
+  <data name="Filter.FreeCompanyLoginLogout" xml:space="preserve"><value>部队成员登录通知</value></data>
+  <data name="Filter.GatheringSystem" xml:space="preserve"><value>采集系统消息</value></data>
+  <data name="Filter.Gm" xml:space="preserve"><value>GM 消息</value></data>
+  <data name="Filter.Linkshell1" xml:space="preserve"><value>通讯贝 [1]</value></data>
+  <data name="Filter.Linkshell2" xml:space="preserve"><value>通讯贝 [2]</value></data>
+  <data name="Filter.Linkshell3" xml:space="preserve"><value>通讯贝 [3]</value></data>
+  <data name="Filter.Linkshell4" xml:space="preserve"><value>通讯贝 [4]</value></data>
+  <data name="Filter.Linkshell5" xml:space="preserve"><value>通讯贝 [5]</value></data>
+  <data name="Filter.Linkshell6" xml:space="preserve"><value>通讯贝 [6]</value></data>
+  <data name="Filter.Linkshell7" xml:space="preserve"><value>通讯贝 [7]</value></data>
+  <data name="Filter.Linkshell8" xml:space="preserve"><value>通讯贝 [8]</value></data>
+  <data name="Filter.Loot" xml:space="preserve"><value>战利品通知</value></data>
+  <data name="Filter.MessageBook" xml:space="preserve"><value>留言簿提示</value></data>
+  <data name="Filter.Notice" xml:space="preserve"><value>通知</value></data>
+  <data name="Filter.NoviceNetwork" xml:space="preserve"><value>新人频道</value></data>
+  <data name="Filter.NoviceNetworkAnnouncements" xml:space="preserve"><value>新人频道通知</value></data>
+  <data name="Filter.NpcAnnouncement" xml:space="preserve"><value>NPC 公告</value></data>
+  <data name="Filter.NpcDialogue" xml:space="preserve"><value>NPC 对话</value></data>
+  <data name="Filter.Orchestrion" xml:space="preserve"><value>管弦乐曲目</value></data>
+  <data name="Filter.OthersBattleSystem" xml:space="preserve"><value>他人的战斗系统消息</value></data>
+  <data name="Filter.OthersCrafting" xml:space="preserve"><value>他人的制作消息</value></data>
+  <data name="Filter.OthersFishing" xml:space="preserve"><value>他人的钓鱼消息</value></data>
+  <data name="Filter.OthersLoot" xml:space="preserve"><value>他人的战利品消息</value></data>
+  <data name="Filter.OthersProgression" xml:space="preserve"><value>他人的进度消息</value></data>
+  <data name="Filter.OwnBattleSystem" xml:space="preserve"><value>自己的战斗系统消息</value></data>
+  <data name="Filter.OwnCrafting" xml:space="preserve"><value>自己的制作消息</value></data>
+  <data name="Filter.OwnGathering" xml:space="preserve"><value>自己的采集消息</value></data>
+  <data name="Filter.OwnLoot" xml:space="preserve"><value>自己的战利品消息</value></data>
+  <data name="Filter.OwnProgression" xml:space="preserve"><value>自己的进度消息</value></data>
+  <data name="Filter.Party" xml:space="preserve"><value>小队</value></data>
+  <data name="Filter.PartyProgression" xml:space="preserve"><value>队友的进度消息</value></data>
+  <data name="Filter.PeriodicRecruitment" xml:space="preserve"><value>招募定期通知</value></data>
+  <data name="Filter.PvpTeam" xml:space="preserve"><value>战队</value></data>
+  <data name="Filter.PvpTeamAnnouncements" xml:space="preserve"><value>战队公告</value></data>
+  <data name="Filter.PvpTeamLoginLogout" xml:space="preserve"><value>战队成员登录通知</value></data>
+  <data name="Filter.Random" xml:space="preserve"><value>随机数消息</value></data>
+  <data name="Filter.RetainerSale" xml:space="preserve"><value>雇员出售通知</value></data>
+  <data name="Filter.Say" xml:space="preserve"><value>说话</value></data>
+  <data name="Filter.Shout" xml:space="preserve"><value>喊话</value></data>
+  <data name="Filter.Sign" xml:space="preserve"><value>玩家目标标记</value></data>
+  <data name="Filter.StandardEmote" xml:space="preserve"><value>情感动作</value></data>
+  <data name="Filter.SystemMessages" xml:space="preserve"><value>系统消息</value></data>
+  <data name="Filter.Tell" xml:space="preserve"><value>私聊</value></data>
+  <data name="Filter.Urgent" xml:space="preserve"><value>紧急消息</value></data>
+  <data name="Filter.Yell" xml:space="preserve"><value>呼喊</value></data>
+  <data name="FilterCategory.Announcements" xml:space="preserve"><value>系统与通知</value></data>
+  <data name="FilterCategory.Battle" xml:space="preserve"><value>战斗</value></data>
+  <data name="FilterCategory.Chat" xml:space="preserve"><value>聊天</value></data>
+  <data name="ManageNotification.New" xml:space="preserve"><value>添加通知</value></data>
+  <data name="ManageNotification.Title" xml:space="preserve"><value>编辑通知</value></data>
+  <data name="ManageServer.New" xml:space="preserve"><value>添加服务器</value></data>
+  <data name="ManageServer.Title" xml:space="preserve"><value>编辑服务器</value></data>
+  <data name="ManageTab.New" xml:space="preserve"><value>添加频道视图</value></data>
+  <data name="ManageTab.Title" xml:space="preserve"><value>编辑频道视图</value></data>
+  <data name="ManageTabs.Title" xml:space="preserve"><value>管理频道视图</value></data>
+  <data name="Status.CommunicationError" xml:space="preserve"><value>连接或通信中断：{0}</value></data>
+  <data name="Theme.Dark" xml:space="preserve"><value>深色</value></data>
+  <data name="Theme.Light" xml:space="preserve"><value>浅色</value></data>
+  <data name="Theme.System" xml:space="preserve"><value>跟随系统</value></data>
+  <data name="TrustDialog.DefaultName" xml:space="preserve"><value>游戏端（{0}）</value></data>
+  <data name="Item.AdvancedMelding" xml:space="preserve"><value>允许禁断镶嵌</value></data>
+  <data name="Item.Category" xml:space="preserve"><value>物品</value></data>
+  <data name="Item.EquipLevel" xml:space="preserve"><value>装备等级</value></data>
+  <data name="Item.Level" xml:space="preserve"><value>品级</value></data>
+  <data name="Item.MateriaSlots" xml:space="preserve"><value>魔晶石镶嵌孔</value></data>
+  <data name="Item.NoDescription" xml:space="preserve"><value>暂无描述</value></data>
+  <data name="Item.NoDetails" xml:space="preserve"><value>游戏端未回传详细属性</value></data>
+  <data name="Item.NoSlots" xml:space="preserve"><value>无固有孔位</value></data>
+  <data name="Item.Stats" xml:space="preserve"><value>基本参数 / 属性加成</value></data>
+  <data name="Item.Title" xml:space="preserve"><value>物品信息</value></data>
+  <data name="Map.Title" xml:space="preserve"><value>地图</value></data>
 </root>

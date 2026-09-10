@@ -10,10 +10,11 @@ using System.Threading.Tasks;
 namespace XIVChat_Desktop {
     public sealed partial class MapWindow : Window {
         private static MapWindow? _instance;
+        private string? localizedPlaceName;
 
         public MapWindow() {
             this.InitializeComponent();
-            this.AppWindow.Title = "XIVChat - 地图信息";
+            Localize.BindWindow(this, () => this.Title = string.IsNullOrEmpty(localizedPlaceName) ? LocalizationHelper.GetString("Map.Title") : $"XIVChat - {localizedPlaceName}");
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(950, 750));
             this.Closed += MapWindow_Closed;
         }
@@ -35,6 +36,7 @@ namespace XIVChat_Desktop {
         }
 
         public async void UpdateLocation(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null) {
+            localizedPlaceName = placeName;
             _currentMapFilenameId = mapFilenameId;
             _currentMapSizeFactor = sizeFactor;
 
@@ -63,7 +65,7 @@ namespace XIVChat_Desktop {
                 }
             }
 
-            this.AppWindow.Title = !string.IsNullOrEmpty(placeName) ? $"XIVChat - {placeName}" : "XIVChat - 地图信息";
+            this.AppWindow.Title = !string.IsNullOrEmpty(placeName) ? $"XIVChat - {placeName}" : LocalizationHelper.GetString("Map.Title");
 
             uint parsedId = mapId ?? 0;
             float parsedX = x ?? 0f;

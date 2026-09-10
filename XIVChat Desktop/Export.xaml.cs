@@ -44,6 +44,7 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString("Export.Title"));
 
             this.SetUpFilters();
         }
@@ -62,14 +63,14 @@ namespace XIVChat_Desktop {
                 };
 
                 var selectButton = new Button {
-                    Content = "全选",
                 };
+                Localize.SetContent(selectButton, "Export.SelectAll");
                 selectButton.Click += (sender, e) => SetAllChecked(true);
 
                 var deselectButton = new Button {
-                    Content = "取消全选",
                     Margin = new Thickness(4, 0, 0, 0),
                 };
+                Localize.SetContent(deselectButton, "Export.DeselectAll");
                 deselectButton.Click += (sender, e) => SetAllChecked(false);
 
                 var doingMultiple = false;
@@ -98,10 +99,10 @@ namespace XIVChat_Desktop {
 
                 foreach (var type in category.Types()) {
                     var check = new CheckBox {
-                        Content = type.Name(),
                         IsChecked = this.ExportTab.Filter.Types.Contains(type),
                     };
 
+                    Localize.SetContent(check, "Filter." + type);
                     check.Checked += (sender, e) => {
                         this.ExportTab.Filter.Types.Add(type);
 
@@ -121,10 +122,10 @@ namespace XIVChat_Desktop {
                 }
 
                 var tabItem = new TabViewItem {
-                    Header = new TextBlock { Text = category.Name() },
                     Content = tabContent,
                 };
 
+                Localize.SetHeader(tabItem, "FilterCategory." + category);
                 this.Tabs.TabItems.Add(tabItem);
             }
         }

@@ -244,13 +244,13 @@ namespace XIVChat_Desktop {
 
             this.Dispatch(() => {
                 if (this.Window != null) {
-                    this.Window.LoggedInAsText.Text = "未登录";
+                    this.Window.LoggedInAsText.Text = LocalizationHelper.GetString("Status.NotLoggedIn");
                     this.Window.LoggedInAsSeparatorText.Visibility = Visibility.Collapsed;
                     this.Window.CurrentWorldText.Visibility = Visibility.Collapsed;
                     this.Window.CurrentWorldSeparatorText.Visibility = Visibility.Collapsed;
                     this.Window.LocationButton.Visibility = Visibility.Collapsed;
                     this.Window.CurrentPlayerData = null;
-                    this.Window.AddSystemMessage("已断开连接");
+                    this.Window.AddSystemMessage(LocalizationHelper.GetString("Status.Disconnected"));
                     this.Window.OnPropertyChanged(nameof(MainWindow.InputPlaceholder));
                 }
             });
@@ -277,7 +277,7 @@ namespace XIVChat_Desktop {
             }
 
             var text = message.ContentText;
-            var attribution = message.Channel.Name();
+            var attribution = LocalizationHelper.GetString("ChatType." + message.Channel);
 
             Win10Notify(title, text, attribution);
         }

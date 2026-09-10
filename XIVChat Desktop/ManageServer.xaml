@@ -1,11 +1,10 @@
-﻿<Window x:Class="XIVChat_Desktop.ManageServer"
+<Window x:Class="XIVChat_Desktop.ManageServer"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="using:XIVChat_Desktop"
         mc:Ignorable="d"
-        Title="管理服务器"
         d:DataContext="{d:DesignInstance local:ManageServer}">
     <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
@@ -23,7 +22,7 @@
         <TextBlock VerticalAlignment="Center"
                    Grid.Row="0"
                    Grid.Column="0"
-                   Text="名称" />
+                   local:Localize.Text="ManageServer.Name" />
         <TextBox Margin="4,0,0,0"
                  Grid.Row="0"
                  Grid.Column="1"
@@ -33,7 +32,7 @@
         <TextBlock VerticalAlignment="Center"
                    Grid.Row="1"
                    Grid.Column="0"
-                   Text="IP 地址" />
+                   local:Localize.Text="ManageServer.Host" />
         <TextBox Margin="4,4,0,0"
                  Grid.Row="1"
                  Grid.Column="1"
@@ -43,7 +42,7 @@
         <TextBlock VerticalAlignment="Center"
                    Grid.Row="2"
                    Grid.Column="0"
-                   Text="端口号" />
+                   local:Localize.Text="ManageServer.Port" />
         <TextBox Margin="4,4,0,0"
                  Grid.Row="2"
                  Grid.Column="1"
@@ -57,13 +56,9 @@
                    Grid.Column="0"
                    HorizontalAlignment="Right"
                    Orientation="Horizontal">
-            <Button Click="Cancel_Click">
-                取消
-            </Button>
+            <Button Click="Cancel_Click" local:Localize.Content="Dialog.Cancel" />
             <Button Margin="4,0,0,0"
-                    Click="Save_Click">
-                保存
-            </Button>
+                    Click="Save_Click" local:Localize.Content="Dialog.Save" />
         </StackPanel>
     </Grid>
 </Window>

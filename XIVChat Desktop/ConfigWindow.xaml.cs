@@ -17,8 +17,8 @@ namespace XIVChat_Desktop {
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(650, 520));
 
             this.ThemeChooser.SelectionChanged -= ThemeChooser_SelectionChanged;
-            this.ThemeChooser.ItemsSource = (Theme[])Enum.GetValues(typeof(Theme));
-            this.ThemeChooser.SelectedItem = this.Config.Theme;
+            this.ThemeChooser.ItemsSource = Enum.GetValues<Theme>().Select(t => LocalizationHelper.GetString("Theme." + t)).ToList();
+            this.ThemeChooser.SelectedIndex = Array.IndexOf(Enum.GetValues<Theme>(), this.Config.Theme);
             this.ThemeChooser.SelectionChanged += ThemeChooser_SelectionChanged;
 
             this.LanguageChooser.SelectionChanged -= LanguageChooser_SelectionChanged;
@@ -26,10 +26,14 @@ namespace XIVChat_Desktop {
             this.LanguageChooser.SelectedIndex = Array.IndexOf(LocalizationHelper.AvailableLanguages, this.Config.Language);
             this.LanguageChooser.SelectionChanged += LanguageChooser_SelectionChanged;
 
-            UpdateLocalizations();
+            Localize.BindWindow(this, UpdateLocalizations);
         }
 
         public void UpdateLocalizations() {
+            this.ThemeChooser.SelectionChanged -= ThemeChooser_SelectionChanged;
+            this.ThemeChooser.ItemsSource = Enum.GetValues<Theme>().Select(t => LocalizationHelper.GetString("Theme." + t)).ToList();
+            this.ThemeChooser.SelectedIndex = Array.IndexOf(Enum.GetValues<Theme>(), this.Config.Theme);
+            this.ThemeChooser.SelectionChanged += ThemeChooser_SelectionChanged;
             try {
                 this.Title = LocalizationHelper.GetString("Menu.Config");
                 TabServers.Header = LocalizationHelper.GetString("Config.Servers");
@@ -74,7 +78,8 @@ namespace XIVChat_Desktop {
         }
 
         private void ThemeChooser_SelectionChanged(object sender, SelectionChangedEventArgs e) {
-            if (this.ThemeChooser.SelectedItem is Theme theme && this.Config.Theme != theme) {
+            if (this.ThemeChooser.SelectedIndex is var index && index >= 0 && index < Enum.GetValues<Theme>().Length) {
+                var theme = Enum.GetValues<Theme>()[index];
                 this.Config.Theme = theme;
                 App.ApplyTheme(theme);
             }
@@ -87,10 +92,6 @@ namespace XIVChat_Desktop {
                 if (this.Config.Language != lang) {
                     this.Config.Language = lang;
                     LocalizationHelper.ApplyLanguage(lang);
-                    UpdateLocalizations();
-                    if (App.Current is App app && app.Window != null) {
-                        app.Window.UpdateLocalizations();
-                    }
                 }
             }
         }

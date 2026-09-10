@@ -9,6 +9,8 @@ namespace XIVChat_Desktop {
     }
 
     public static class LocalizationHelper {
+        public static event Action? LanguageChanged;
+        public static string LanguageCode => _currentLangCode;
         public static void Initialize(AppLanguage language) {
             ApplyLanguage(language);
         }
@@ -22,6 +24,7 @@ namespace XIVChat_Desktop {
                 _ => System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-CN" : "en-US"
             };
             _resourceManager = null;
+            LanguageChanged?.Invoke();
         }
 
         public static AppLanguage[] AvailableLanguages => new[] {
@@ -31,8 +34,8 @@ namespace XIVChat_Desktop {
         };
 
         public static string GetLanguageName(AppLanguage language) => language switch {
-            AppLanguage.System => "跟随系统 / System Default",
-            AppLanguage.ChineseSimplified => "简体中文 (Chinese)",
+            AppLanguage.System => "跟随系统 / System",
+            AppLanguage.ChineseSimplified => "简体中文",
             AppLanguage.English => "English",
             _ => language.ToString()
         };
@@ -74,19 +77,10 @@ namespace XIVChat_Desktop {
                     return candidateMain.ValueAsString;
                 }
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                sb.AppendLine($"[FAIL] Key='{key}' Path='{path}' Lang='{langCode}' MapCount={map.ResourceCount} SubtreeNull={(subTree == null)}");
-                for (uint i = 0; i < Math.Min(map.ResourceCount, 15); i++) {
-                    var pair = map.GetValueByIndex(i);
-                    sb.AppendLine($"  {i}: {pair.Key} = {pair.Value?.ValueAsString}");
-                }
-                System.IO.File.AppendAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "loc_debug.log"), sb.ToString() + "\r\n");
-
+                System.Diagnostics.Debug.WriteLine($"Missing localization: {key} ({langCode})");
                 return key;
             } catch (Exception ex) {
-                try {
-                    System.IO.File.AppendAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "loc_debug.log"), $"[EX] Key='{key}': {ex}\r\n");
-                } catch { }
+                System.Diagnostics.Debug.WriteLine($"Localization error for {key}: {ex.Message}");
                 return key;
             }
         }

@@ -77,7 +77,7 @@ namespace XIVChat_Desktop {
             };
             Closed += (_, _) => DisposeViews();
             initialized = true;
-            UpdateLocalizations(); ObserveConnection();
+            Localize.BindWindow(this, UpdateLocalizations); ObserveConnection();
             ChannelList.SelectedIndex = App.Config.Tabs.Count > 0 ? 0 : -1;
             Navigate("channels");
             Root.Loaded += async (_, _) => {
@@ -357,7 +357,7 @@ namespace XIVChat_Desktop {
         private MenuFlyout CreateChannelFlyout() {
             var flyout = new MenuFlyout();
             foreach (var channel in Enum.GetValues<InputChannel>().Distinct()) {
-                var item = new MenuFlyoutItem { Text = channel.ToString() }; item.Click += (_, _) => App.Connection?.ChangeChannel(channel); flyout.Items.Add(item);
+                var item = new MenuFlyoutItem { Text = L("Filter." + channel) }; item.Click += (_, _) => App.Connection?.ChangeChannel(channel); flyout.Items.Add(item);
             }
             return flyout;
         }

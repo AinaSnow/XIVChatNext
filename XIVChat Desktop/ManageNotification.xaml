@@ -5,7 +5,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="using:XIVChat_Desktop"
         mc:Ignorable="d"
-        Title="管理通知"
         Closed="ManageNotification_OnClosed"
         d:DataContext="{d:DesignInstance local:ManageNotification}">
     <Grid Margin="8" DataContext="{x:Bind}">
@@ -28,13 +27,13 @@
 
         <TextBox Grid.Row="0"
                  Margin="0,0,0,8"
-                 PlaceholderText="Name"
-                 Header="名称"
+
+                 local:Localize.Header="ManageServer.Name"
                  Text="{x:Bind Notification.Name, Mode=TwoWay}" />
 
         <TextBlock Grid.Row="1"
                    Margin="0,0,0,8"
-                   Text="正则表达式" />
+                   local:Localize.Text="ManageNotification.Regexes" />
 
         <ScrollViewer Height="100"
                       Grid.Row="2">
@@ -50,12 +49,12 @@
 
         <Button Grid.Row="3"
                 Margin="0,0,0,8"
-                Content="添加"
+                local:Localize.Content="Dialog.Add"
                 Click="AddRegex_Click" />
 
         <TextBlock Grid.Row="4"
                    Margin="0,0,0,8"
-                   Text="子字符串" />
+                   local:Localize.Text="ManageNotification.Substrings" />
 
         <ScrollViewer Height="100"
                       Grid.Row="5">
@@ -71,16 +70,16 @@
 
         <Button Grid.Row="6"
                 Margin="0,0,0,8"
-                Content="添加"
+                local:Localize.Content="Dialog.Add"
                 Click="AddSubstring_Click" />
 
         <CheckBox Grid.Row="7"
                   IsChecked="{x:Bind Notification.MatchAll, Mode=TwoWay}"
-                  Content="匹配来自选定频道的所有消息" />
+                  local:Localize.Content="ManageNotification.MatchAll" />
 
         <TextBlock Grid.Row="8"
                    Margin="0,0,0,8"
-                   Text="频道" />
+                   local:Localize.Text="ManageNotification.Channels" />
 
         <ScrollViewer Grid.Row="9">
             <StackPanel x:Name="Channels"

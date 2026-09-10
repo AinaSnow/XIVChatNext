@@ -24,6 +24,7 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString(this.NewNotification ? "ManageNotification.New" : "ManageNotification.Title"));
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(650, 500));
 
             this.SetUpChannels();
@@ -36,14 +37,14 @@ namespace XIVChat_Desktop {
             };
 
             var selectButton = new Button {
-                Content = "全选",
             };
+            Localize.SetContent(selectButton, "Export.SelectAll");
             selectButton.Click += (sender, e) => SetAllChecked(true);
 
             var deselectButton = new Button {
-                Content = "取消全选",
                 Margin = new Thickness(4, 0, 0, 0),
             };
+            Localize.SetContent(deselectButton, "Export.DeselectAll");
             deselectButton.Click += (sender, e) => SetAllChecked(false);
 
             void SetAllChecked(bool isChecked) {
@@ -64,11 +65,11 @@ namespace XIVChat_Desktop {
 
             foreach (var type in (ChatType[])Enum.GetValues(typeof(ChatType))) {
                 var check = new CheckBox {
-                    Content = type.Name(),
                     IsChecked = this.Notification.Channels.Contains(type),
                 };
 
-                check.Checked += (sender, e) => {
+                Localize.SetContent(check, "ChatType." + type);
+                    check.Checked += (sender, e) => {
                     this.Notification.Channels.Add(type);
                 };
                 check.Unchecked += (sender, e) => {

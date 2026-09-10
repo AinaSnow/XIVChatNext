@@ -5,7 +5,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="using:XIVChat_Desktop"
         mc:Ignorable="d"
-        Title="管理选项卡"
         d:DataContext="{d:DesignInstance local:ManageTab}">
     <Grid Margin="8" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
@@ -18,20 +17,20 @@
         <TextBox Grid.Row="0"
                  x:Name="TabName"
                  Margin="0,0,0,8"
-                 PlaceholderText="Name"
-                 Header="名称"
+
+                 local:Localize.Header="ManageServer.Name"
                  Text="{x:Bind Tab.Name, Mode=OneWay}" />
         <CheckBox Grid.Row="1"
                   x:Name="MarkdownToggle"
                   Margin="0,0,0,8"
-                  Content="将消息处理为 Markdown"
+                  local:Localize.Content="ManageTab.ProcessMarkdown"
                   IsChecked="{x:Bind Tab.ProcessMarkdown, Mode=OneWay}" />
         <TabView Grid.Row="2"
                  x:Name="Tabs"
                  IsAddTabButtonVisible="False" />
         <Button Margin="0,8,0,0"
                 Grid.Row="3"
-                Content="保存"
+                local:Localize.Content="Dialog.Save"
                 Click="Save_Click" />
     </Grid>
 </Window>

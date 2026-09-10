@@ -16,6 +16,7 @@ namespace XIVChat_Desktop {
         public ManageTabs() {
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString("ManageTabs.Title"));
         }
 
         private void AddTab_Click(object sender, RoutedEventArgs e) {

@@ -28,6 +28,11 @@ Tell targets, and relay buffering/transport completion. The regression runner ha
 
 ## WinUI desktop smoke test
 
+Localization resources can be checked with `./tests/LocalizationAudit.ps1`. This verifies
+key parity, duplicate/empty values, format arguments and static resource references.
+The desktop smoke suite also checks language changes on already open dialogs, generated
+channel options and preservation of unsaved input (62 checks as of 2026-09-10).
+
 ```powershell
 $smokeTargets = Join-Path (Get-Location) 'tests/DesktopSmoke.targets'
 dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug "-p:CustomAfterMicrosoftCommonTargets=$smokeTargets"

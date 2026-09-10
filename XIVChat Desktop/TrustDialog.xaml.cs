@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Channels;
@@ -21,6 +22,7 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString("TrustDialog.Title"));
             this.Closed += (_, _) => this.trustChannel.TryWrite(false);
 
             this.ClientPublicKey.Text = ToHexString(this.App.Config.KeyPair.PublicKey);
@@ -32,7 +34,7 @@ namespace XIVChat_Desktop {
 
             var hexKey = ToHexString(remoteKey);
             this.ServerPublicKey.Text = hexKey;
-            this.KeyName.Text = $"游戏端 ({hexKey.Substring(0, hexKey.Length >= 8 ? 8 : hexKey.Length)})";
+            this.KeyName.Text = string.Format(LocalizationHelper.GetString("TrustDialog.DefaultName"), hexKey.Substring(0, Math.Min(8, hexKey.Length)));
             var serverColours = BreakIntoColours(remoteKey);
             for (int i = 0; i < this.ServerPublicKeyColours.Children.Count; i++) {
                 var rect = (Rectangle)this.ServerPublicKeyColours.Children[i];
@@ -62,7 +64,7 @@ namespace XIVChat_Desktop {
             var keyName = this.KeyName.Text?.Trim() ?? "";
             if (keyName.Length == 0) {
                 var hex = ToHexString(this.remoteKey);
-                keyName = $"游戏端 ({hex.Substring(0, hex.Length >= 8 ? 8 : hex.Length)})";
+                keyName = string.Format(LocalizationHelper.GetString("TrustDialog.DefaultName"), hex.Substring(0, Math.Min(8, hex.Length)));
             }
 
             var trustedKey = new TrustedKey(keyName, this.remoteKey);

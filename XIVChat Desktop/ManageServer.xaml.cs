@@ -14,11 +14,8 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString(this.isNewServer ? "ManageServer.New" : "ManageServer.Title"));
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(400, 320));
-
-            if (this.isNewServer) {
-                this.Title = "添加服务器";
-            }
         }
 
         private void Save_Click(object sender, RoutedEventArgs e) {

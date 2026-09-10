@@ -21,10 +21,7 @@ namespace XIVChat_Desktop {
 
             this.InitializeComponent();
             ThemeHelper.InitializeWindow(this);
-
-            if (this.isNewTab) {
-                this.Title = "添加选项卡";
-            }
+            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString(this.isNewTab ? "ManageTab.New" : "ManageTab.Title"));
 
             foreach (var category in (FilterCategory[])Enum.GetValues(typeof(FilterCategory))) {
                 var panel = new StackPanel {
@@ -43,14 +40,14 @@ namespace XIVChat_Desktop {
                 };
 
                 var selectButton = new Button {
-                    Content = "全选",
                 };
+                Localize.SetContent(selectButton, "Export.SelectAll");
                 selectButton.Click += (sender, e) => SetAllChecked(true);
 
                 var deselectButton = new Button {
-                    Content = "取消全选",
                     Margin = new Thickness(4, 0, 0, 0),
                 };
+                Localize.SetContent(deselectButton, "Export.DeselectAll");
                 deselectButton.Click += (sender, e) => SetAllChecked(false);
 
                 void SetAllChecked(bool isChecked) {
@@ -72,10 +69,10 @@ namespace XIVChat_Desktop {
 
                 foreach (var type in category.Types()) {
                     var check = new CheckBox {
-                        Content = type.Name(),
                         IsChecked = this.Tab.Filter.Types.Contains(type),
                     };
 
+                    Localize.SetContent(check, "Filter." + type);
                     check.Checked += (sender, e) => {
                         this.Tab.Filter.Types.Add(type);
                     };
@@ -87,11 +84,11 @@ namespace XIVChat_Desktop {
                 }
 
                 var tabItem = new TabViewItem {
-                    Header = new TextBlock { Text = category.Name() },
                     Content = tabContent,
                     IsClosable = false,
                 };
 
+                Localize.SetHeader(tabItem, "FilterCategory." + category);
                 this.Tabs.TabItems.Add(tabItem);
             }
         }

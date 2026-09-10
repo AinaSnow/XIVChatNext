@@ -1,4 +1,4 @@
-﻿<Window x:Class="XIVChat_Desktop.ConnectDialog"
+<Window x:Class="XIVChat_Desktop.ConnectDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,7 +6,6 @@
         xmlns:local="using:XIVChat_Desktop"
         xmlns:cc="using:XIVChat_Desktop.Controls"
         mc:Ignorable="d"
-        Title="连接"
         d:DataContext="{d:DesignInstance local:ConnectDialog}">
     <Grid Margin="16" DataContext="{x:Bind}">
         <Grid.RowDefinitions>
@@ -25,12 +24,8 @@
                    HorizontalAlignment="Right"
                    Orientation="Horizontal">
             <Button Margin="0,0,8,0"
-                    Click="Cancel_Click">
-                取消
-            </Button>
-            <Button Click="Connect_Clicked">
-                连接
-            </Button>
+                    Click="Cancel_Click" local:Localize.Content="Dialog.Cancel" />
+            <Button Click="Connect_Clicked" local:Localize.Content="Menu.Connect" />
         </StackPanel>
     </Grid>
 </Window>

@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 namespace XIVChat_Desktop {
     public sealed partial class ItemWindow : Window {
         private static ItemWindow? _instance;
+        private Action? refreshLocalizedItem;
 
         public ItemWindow() {
             this.InitializeComponent();
-            this.AppWindow.Title = "XIVChat - 物品信息";
+            Localize.BindWindow(this, () => { if (refreshLocalizedItem != null) refreshLocalizedItem(); else this.Title = LocalizationHelper.GetString("Item.Title"); });
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 620));
             this.Closed += ItemWindow_Closed;
         }
@@ -38,10 +39,11 @@ namespace XIVChat_Desktop {
                 isHq = true;
                 itemId = itemId.Value - 500000;
             }
+            refreshLocalizedItem = () => UpdateItem(itemId, isHq, itemName, chunk);
             string cleanName = itemName?.Trim() ?? "";
             cleanName = Regex.Replace(cleanName, @"^[\uE000-\uF8FF\[（【(]+|[\]）】)]+$", "").Trim();
 
-            this.AppWindow.Title = !string.IsNullOrEmpty(cleanName) ? $"XIVChat - {cleanName}" : "XIVChat - 物品信息";
+            this.AppWindow.Title = !string.IsNullOrEmpty(cleanName) ? $"XIVChat - {cleanName}" : LocalizationHelper.GetString("Item.Title");
 
             string htmlContent;
             if (chunk != null && (!string.IsNullOrEmpty(chunk.ItemDescription) || !string.IsNullOrEmpty(chunk.ItemName))) {
@@ -53,14 +55,14 @@ namespace XIVChat_Desktop {
                     7 => "#ff73be", // 粉装
                     _ => "#ffd700"  // 默认金色
                 };
-                string displayName = !string.IsNullOrEmpty(chunk.ItemName) ? chunk.ItemName : (!string.IsNullOrEmpty(cleanName) ? cleanName : $"Item #{itemId}");
+                string displayName = !string.IsNullOrEmpty(chunk.ItemName) ? chunk.ItemName : (!string.IsNullOrEmpty(cleanName) ? cleanName : $"{LocalizationHelper.GetString("Item.Category")} #{itemId}");
                 string hqBadge = isHq ? @"<span class=""hq-badge""><svg width=""12"" height=""12"" viewBox=""0 0 24 24"" fill=""#111"" style=""margin-right:2px; vertical-align:-1px;""><path d=""M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z""/></svg>HQ</span>" : "";
-                string categoryText = !string.IsNullOrEmpty(chunk.ItemCategory) ? chunk.ItemCategory : "物品";
-                string levelText = chunk.ItemLevel.HasValue && chunk.ItemLevel.Value > 0 ? $" | 品级 {chunk.ItemLevel}" : "";
-                string equipLevelText = chunk.ItemEquipLevel.HasValue && chunk.ItemEquipLevel.Value > 0 ? $" (装备等级 {chunk.ItemEquipLevel})" : "";
+                string categoryText = !string.IsNullOrEmpty(chunk.ItemCategory) ? chunk.ItemCategory : LocalizationHelper.GetString("Item.Category");
+                string levelText = chunk.ItemLevel.HasValue && chunk.ItemLevel.Value > 0 ? $" | {LocalizationHelper.GetString("Item.Level")} {chunk.ItemLevel}" : "";
+                string equipLevelText = chunk.ItemEquipLevel.HasValue && chunk.ItemEquipLevel.Value > 0 ? $" ({LocalizationHelper.GetString("Item.EquipLevel")} {chunk.ItemEquipLevel})" : "";
                 string descHtml = !string.IsNullOrEmpty(chunk.ItemDescription)
                     ? $"<div class=\"description\">{chunk.ItemDescription}</div>"
-                    : ((chunk.ItemStats != null && chunk.ItemStats.Count > 0) || (chunk.ItemMateriaSlots.HasValue && chunk.ItemMateriaSlots.Value > 0) ? "" : "<div class=\"description\">暂无描述</div>");
+                    : ((chunk.ItemStats != null && chunk.ItemStats.Count > 0) || (chunk.ItemMateriaSlots.HasValue && chunk.ItemMateriaSlots.Value > 0) ? "" : $"<div class=\"description\">{LocalizationHelper.GetString("Item.NoDescription")}</div>");
 
                 string iconImgHtml = "";
                 if (chunk.ItemIconId.HasValue && chunk.ItemIconId.Value > 0) {
@@ -81,7 +83,7 @@ namespace XIVChat_Desktop {
                     foreach (var stat in chunk.ItemStats) {
                         statsItems += $"<div class=\"stat-row\">• {stat}</div>";
                     }
-                    statsHtml = $"<div class=\"stats-box\"><div class=\"stats-title\">基本参数 / 属性加成</div>{statsItems}</div>";
+                    statsHtml = $"<div class=\"stats-box\"><div class=\"stats-title\">{LocalizationHelper.GetString("Item.Stats")}</div>{statsItems}</div>";
                 }
 
                 string materiaHtml = "";
@@ -90,15 +92,15 @@ namespace XIVChat_Desktop {
                     for (int i = 0; i < chunk.ItemMateriaSlots.Value; i++) {
                         circles.Add("🟢");
                     }
-                    string advMeldingText = chunk.ItemIsAdvancedMeldingPermitted == true ? " <span style=\"color:#aaa;\">(允许禁断镶嵌)</span>" : "";
+                    string advMeldingText = chunk.ItemIsAdvancedMeldingPermitted == true ? $" <span style=\"color:#aaa;\">({LocalizationHelper.GetString("Item.AdvancedMelding")})</span>" : "";
                     if (circles.Count > 0 || chunk.ItemIsAdvancedMeldingPermitted == true) {
-                        string slotsStr = circles.Count > 0 ? string.Join(" ", circles) : "无固有孔位";
-                        materiaHtml = $"<div class=\"materia-area\">魔晶石镶嵌孔: {slotsStr}{advMeldingText}</div>";
+                        string slotsStr = circles.Count > 0 ? string.Join(" ", circles) : LocalizationHelper.GetString("Item.NoSlots");
+                        materiaHtml = $"<div class=\"materia-area\">{LocalizationHelper.GetString("Item.MateriaSlots")}: {slotsStr}{advMeldingText}</div>";
                     }
                 }
 
                 htmlContent = $@"<!DOCTYPE html>
-<html lang=""zh-Hans"">
+<html lang=""{LocalizationHelper.LanguageCode}"">
 <head>
   <meta charset=""UTF-8"" />
   <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
@@ -235,9 +237,9 @@ namespace XIVChat_Desktop {
 </body>
 </html>";
             } else {
-                string displayName = !string.IsNullOrEmpty(cleanName) ? cleanName : $"Item #{itemId}";
+                string displayName = !string.IsNullOrEmpty(cleanName) ? cleanName : $"{LocalizationHelper.GetString("Item.Category")} #{itemId}";
                 htmlContent = $@"<!DOCTYPE html>
-<html lang=""zh-Hans"">
+<html lang=""{LocalizationHelper.LanguageCode}"">
 <head>
   <meta charset=""UTF-8"" />
   <style>
@@ -253,7 +255,7 @@ namespace XIVChat_Desktop {
 </head>
 <body>
   <div style=""font-size: 16px; color: #cbd5e1;"">{displayName}</div>
-  <div style=""font-size: 13px; color: #8c96ab; margin-top: 12px;"">游戏端未回传详细属性</div>
+  <div style=""font-size: 13px; color: #8c96ab; margin-top: 12px;"">{LocalizationHelper.GetString("Item.NoDetails")}</div>
 </body>
 </html>";
             }
