@@ -102,7 +102,7 @@ internal static class FriendTests {
         try {
             await using (var store = await HistoryStore.OpenAsync(path)) await store.AppendAsync("source", WorkbenchTests.Message(1), "id");
             using (var db = new SqliteConnection($"Data Source={path};Pooling=False")) {
-                db.Open(); using var cmd = db.CreateCommand(); cmd.CommandText = "DROP TABLE friend_snapshots; PRAGMA user_version=1"; cmd.ExecuteNonQuery();
+                db.Open(); using var cmd = db.CreateCommand(); cmd.CommandText = Phase3Tests.DowngradeToV2 + "DROP TABLE friend_snapshots; PRAGMA user_version=1"; cmd.ExecuteNonQuery();
             }
             await using (var store = await HistoryStore.OpenAsync(path)) {
                 Check((await store.SearchAsync(new())).Count == 1, "Migration lost messages");
@@ -116,7 +116,7 @@ internal static class FriendTests {
                 try { await store.SaveFriendSnapshotAsync("source", FriendListProtocol.Pages(snapshot, "req")[0]); throw new Exception("Partial saved"); }
                 catch (ArgumentException) { }
             }
-            var backup = Directory.GetFiles(dir, "*.before-v2-*.bak").Single();
+            var backup = Directory.GetFiles(dir, "*.before-v3-*.bak").Single();
             using var backupDb = new SqliteConnection($"Data Source={backup};Pooling=False"); backupDb.Open();
             using var version = backupDb.CreateCommand(); version.CommandText = "PRAGMA user_version";
             Check(Convert.ToInt32(version.ExecuteScalar()) == 1, "Backup is not pre-migration");

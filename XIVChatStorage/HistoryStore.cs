@@ -8,12 +8,13 @@ namespace XIVChatStorage;
 
 public sealed record HistoryQuery(string? OwnerKey = null, string? Text = null, ushort? Channel = null,
     string? Person = null, DateTime? FromUtc = null, DateTime? UntilUtc = null,
-    long BeforeRow = long.MaxValue, int Limit = 100, DateTime? BeforeTimestampUtc = null, string? Source = null);
+    long BeforeRow = long.MaxValue, int Limit = 100, DateTime? BeforeTimestampUtc = null, string? Source = null,
+    string? PeerKey = null, bool BookmarksOnly = false);
 public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMessage Message, string Note, bool Bookmarked);
 
 /// <summary>All writes run on one worker. Completion means the transaction committed.</summary>
-public sealed class HistoryStore : IAsyncDisposable {
-    private const int SchemaVersion = 2;
+public sealed partial class HistoryStore : IAsyncDisposable {
+    private const int SchemaVersion = 3;
     private readonly string connectionString;
     private readonly SqliteConnection writer;
     private readonly Channel<Write> writes = Channel.CreateBounded<Write>(new BoundedChannelOptions(2048) {
@@ -50,6 +51,7 @@ public sealed class HistoryStore : IAsyncDisposable {
                     CREATE TABLE friend_snapshots (source TEXT NOT NULL, owner_key TEXT NOT NULL,
                         captured_at INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(source,owner_key));
                     """, tx);
+                if (version < 3) MigrateWorkbench(connection, tx);
                 Execute(connection, $"PRAGMA user_version={SchemaVersion}", tx);
                 tx.Commit();
             }
@@ -101,7 +103,7 @@ public sealed class HistoryStore : IAsyncDisposable {
     public static string StorageId(string source, ServerMessage message) =>
         $"{source}/{(string.IsNullOrEmpty(message.MessageId) ? "legacy:" + Guid.NewGuid().ToString("N") : message.MessageId)}";
 
-    public Task AppendAsync(string source, ServerMessage message, string id) {
+    public Task AppendAsync(string source, ServerMessage message, string id, bool live = false) {
         var payload = MessagePackSerializer.Serialize(message);
         var owner = message.Owner?.Key ?? $"unassigned:{source}";
         var person = message.TellPeer?.Name ?? message.SenderText;
@@ -109,12 +111,15 @@ public sealed class HistoryStore : IAsyncDisposable {
             string.Join(" ", message.Chunks.OfType<TextChunk>().Select(chunk => chunk.Content)));
         return this.Enqueue((db, tx) => {
             using var command = Command(db, """
-                INSERT OR IGNORE INTO messages(id,source,owner_key,service_id,run_id,sequence,timestamp,channel,person,search_text,payload)
-                VALUES($id,$source,$owner,$service,$run,$sequence,$time,$channel,$person,$text,$payload)
+                INSERT OR IGNORE INTO messages(id,source,owner_key,service_id,run_id,sequence,timestamp,channel,person,search_text,payload,peer_key,is_live)
+                VALUES($id,$source,$owner,$service,$run,$sequence,$time,$channel,$person,$text,$payload,$peer,$live)
                 """, tx, ("$id", id), ("$source", source), ("$owner", owner), ("$service", message.ServiceId),
                 ("$run", message.RunId), ("$sequence", message.Sequence), ("$time", Millis(message.Timestamp)),
-                ("$channel", (ushort)message.Channel), ("$person", person), ("$text", search), ("$payload", payload));
-            command.ExecuteNonQuery();
+                ("$channel", (ushort)message.Channel), ("$person", person), ("$text", search), ("$payload", payload),
+                ("$peer", ConversationIdentity.IsTell((ushort)message.Channel) ? ConversationIdentity.PeerKey(message.TellPeer) : null), ("$live", live));
+            if (command.ExecuteNonQuery() > 0 && message.Owner?.Key != null && ConversationIdentity.IsTell((ushort)message.Channel) &&
+                ConversationIdentity.PeerKey(message.TellPeer) is { } peerKey)
+                EnsureConversation(db, tx, source, owner, peerKey, message.TellPeer!);
         });
     }
 
@@ -177,6 +182,8 @@ public sealed class HistoryStore : IAsyncDisposable {
         }
         Filter("m.owner_key=$owner", "$owner", query.OwnerKey);
         Filter("m.source=$source", "$source", query.Source);
+        Filter("m.peer_key=$peer", "$peer", query.PeerKey);
+        if (query.BookmarksOnly) conditions.Add("m.bookmarked=1");
         Filter("m.channel=$channel", "$channel", query.Channel);
         Filter("instr(m.person,$person)>0", "$person", query.Person);
         Filter("m.timestamp >= $from", "$from", query.FromUtc is { } from ? Millis(from) : null);

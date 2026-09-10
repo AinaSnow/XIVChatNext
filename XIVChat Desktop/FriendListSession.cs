@@ -15,6 +15,7 @@ namespace XIVChat_Desktop {
         public bool IsStale { get; private set; } = true;
         public FriendListStatus? Status { get; private set; }
         public bool Manual { get; private set; }
+        public event Action? Changed;
         private FriendListAssembler? pending;
         public string? RequestId => this.pending?.RequestId;
 
@@ -23,6 +24,7 @@ namespace XIVChat_Desktop {
             if (source != this.Source || (owner != null && owner != this.Snapshot?.Owner?.Key)) this.Snapshot = null;
             this.Source = source; this.OwnerKey = owner; this.OwnerEpoch = epoch; this.Supported = supported;
             this.Version++; this.pending = null; this.IsStale = true; this.Status = null; this.Manual = false;
+            this.Changed?.Invoke();
             return true;
         }
 
@@ -31,6 +33,7 @@ namespace XIVChat_Desktop {
                 snapshot?.Type != PlayerListType.Friend || snapshot.Status != FriendListStatus.Success ||
                 snapshot.PageIndex != 0 || snapshot.PageCount != 1 || !FriendListProtocol.ValidPlayers(snapshot.Players)) return;
             this.Snapshot = snapshot;
+            this.Changed?.Invoke();
         }
 
         public ClientPlayerList? Begin(bool manual) {
@@ -38,6 +41,7 @@ namespace XIVChat_Desktop {
             var id = Guid.NewGuid().ToString("N");
             this.pending = new FriendListAssembler(id, this.OwnerKey, this.OwnerEpoch);
             this.Manual = manual; this.Status = null;
+            this.Changed?.Invoke();
             return new ClientPlayerList { Type = PlayerListType.Friend, RequestId = id, ExpectedOwnerKey = this.OwnerKey, ExpectedOwnerEpoch = this.OwnerEpoch };
         }
 
@@ -47,12 +51,14 @@ namespace XIVChat_Desktop {
             if (this.pending.Failure is { } failure) this.Fail(this.pending.RequestId, failure);
             if (completed == null) return null;
             this.pending = null; this.Snapshot = completed; this.IsStale = false; this.Status = FriendListStatus.Success;
+            this.Changed?.Invoke();
             return completed;
         }
 
         public bool Fail(string requestId, FriendListStatus status) {
             if (this.pending?.RequestId != requestId) return false;
             this.pending = null; this.IsStale = true; this.Status = status;
+            this.Changed?.Invoke();
             return true;
         }
     }

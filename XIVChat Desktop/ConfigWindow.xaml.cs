@@ -41,6 +41,7 @@ namespace XIVChat_Desktop {
                 HistoryRetention.Header = LocalizationHelper.GetString("History.Retention");
                 HistoryRetentionHelp.Text = LocalizationHelper.GetString("History.RetentionHelp");
                 BtnSaveHistory.Content = LocalizationHelper.GetString("Dialog.Save");
+                ChkOnlineAvatars.Content = LocalizationHelper.GetString("Avatar.Online");
 
                 ChkAlwaysOnTop.Content = LocalizationHelper.GetString("Config.AlwaysOnTop");
                 ChkCompactMode.Content = LocalizationHelper.GetString("Config.CompactMode");

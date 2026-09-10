@@ -3,541 +3,371 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
+using XIVChatStorage;
 
 namespace XIVChat_Desktop {
+    public sealed record FriendRow(Player Player, CharacterIdentity? Peer, string Name, string World, string Status);
     public partial class MainWindow : INotifyPropertyChanged {
         public App App => (App)Application.Current;
-
-        public List<ServerMessage> Messages => this.App.Session.Messages;
-
-        public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsText => this.LoggedInAs;
-        public Microsoft.UI.Xaml.Controls.TextBlock LoggedInAsSeparatorText => this.LoggedInAsSeparator;
-        public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldText => this.CurrentWorld;
-        public Microsoft.UI.Xaml.Controls.TextBlock CurrentWorldSeparatorText => this.CurrentWorldSeparator;
-        public Microsoft.UI.Xaml.Controls.TextBlock LocationText => this.Location;
-        public Microsoft.UI.Xaml.Controls.HyperlinkButton LocationButton => this.LocationBtn;
-        public XIVChatCommon.Message.Server.PlayerData? CurrentPlayerData { get; set; }
-
-        private int historyIndex = -1;
-
-        private int HistoryIndex {
-            get => this.historyIndex;
-            set {
-                var idx = Math.Min(this.History.Count - 1, Math.Max(-1, value));
-                this.historyIndex = idx;
-            }
-        }
-
-        private int ReverseHistoryIndex => this.HistoryIndex == -1 ? -1 : Math.Max(-1, this.History.Count - this.HistoryIndex - 1);
-
-        private string? HistoryBuffer { get; set; }
-
-        private List<string> History { get; } = new List<string>();
-
-        public string InputPlaceholder => this.App.Connection?.Available == true ? "Typing words…" : LocalizationHelper.GetString("Status.Disconnected");
+        public List<ServerMessage> Messages => App.Session.Messages;
+        public TextBlock LoggedInAsText => LoggedInAs;
+        public TextBlock LoggedInAsSeparatorText => LoggedInAsSeparator;
+        public TextBlock CurrentWorldText => CurrentWorld;
+        public TextBlock CurrentWorldSeparatorText => CurrentWorldSeparator;
+        public TextBlock LocationText => Location;
+        public HyperlinkButton LocationButton => LocationBtn;
+        public PlayerData? CurrentPlayerData { get; set; }
+        public string InputPlaceholder => App.Connection?.Available == true ? L("Workbench.TypeMessage") : L("Status.Disconnected");
+        private readonly Dictionary<Tab, Controls.ChatMessageList> channelViews = new();
+        private readonly Dictionary<string, string> channelDrafts = new();
+        private readonly ObservableCollection<ConversationModel> visibleConversations = new();
+        private readonly ObservableCollection<FriendRow> visibleFriends = new();
+        private string section = "channels";
+        private Tab? selectedChannel;
+        private ConversationModel? selectedConversation;
+        private Tab? conversationTab;
+        private Controls.ChatMessageList? conversationView;
+        private Controls.ChatMessageList? contextView;
+        private readonly HashSet<string> conversationSeen = new();
+        private HistoryRow? conversationOldest;
+        private CancellationTokenSource? conversationLoad;
+        private bool syncing;
+        private bool initialized;
+        private bool stopping;
+        private bool allowClose;
+        private string? activeChannelDraftKey;
+        private bool active;
+        private string? selectedOwner;
+        private Connection? observedConnection;
+        private static string L(string key) => LocalizationHelper.GetString(key);
+        private static Visibility V(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
 
         public MainWindow() {
-            this.InitializeComponent();
-            ThemeHelper.InitializeWindow(this);
-            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(850, 600));
-            this.Title = LocalizationHelper.GetString("AppTitle");
-            this.PopulateTabs();
-            UpdateLocalizations();
-            this.AppWindow.Closing += async (_, args) => {
-                if (this.App.Session.Store == null) return;
+            InitializeComponent(); ThemeHelper.InitializeWindow(this);
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(1240, 820));
+            ConversationList.ItemsSource = visibleConversations;
+            FriendList.ItemsSource = visibleFriends;
+            ChannelList.ItemsSource = App.Config.Tabs;
+            App.Config.Tabs.CollectionChanged += TabsChanged;
+            App.Config.Saved += ConfigSaved;
+            App.PropertyChanged += AppChanged;
+            App.Workbench.Changed += WorkbenchChanged;
+            App.Session.MessagesChanged += SessionMessagesChanged;
+            App.Session.Cleared += SessionCleared;
+            App.Session.Friends.Changed += RefreshFriendRows;
+            Root.SizeChanged += (_, _) => SidebarColumn.Width = new GridLength(Root.ActualWidth < 1000 ? 212 : 252);
+            Activated += (_, args) => { active = args.WindowActivationState != WindowActivationState.Deactivated; ReadCurrent(); };
+            AppWindow.Closing += async (_, args) => {
+                if (allowClose) return;
                 args.Cancel = true;
-                if (this.stopping) return;
-                this.stopping = true;
-                try { await this.App.StopSessionAsync(); }
-                finally { this.Close(); }
+                if (stopping) return;
+                stopping = true; SaveComposer(); historyCancellation?.Cancel(); conversationLoad?.Cancel();
+                try { await App.StopSessionAsync(); } finally { allowClose = true; Close(); }
             };
-            this.Closed += (_, _) => {
-                this.App.Config.Tabs.CollectionChanged -= this.OnTabsCollectionChanged;
-                foreach (var list in this.messageLists.Values) list.Dispose();
-                this.messageLists.Clear();
+            Closed += (_, _) => DisposeViews();
+            initialized = true;
+            UpdateLocalizations(); ObserveConnection();
+            ChannelList.SelectedIndex = App.Config.Tabs.Count > 0 ? 0 : -1;
+            Navigate("channels");
+            Root.Loaded += async (_, _) => {
+                await LoadHistoryOwnersAsync();
+                if (App.Session.Player == null && App.Workbench.OwnerKey == null && historyOwners.FirstOrDefault(o => o.Owner?.Identity?.IsComplete == true) is { Owner: { } owner })
+                    App.Workbench.SetContext(owner.Source, owner.Identity);
             };
         }
-
         public void UpdateLocalizations() {
-            try {
-                this.Title = LocalizationHelper.GetString("AppTitle");
-                MenuMain.Title = LocalizationHelper.GetString("Menu.XIVChat");
-                MenuConnect.Text = LocalizationHelper.GetString("Menu.Connect");
-                MenuDisconnect.Text = LocalizationHelper.GetString("Menu.Disconnect");
-                MenuRefreshFriends.Text = LocalizationHelper.GetString("FriendList.Refresh");
-                MenuExport.Text = LocalizationHelper.GetString("Menu.Export");
-                MenuConfig.Text = LocalizationHelper.GetString("Menu.Config");
-                MenuExit.Text = LocalizationHelper.GetString("Menu.Exit");
-                OnPropertyChanged(nameof(InputPlaceholder));
-                foreach (var list in this.messageLists.Values) list.UpdateLocalizations();
-            } catch { }
+            if (!initialized) return;
+            Title = "XIVChat Next";
+            MenuConnect.Text = L("Menu.Connect"); MenuDisconnect.Text = L("Menu.Disconnect"); MenuMap.Text = L("Workbench.Map");
+            MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
+            NavConversationsText.Text = L("Workbench.Conversations"); NavChannelsText.Text = L("Workbench.Channels");
+            NavFriendsText.Text = L("Workbench.Friends"); NavHistoryText.Text = L("Workbench.History");
+            GlobalSearch.PlaceholderText = L("Workbench.Search"); ListSearch.PlaceholderText = L("Workbench.Filter");
+            SendButton.Content = L("Workbench.Send"); RestoreDraftButton.Content = L("Conversation.RestoreDraft");
+            RefreshFriendsButton.Content = L("FriendList.Refresh");
+            ToolTipService.SetToolTip(SettingsButton, L("Menu.Config"));
+            ToolTipService.SetToolTip(AddViewButton, L("Workbench.Add"));
+            ToolTipService.SetToolTip(PinConversationButton, L("Conversation.Pin"));
+            ToolTipService.SetToolTip(ConversationNoteButton, L("Conversation.Note"));
+            ToolTipService.SetToolTip(AvatarButton, L("Avatar.Title"));
+            ToolTipService.SetToolTip(LoadOlderButton, L("History.LoadOlder"));
+            ToolTipService.SetToolTip(EditChannelButton, L("Workbench.EditChannel"));
+            ToolTipService.SetToolTip(BackHistoryButton, L("History.Back"));
+            ChannelSwitchButton.Flyout = CreateChannelFlyout();
+            foreach (var view in channelViews.Values) view.UpdateLocalizations();
+            conversationView?.UpdateLocalizations(); UpdateHistoryLocalizations();
+            RefreshFriendRows(); UpdateNavigation(); UpdateReady();
         }
-
-        private readonly Dictionary<Tab, Controls.ChatMessageList> messageLists = new();
-        private bool stopping;
-
-        private void PopulateTabs() {
-            this.Tabs.TabItems.Clear();
-            foreach (var tab in this.App.Config.Tabs) {
-                this.AddTab(tab);
+        private void ConfigSaved() { if (initialized) { UpdateLocalizations(); UpdateReady(); if (section == "channels" && selectedChannel != null) ChatTitle.Text = selectedChannel.Name; } }
+        private void AppChanged(object? sender, PropertyChangedEventArgs e) {
+            if (e.PropertyName == nameof(App.Connection)) ObserveConnection();
+        }
+        private void ObserveConnection() {
+            if (observedConnection != null) observedConnection.PropertyChanged -= ConnectionChanged;
+            observedConnection = App.Connection;
+            if (observedConnection != null) observedConnection.PropertyChanged += ConnectionChanged;
+            UpdateReady();
+        }
+        private void ConnectionChanged(object? sender, PropertyChangedEventArgs e) => App.Dispatch(UpdateReady);
+        private void WorkbenchChanged() {
+            if (!initialized) return;
+            if (selectedOwner != App.Workbench.Source + "/" + App.Workbench.OwnerKey) {
+                SaveComposer(); selectedOwner = App.Workbench.Source + "/" + App.Workbench.OwnerKey;
+                if (selectedConversation != null) UnselectConversation();
+                if (section is "conversations" or "friends") ShowEmpty();
+                else if (section == "channels" && selectedChannel != null) {
+                    activeChannelDraftKey = ChannelDraftKey(selectedChannel);
+                    syncing = true; Composer.Text = channelDrafts.GetValueOrDefault(activeChannelDraftKey, ""); syncing = false;
+                }
             }
-            this.App.Config.Tabs.CollectionChanged -= this.OnTabsCollectionChanged;
-            this.App.Config.Tabs.CollectionChanged += this.OnTabsCollectionChanged;
+            FilterConversations(); UpdateNavigation(); UpdateReady(); ReadCurrent();
         }
-
-        private void OnTabsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
-            this.App.Dispatch(() => {
-                foreach (var item in this.Tabs.TabItems.OfType<TabViewItem>().ToArray()) {
-                    if (item.Tag is Tab tab && !this.App.Config.Tabs.Contains(tab)) {
-                        this.messageLists[tab].Dispose();
-                        this.messageLists.Remove(tab);
-                        this.Tabs.TabItems.Remove(item);
-                    }
-                }
-                for (int i = 0; i < this.App.Config.Tabs.Count; i++) {
-                    var tab = this.App.Config.Tabs[i];
-                    if (!this.messageLists.ContainsKey(tab)) this.AddTab(tab);
-                    var item = this.Tabs.TabItems.OfType<TabViewItem>().First(item => ReferenceEquals(item.Tag, tab));
-                    var currentIndex = this.Tabs.TabItems.IndexOf(item);
-                    if (currentIndex != i) {
-                        this.Tabs.TabItems.RemoveAt(currentIndex);
-                        this.Tabs.TabItems.Insert(i, item);
-                    }
-                }
-            });
+        private void SessionCleared() { conversationTab?.ClearMessages(); conversationSeen.Clear(); }
+        private void TabsChanged(object? sender, NotifyCollectionChangedEventArgs e) {
+            foreach (var tab in channelViews.Keys.Where(t => !App.Config.Tabs.Contains(t)).ToArray()) { channelViews[tab].Dispose(); channelViews.Remove(tab); }
+            if (selectedChannel != null && !App.Config.Tabs.Contains(selectedChannel)) selectedChannel = null;
+            if (section == "channels" && selectedChannel == null && App.Config.Tabs.Count > 0) ChannelList.SelectedIndex = 0;
+            UpdateNavigation();
         }
-
-        private void AddTab(Tab tab) {
-            var grid = new Grid {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch
-            };
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            var messageList = new Controls.ChatMessageList(tab);
-            this.messageLists.Add(tab, messageList);
-            var chatCard = new Border {
-                Child = messageList,
-                CornerRadius = new CornerRadius(8),
-                BorderThickness = new Thickness(1),
-                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(35, 255, 255, 255)),
-                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(210, 24, 26, 32)),
-                Margin = new Thickness(0, 0, 0, 8),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch
-            };
-            Grid.SetRow(chatCard, 0);
-            grid.Children.Add(chatCard);
-
-            var channelText = new TextBlock {
-                Margin = new Thickness(8, 4, 0, 0),
-                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK"),
-            };
-            channelText.Tapped += this.Channel_Tapped;
-            channelText.SetBinding(
-                TextBlock.TextProperty,
-                new Binding {
-                    Path = new PropertyPath("App.Connection.CurrentChannel"),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
+        private void Navigate_Click(object sender, RoutedEventArgs e) { if (sender is Button { Tag: string target }) Navigate(target); }
+        internal void Navigate(string target) {
+            SaveComposer(); section = target;
+            if (target != "history") { historyCancellation?.Cancel(); Busy.IsActive = false; }
+            syncing = true; ListSearch.Text = ""; syncing = false;
+            UpdateNavigation();
+            if (target == "history") { ShowHistory(); return; }
+            ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed;
+            BackHistoryButton.Visibility = Visibility.Collapsed;
+            if (target == "channels") {
+                if (selectedChannel != null) SelectChannel(selectedChannel);
+                else if (App.Config.Tabs.Count > 0) { ChannelList.SelectedIndex = 0; SelectChannel(App.Config.Tabs[0]); }
+                else ShowEmpty();
+            } else if (target == "conversations") {
+                FilterConversations();
+                if (selectedConversation != null) ShowConversation(selectedConversation);
+                else if (visibleConversations.Count > 0) {
+                    syncing = true; ConversationList.SelectedIndex = 0; syncing = false;
+                    ShowConversation(visibleConversations[0]);
                 }
-            );
-            channelText.ContextFlyout = this.CreateChannelFlyout();
-            Grid.SetRow(channelText, 1);
-            grid.Children.Add(channelText);
-
-            var inputBox = new TextBox {
-                Margin = new Thickness(0, 0, 0, 8),
-                TextWrapping = TextWrapping.Wrap,
-                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK"),
-            };
-            inputBox.SetBinding(
-                TextBox.PlaceholderTextProperty,
-                new Binding {
-                    Path = new PropertyPath("InputPlaceholder"),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
-                }
-            );
-            inputBox.SetBinding(
-                TextBox.IsEnabledProperty,
-                new Binding {
-                    Path = new PropertyPath("App.Connection.Available"),
-                    Source = this,
-                    Mode = BindingMode.OneWay,
-                }
-            );
-            inputBox.KeyDown += this.Input_Submit;
-            Grid.SetRow(inputBox, 2);
-            grid.Children.Add(inputBox);
-
-            var editItem = new MenuFlyoutItem {
-                Text = "编辑选项卡与过滤规则...",
-                Icon = new FontIcon { Glyph = "\uE70F" }
-            };
-            editItem.Click += (s, e) => {
-                var dialog = new ManageTab(tab);
-                dialog.Activate();
-            };
-
-            var deleteItem = new MenuFlyoutItem {
-                Text = "删除当前选项卡",
-                Icon = new FontIcon { Glyph = "\uE74D" }
-            };
-            deleteItem.Click += (s, e) => {
-                if (this.App.Config.Tabs.Count > 1) {
-                    this.App.Config.Tabs.Remove(tab);
-                    this.App.Config.Save();
-                }
-            };
-
-            var flyout = new MenuFlyout();
-            flyout.Items.Add(editItem);
-            flyout.Items.Add(new MenuFlyoutSeparator());
-            flyout.Items.Add(deleteItem);
-
-            var tabViewItem = new TabViewItem {
-                Header = new TextBlock {
-                    Text = tab.Name,
-                    FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK")
-                },
-                Content = grid,
-                Tag = tab,
-                ContextFlyout = flyout,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                VerticalContentAlignment = VerticalAlignment.Stretch
-            };
-
-            tabViewItem.DoubleTapped += (s, e) => {
-                var dialog = new ManageTab(tab);
-                dialog.Activate();
-            };
-
-            this.Tabs.TabItems.Add(tabViewItem);
+                else ShowEmpty();
+            } else { RefreshFriendRows(); if (selectedConversation == null) ShowEmpty(); }
         }
-
-        private void RefreshFriends_Click(object sender, RoutedEventArgs e) {
-            if (this.App.Connection?.RefreshFriends() != true)
-                this.AddSystemMessage(LocalizationHelper.GetString("FriendList.NotReady"));
+        private void UpdateNavigation() {
+            SectionTitle.Text = L("Workbench." + (section switch { "conversations" => "Conversations", "friends" => "Friends", "history" => "History", _ => "Channels" }));
+            foreach (var button in new[] { NavConversations, NavChannels, NavFriends, NavHistory })
+                button.Background = new SolidColorBrush((string)button.Tag == section ? Windows.UI.Color.FromArgb(55, 74, 144, 226) : Microsoft.UI.Colors.Transparent);
+            ChannelList.Visibility = V(section == "channels"); ConversationList.Visibility = V(section == "conversations"); FriendList.Visibility = V(section == "friends");
+            HistoryFilters.Visibility = V(section == "history"); ListSearch.Visibility = V(section is "friends" or "conversations");
+            AddViewButton.Visibility = V(section is "channels" or "conversations"); RefreshFriendsButton.Visibility = V(section == "friends");
+            SidebarEmpty.Visibility = V(section == "conversations" && visibleConversations.Count == 0 || section == "friends" && visibleFriends.Count == 0 || section == "channels" && App.Config.Tabs.Count == 0);
+            SidebarEmpty.Text = App.Workbench.OwnerKey == null && section != "channels" ? L("Workbench.ConnectFirst") : L(section == "friends" ? "FriendList.Empty" : "Conversation.Empty");
+            if (section != "friends") SidebarStatus.Text = App.Workbench.Owner is { } owner ? owner.Name + " · " + owner.HomeWorld : L("Workbench.OfflineHistory");
         }
-
+        private void ListSearch_TextChanged(object sender, TextChangedEventArgs e) { if (!initialized || syncing) return; if (section == "friends") RefreshFriendRows(); else FilterConversations(); UpdateNavigation(); }
+        private void FilterConversations() {
+            var search = ListSearch.Text.Trim();
+            var desired = App.Workbench.Conversations.Where(c => section != "conversations" || search.Length == 0 || (c.Name + " " + c.World + " " + c.Note).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+            syncing = true;
+            foreach (var item in visibleConversations.Where(c => !desired.Contains(c)).ToArray()) visibleConversations.Remove(item);
+            for (int i = 0; i < desired.Length; i++) { var existing = visibleConversations.IndexOf(desired[i]); if (existing < 0) visibleConversations.Insert(i, desired[i]); else if (existing != i) visibleConversations.Move(existing, i); }
+            if (selectedConversation != null && visibleConversations.Contains(selectedConversation)) ConversationList.SelectedItem = selectedConversation;
+            syncing = false;
+        }
+        private void RefreshFriendRows() {
+            if (!initialized) return;
+            var state = App.Session.Friends;
+            var search = section == "friends" ? ListSearch.Text.Trim() : "";
+            var snapshot = state.Snapshot;
+            syncing = true; visibleFriends.Clear();
+            if (snapshot != null && snapshot.Owner?.Key == App.Workbench.OwnerKey && state.Source == App.Workbench.Source) {
+                foreach (var player in snapshot.Players.OrderByDescending(p => p.HasStatus(PlayerStatus.Online)).ThenBy(p => p.IdentityUnavailable).ThenBy(p => p.Name)) {
+                    var world = player.HomeWorld > 0 ? player.HomeWorldName ?? Util.WorldName(player.HomeWorld) ?? "" : "";
+                    var identity = player.IdentityUnavailable ? null : new CharacterIdentity { Name = player.Name ?? "", HomeWorldId = player.HomeWorld, HomeWorld = world, ContentId = player.ContentId };
+                    var name = identity == null ? L("FriendList.IdentityUnavailable") : player.Name ?? "";
+                    if (search.Length > 0 && !(name + " " + world).Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+                    var status = L(player.HasStatus(PlayerStatus.Offline) ? "FriendList.Offline" : player.HasStatus(PlayerStatus.Online) ? "FriendList.Online" : "FriendList.Unknown");
+                    if (state.IsStale) status = L("FriendList.Cached") + " · " + status;
+                    visibleFriends.Add(new FriendRow(player, identity, name, world, status));
+                }
+            }
+            syncing = false;
+            RefreshFriendsButton.IsEnabled = App.Connection?.Available == true && state.Supported && state.RequestId == null;
+            if (section == "friends") SidebarStatus.Text = state.RequestId != null ? L("FriendList.Refreshing") : snapshot != null
+                ? string.Format(L("FriendList.Snapshot"), snapshot.Players.Length, snapshot.CapturedAt.ToLocalTime().ToString("MM-dd HH:mm")) + "\n" + L(state.IsStale ? "FriendList.Stale" : "FriendList.Timing")
+                : L(state.Supported ? "FriendList.NotReady" : "FriendList.Unsupported");
+            UpdateNavigation();
+        }
+        private void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (initialized && !syncing && ChannelList.SelectedItem is Tab tab) SelectChannel(tab); }
+        internal void SelectChannel(Tab tab) {
+            SaveComposer(); UnselectConversation(); selectedChannel = tab;
+            ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; ComposerPanel.Visibility = Visibility.Visible;
+            if (!channelViews.TryGetValue(tab, out var view)) { view = new Controls.ChatMessageList(tab); channelViews.Add(tab, view); }
+            ChatHost.Content = view; ChatTitle.Text = tab.Name; ChatSubtitle.Text = L("Workbench.ChannelView");
+            activeChannelDraftKey = ChannelDraftKey(tab);
+            syncing = true; Composer.Text = channelDrafts.GetValueOrDefault(activeChannelDraftKey, ""); syncing = false;
+            UpdateChatActions(false); UpdateReady();
+        }
+        private string ChannelDraftKey(Tab tab) => App.Session.Source + "/" + App.Session.Player?.Identity?.Key + "/" + tab.Id;
+        private void ConversationList_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (!syncing && ConversationList.SelectedItem is ConversationModel model) ShowConversation(model); }
+        private void FriendList_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+            if (syncing || FriendList.SelectedItem is not FriendRow friend) return;
+            if (friend.Peer == null || !TellTarget.From(friend.Peer).IsValid) { FooterStatus.Text = L("FriendList.IdentityUnavailable"); return; }
+            var model = App.Workbench.Open(friend.Peer); if (model != null) ShowConversation(model);
+        }
+        internal void ShowConversation(ConversationModel model) {
+            if (ReferenceEquals(selectedConversation, model) && conversationView != null) { ChatHost.Content = conversationView; UpdateReady(); return; }
+            SaveComposer(); UnselectConversation(); selectedConversation = model; model.PropertyChanged += SelectedConversationChanged;
+            conversationTab = new Tab(model.Name) { Filter = new EverythingFilter() };
+            conversationView = new Controls.ChatMessageList(conversationTab); conversationView.ReadingChanged += ReadCurrent;
+            ChatHost.Content = conversationView; ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; ComposerPanel.Visibility = Visibility.Visible;
+            ChatTitle.Text = model.Name; ChatSubtitle.Text = model.World + (model.Pinned ? " · " + L("Conversation.Pinned") : "");
+            PeerAvatar.Identity = model.Peer;
+            syncing = true; Composer.Text = model.Draft; syncing = false;
+            UpdateChatActions(true); UpdateReady();
+            _ = LoadConversationAsync(false);
+        }
+        private void UnselectConversation() {
+            conversationLoad?.Cancel(); conversationLoad?.Dispose(); conversationLoad = null;
+            if (selectedConversation != null) selectedConversation.PropertyChanged -= SelectedConversationChanged;
+            selectedConversation = null; conversationView?.Dispose(); conversationView = null; conversationTab = null; conversationSeen.Clear(); conversationOldest = null;
+        }
+        private void SelectedConversationChanged(object? sender, PropertyChangedEventArgs e) {
+            if (selectedConversation == null) return;
+            if (Composer.Text != selectedConversation.Draft) { syncing = true; Composer.Text = selectedConversation.Draft; syncing = false; }
+            UpdateReady();
+        }
+        private async Task LoadConversationAsync(bool older) {
+            var model = selectedConversation; var tab = conversationTab;
+            if (model == null || tab == null) return;
+            conversationLoad?.Cancel(); conversationLoad?.Dispose(); conversationLoad = new CancellationTokenSource();
+            var token = conversationLoad.Token; Busy.IsActive = true;
+            try {
+                if (App.Session.Store is { } store) {
+                    var query = new HistoryQuery(Source: model.State.Source, OwnerKey: model.State.OwnerKey, PeerKey: model.Key, Limit: 100,
+                        BeforeRow: older ? conversationOldest?.RowId ?? long.MaxValue : long.MaxValue,
+                        BeforeTimestampUtc: older ? conversationOldest?.Message.Timestamp : null);
+                    var rows = await store.SearchAsync(query, token);
+                    if (token.IsCancellationRequested || selectedConversation != model) return;
+                    foreach (var row in rows.Reverse()) MergeConversation(row.Message, false);
+                    if (rows.Count > 0) conversationOldest = rows[^1];
+                    LoadOlderButton.IsEnabled = rows.Count == 100;
+                } else LoadOlderButton.IsEnabled = false;
+                if (!older && App.Session.Source == model.State.Source)
+                    foreach (var message in Messages.Where(m => m.Owner?.Key == model.State.OwnerKey && ConversationIdentity.IsTell((ushort)m.Channel) && ConversationIdentity.PeerKey(m.TellPeer) == model.Key)) MergeConversation(message, false);
+                ReadCurrent();
+            } catch (OperationCanceledException) { }
+            catch (Exception ex) { FooterStatus.Text = L("History.Unavailable") + " " + ex.Message; }
+            finally { if (!token.IsCancellationRequested) Busy.IsActive = false; }
+        }
+        private void MergeConversation(ServerMessage message, bool live) {
+            if (conversationTab == null) return;
+            if (message.MessageId != null && !conversationSeen.Add(message.MessageId)) return;
+            if (live) conversationTab.AddMessage(message, App.Config); else conversationTab.MergeHistory(new[] { message }, App.Config);
+        }
+        private void SessionMessagesChanged(ServerMessage[] messages, bool live) {
+            var model = selectedConversation;
+            if (model == null || model.State.Source != App.Session.Source) return;
+            foreach (var message in messages.Where(m => m.Owner?.Key == model.State.OwnerKey && ConversationIdentity.IsTell((ushort)m.Channel) && ConversationIdentity.PeerKey(m.TellPeer) == model.Key)) MergeConversation(message, live);
+            ReadCurrent();
+        }
+        private void ReadCurrent() { if (active && ChatPanel.Visibility == Visibility.Visible && selectedConversation?.Unread > 0 && conversationView?.FollowingLatest == true) _ = App.Workbench.MarkReadAsync(selectedConversation); }
+        private void ShowEmpty() {
+            ChatHost.Content = new TextBlock { Text = L(section == "friends" ? "FriendList.Select" : "Conversation.Select"), TextWrapping = TextWrapping.Wrap, Opacity = .6, Margin = new Thickness(24), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            ChatTitle.Text = L("Workbench." + (section == "friends" ? "Friends" : "Conversations")); ChatSubtitle.Text = ""; ComposerPanel.Visibility = Visibility.Collapsed;
+            UpdateChatActions(false); EditChannelButton.Visibility = Visibility.Collapsed;
+        }
+        private void UpdateChatActions(bool conversation) {
+            PeerAvatar.Visibility = V(conversation); PinConversationButton.Visibility = V(conversation); ConversationNoteButton.Visibility = V(conversation);
+            AvatarButton.Visibility = V(conversation); LoadOlderButton.Visibility = V(conversation); EditChannelButton.Visibility = V(!conversation); BackHistoryButton.Visibility = Visibility.Collapsed;
+        }
+        private void UpdateReady() {
+            if (!initialized) return;
+            var connection = App.Connection; var model = selectedConversation; var player = App.Session.Player;
+            MenuConnect.IsEnabled = !App.Connected; MenuDisconnect.IsEnabled = App.Connected; MenuRefreshFriends.IsEnabled = connection?.Available == true;
+            ConnectionLabel.Text = connection?.Available == true ? L("Workbench.Connected") : L("Workbench.Disconnected");
+            OwnAvatar.Identity = player?.Identity ?? App.Workbench.Owner;
+            Composer.PlaceholderText = L("Workbench.TypeMessage");
+            Composer.IsEnabled = model != null || connection?.Available == true;
+            var canTell = model != null && model.State.Source == App.Session.Source && model.State.OwnerKey == player?.Identity?.Key && connection?.Available == true && connection.SupportsDirectedTell;
+            SendButton.IsEnabled = !string.IsNullOrWhiteSpace(Composer.Text) && (model != null ? canTell : connection?.Available == true && selectedChannel != null);
+            ChannelSwitchButton.Visibility = V(model == null); ChannelSwitchButton.Content = connection?.CurrentChannel ?? L("Workbench.Channel"); ChannelSwitchButton.IsEnabled = connection?.Available == true;
+            ComposerTarget.Text = model != null ? string.Format(L("Conversation.Target"), model.Name, model.World) : L("Workbench.ChannelTarget");
+            ComposerStatus.Text = model?.SendStatus is { Length: > 0 } status ? status : model != null && !canTell
+                ? L(connection?.Available == true && !connection.SupportsDirectedTell ? "Conversation.UpgradeRequired" : "Conversation.ReadOnly") : L("Workbench.EnterHint");
+            RestoreDraftButton.Visibility = V(model?.FailedDraft != null); PinConversationButton.IsChecked = model?.Pinned == true;
+            FooterStatus.Text = App.Workbench.Error is { } error ? L("History.Unavailable") + " " + error :
+                (App.Config.HistoryEnabled ? string.Format(L("Workbench.HistoryRetention"), App.Config.HistoryRetentionDays == 0 ? L("Workbench.Forever") : App.Config.HistoryRetentionDays.ToString()) : L("Workbench.HistoryOff"));
+        }
+        private void SaveComposer() {
+            if (!initialized || syncing) return;
+            if (selectedConversation != null) { if (selectedConversation.Draft != Composer.Text) selectedConversation.Draft = Composer.Text; if (selectedConversation.Dirty) App.Workbench.Save(selectedConversation); }
+            else if (activeChannelDraftKey != null && section == "channels") channelDrafts[activeChannelDraftKey] = Composer.Text;
+        }
+        private void Composer_TextChanged(object sender, TextChangedEventArgs e) {
+            if (!initialized || syncing) return;
+            if (selectedConversation != null) { selectedConversation.Draft = Composer.Text; App.Workbench.Save(selectedConversation, true); }
+            UpdateReady();
+        }
+        private void Input_Submit(object sender, KeyRoutedEventArgs e) {
+            if (e.Key != Windows.System.VirtualKey.Enter || Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down)) return;
+            e.Handled = true; Submit();
+        }
+        private void Send_Click(object sender, RoutedEventArgs e) => Submit();
+        private void Submit() {
+            if (selectedConversation is { } conversation) {
+                if (!App.Workbench.Send(conversation, Composer.Text)) ComposerStatus.Text = L("Conversation.NotSent");
+            } else if (App.Connection?.SendMessage(Composer.Text) == true) Composer.Text = "";
+        }
+        public TextBox? GetCurrentInputBox() => ComposerPanel.Visibility == Visibility.Visible ? Composer : null;
+        public void InsertTellCommand(string name, string world, bool focus = true) {
+            var worldId = Enumerable.Range(1, ushort.MaxValue).Select(i => (ushort)i).FirstOrDefault(id => string.Equals(Util.WorldName(id), world, StringComparison.OrdinalIgnoreCase));
+            if (worldId == 0) { FooterStatus.Text = L("FriendList.IdentityUnavailable"); return; }
+            var model = App.Workbench.Open(new CharacterIdentity { Name = name, HomeWorld = world, HomeWorldId = worldId });
+            if (model == null) return;
+            Navigate("conversations"); ShowConversation(model); if (focus) Composer.Focus(FocusState.Programmatic);
+        }
+        public void ClearAllMessages() => App.Session.Clear();
+        public void AddMessage(ServerMessage message) => App.Session.Add(message);
+        public void AddReversedChunk(ServerMessage[] messages, int sequence) => App.Session.AddBacklog(messages, sequence);
+        public void AddSystemMessage(string content) => AddMessage(new ServerMessage(DateTime.UtcNow, 0, Array.Empty<byte>(), Encoding.UTF8.GetBytes(content), new List<Chunk> { new TextChunk(content) { Foreground = 0xb38cffff } }));
+        private void RefreshFriends_Click(object sender, RoutedEventArgs e) { if (App.Connection?.RefreshFriends() != true) FooterStatus.Text = L("FriendList.NotReady"); }
+        private void Connect_Click(object sender, RoutedEventArgs e) => new ConnectDialog().Activate();
+        private void Disconnect_Click(object sender, RoutedEventArgs e) => App.Disconnect();
+        private void Configuration_Click(object sender, RoutedEventArgs e) => new ConfigWindow(App.Config).Activate();
+        private void EditChannel_Click(object sender, RoutedEventArgs e) { if (selectedChannel != null) new ManageTab(selectedChannel).Activate(); }
+        private void Export_Click(object sender, RoutedEventArgs e) => new Export().Activate();
+        private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+        private void Map_Click(object sender, RoutedEventArgs e) => MapWindow.ShowMap(CurrentPlayerData?.mapId, CurrentPlayerData?.mapX, CurrentPlayerData?.mapY, LocationText.Text, CurrentPlayerData?.mapFilenameId, CurrentPlayerData?.mapSizeFactor);
+        private void LocationBtn_Click(object sender, RoutedEventArgs e) => Map_Click(sender, e);
+        private void LoadOlder_Click(object sender, RoutedEventArgs e) => _ = LoadConversationAsync(true);
+        private void PinConversation_Click(object sender, RoutedEventArgs e) { if (selectedConversation is { } model) { model.Pinned = PinConversationButton.IsChecked == true; App.Workbench.Save(model); App.Workbench.Sort(); FilterConversations(); } }
+        private void RestoreDraft_Click(object sender, RoutedEventArgs e) { if (selectedConversation?.FailedDraft is { } failed) { Composer.Text = Composer.Text.Length == 0 ? failed : Composer.Text + "\n" + failed; selectedConversation.SetStatus(""); } }
         private MenuFlyout CreateChannelFlyout() {
             var flyout = new MenuFlyout();
-            flyout.Items.Add(CreateMenuItem("悄悄话", this.Channel_Tell));
-            flyout.Items.Add(CreateMenuItem("说话", this.Channel_Say));
-            flyout.Items.Add(CreateMenuItem("小队", this.Channel_Party));
-            flyout.Items.Add(CreateMenuItem("团队", this.Channel_Alliance));
-            flyout.Items.Add(CreateMenuItem("呼喊", this.Channel_Yell));
-            flyout.Items.Add(CreateMenuItem("喊话", this.Channel_Shout));
-            flyout.Items.Add(CreateMenuItem("部队", this.Channel_FreeCompany));
-            flyout.Items.Add(CreateMenuItem("战队", this.Channel_PvpTeam));
-            flyout.Items.Add(CreateMenuItem("新人频道", this.Channel_NoviceNetwork));
-            flyout.Items.Add(new MenuFlyoutSeparator());
-            for (int i = 1; i <= 8; i++) {
-                var idx = i;
-                flyout.Items.Add(CreateMenuItem($"跨服贝频道 [{i}]", (s, e) => this.App.Connection?.ChangeChannel((InputChannel)((int)InputChannel.CrossLinkshell1 + idx - 1))));
-            }
-            flyout.Items.Add(new MenuFlyoutSeparator());
-            for (int i = 1; i <= 8; i++) {
-                var idx = i;
-                flyout.Items.Add(CreateMenuItem($"通讯贝 [{i}]", (s, e) => this.App.Connection?.ChangeChannel((InputChannel)((int)InputChannel.Linkshell1 + idx - 1))));
+            foreach (var channel in Enum.GetValues<InputChannel>().Distinct()) {
+                var item = new MenuFlyoutItem { Text = channel.ToString() }; item.Click += (_, _) => App.Connection?.ChangeChannel(channel); flyout.Items.Add(item);
             }
             return flyout;
         }
-
-        private static MenuFlyoutItem CreateMenuItem(string text, RoutedEventHandler handler) {
-            var item = new MenuFlyoutItem { Text = text };
-            item.Click += handler;
-            return item;
+        private void DisposeViews() {
+            App.Config.Tabs.CollectionChanged -= TabsChanged; App.Config.Saved -= ConfigSaved; App.PropertyChanged -= AppChanged;
+            App.Workbench.Changed -= WorkbenchChanged; App.Session.MessagesChanged -= SessionMessagesChanged; App.Session.Cleared -= SessionCleared; App.Session.Friends.Changed -= RefreshFriendRows;
+            if (observedConnection != null) observedConnection.PropertyChanged -= ConnectionChanged;
+            foreach (var view in channelViews.Values) view.Dispose(); channelViews.Clear(); UnselectConversation(); contextView?.Dispose(); historyCancellation?.Cancel();
         }
-
-        public void ClearAllMessages() {
-            this.App.Session.Clear();
-        }
-
-        public void AddSystemMessage(string content) {
-            var message = new ServerMessage(
-                DateTime.UtcNow,
-                0,
-                new byte[0],
-                Encoding.UTF8.GetBytes(content),
-                new List<Chunk> {
-                    new TextChunk(content) {
-                        Foreground = 0xb38cffff,
-                    },
-                }
-            );
-            this.AddMessage(message);
-        }
-
-        public void AddReversedChunk(ServerMessage[] messages, int sequence) {
-            this.App.Session.AddBacklog(messages, sequence);
-        }
-
-        public void AddMessage(ServerMessage message) {
-            this.App.Session.Add(message);
-        }
-
-        public void InsertTellCommand(string name, string world, bool focus = true) {
-            var input = this.GetCurrentInputBox();
-            if (input == null) {
-                return;
-            }
-
-            var tell = $"/tell {name}@{world} ";
-
-            input.Text = input.Text.Insert(0, tell);
-            input.SelectionStart = tell.Length;
-            input.SelectionLength = input.Text.Length - tell.Length;
-
-            if (focus) {
-                input.Focus(FocusState.Programmatic);
-            }
-        }
-
-        private void Connect_Click(object sender, RoutedEventArgs e) {
-            var dialog = new ConnectDialog();
-            dialog.Activate();
-        }
-
-        private void Disconnect_Click(object sender, RoutedEventArgs e) {
-            this.App.Disconnect();
-        }
-
-        private void Input_Submit(object sender, KeyRoutedEventArgs e) {
-            if (!(sender is TextBox textBox)) {
-                return;
-            }
-
-            switch (e.Key) {
-                case Windows.System.VirtualKey.Enter:
-                    this.Submit(textBox);
-                    break;
-                case Windows.System.VirtualKey.Up:
-                    this.ArrowNavigate(textBox, true);
-                    break;
-                case Windows.System.VirtualKey.Down:
-                    this.ArrowNavigate(textBox, false);
-                    break;
-            }
-        }
-
-        private void Submit(TextBox textBox) {
-            var conn = this.App.Connection;
-            if (conn == null) {
-                return;
-            }
-
-            if (!conn.SendMessage(textBox.Text)) return;
-            this.History.Add(textBox.Text);
-            while (this.History.Count > 100) {
-                this.History.RemoveAt(0);
-            }
-
-            textBox.Text = "";
-        }
-
-        private void ArrowNavigate(TextBox textBox, bool up) {
-            if (this.History.Count == 0) {
-                return;
-            }
-
-            if (this.HistoryIndex == -1) {
-                this.HistoryBuffer = textBox.Text;
-            }
-
-            if (up) {
-                // go up in history
-                this.HistoryIndex += 1;
-                textBox.Text = this.History[this.ReverseHistoryIndex];
-            } else {
-                // go down in history
-                this.HistoryIndex -= 1;
-
-                if (this.HistoryIndex == -1) {
-                    textBox.Text = this.HistoryBuffer;
-                    this.HistoryBuffer = null;
-                } else {
-                    textBox.Text = this.History[this.ReverseHistoryIndex];
-                }
-            }
-        }
-
-        private void Configuration_Click(object sender, RoutedEventArgs e) {
-            var dialog = new ConfigWindow(this.App.Config);
-            dialog.Activate();
-        }
-
-        private void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e) {
-            // Handle tab selection change
-        }
-
-        private void Tabs_AddTabButtonClick(TabView sender, object args) {
-            var dialog = new ManageTab(null);
-            dialog.Activate();
-        }
-
-        private void Tabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args) {
-            if (this.App.Config.Tabs.Count <= 1) {
-                return;
-            }
-            if (args.Tab.Tag is Tab tab) {
-                this.App.Config.Tabs.Remove(tab);
-                this.App.Config.Save();
-            }
-        }
-
-        public TextBox? GetCurrentInputBox() {
-            if (this.Tabs.SelectedItem is TabViewItem tabViewItem && tabViewItem.Content is Grid grid) {
-                foreach (var child in grid.Children) {
-                    if (child is TextBox textBox) {
-                        return textBox;
-                    }
-                }
-            }
-            return null;
-        }
-
-        private void Map_Click(object sender, RoutedEventArgs e) {
-            MapWindow.ShowMap(this.CurrentPlayerData?.mapId, this.CurrentPlayerData?.mapX, this.CurrentPlayerData?.mapY, this.LocationText?.Text, this.CurrentPlayerData?.mapFilenameId, this.CurrentPlayerData?.mapSizeFactor);
-        }
-
-        private void LocationBtn_Click(object sender, RoutedEventArgs e) {
-            MapWindow.ShowMap(this.CurrentPlayerData?.mapId, this.CurrentPlayerData?.mapX, this.CurrentPlayerData?.mapY, this.LocationText?.Text, this.CurrentPlayerData?.mapFilenameId, this.CurrentPlayerData?.mapSizeFactor);
-        }
-
+        private sealed class EverythingFilter : Filter { public override bool Allowed(ServerMessage message) => true; }
         public event PropertyChangedEventHandler? PropertyChanged;
-
-        internal void OnPropertyChanged([CallerMemberName] string? propertyName = null) {
-            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private void Export_Click(object sender, RoutedEventArgs e) {
-            var dialog = new Export();
-            dialog.Activate();
-        }
-
-        private void Exit_Click(object sender, RoutedEventArgs e) {
-            this.Close();
-        }
-
-        private void Channel_Tapped(object sender, TappedRoutedEventArgs e) {
-            e.Handled = true;
-        }
-
-        private void Channel_Tell(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Tell);
-        }
-
-        private void Channel_Say(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Say);
-        }
-
-        private void Channel_Party(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Party);
-        }
-
-        private void Channel_Alliance(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Alliance);
-        }
-
-        private void Channel_Yell(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Yell);
-        }
-
-        private void Channel_Shout(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Shout);
-        }
-
-        private void Channel_FreeCompany(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.FreeCompany);
-        }
-
-        private void Channel_PvpTeam(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.PvpTeam);
-        }
-
-        private void Channel_NoviceNetwork(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.NoviceNetwork);
-        }
-
-        private void Channel_CrossLinkshell1(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell1);
-        }
-
-        private void Channel_CrossLinkshell2(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell2);
-        }
-
-        private void Channel_CrossLinkshell3(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell3);
-        }
-
-        private void Channel_CrossLinkshell4(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell4);
-        }
-
-        private void Channel_CrossLinkshell5(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell5);
-        }
-
-        private void Channel_CrossLinkshell6(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell6);
-        }
-
-        private void Channel_CrossLinkshell7(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell7);
-        }
-
-        private void Channel_CrossLinkshell8(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.CrossLinkshell8);
-        }
-
-        private void Channel_Linkshell1(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell1);
-        }
-
-        private void Channel_Linkshell2(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell2);
-        }
-
-        private void Channel_Linkshell3(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell3);
-        }
-
-        private void Channel_Linkshell4(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell4);
-        }
-
-        private void Channel_Linkshell5(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell5);
-        }
-
-        private void Channel_Linkshell6(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell6);
-        }
-
-        private void Channel_Linkshell7(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell7);
-        }
-
-        private void Channel_Linkshell8(object sender, RoutedEventArgs e) {
-            this.App.Connection?.ChangeChannel(InputChannel.Linkshell8);
-        }
-
-        private bool Not(bool value) => !value;
+        internal void OnPropertyChanged([CallerMemberName] string? property = null) { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property)); UpdateReady(); }
     }
 }

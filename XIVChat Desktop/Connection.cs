@@ -29,6 +29,8 @@ namespace XIVChat_Desktop {
         private ClientPreferences preferences;
         private long? channelRevision;
         private PlayerData? commandPlayer;
+        public bool SupportsDirectedTell => this.capabilities?.DirectedTell == true;
+        public event Action<ServerCommandResult>? CommandResult;
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
         public readonly CancellationTokenSource cancel = new CancellationTokenSource();
@@ -86,6 +88,16 @@ namespace XIVChat_Desktop {
             if (this.Available) this.QueuePacket(msg.Encode());
         }
 
+        public string? SendTell(TellTarget target, string text, string ownerKey, string ownerEpoch) {
+            var player = this.commandPlayer;
+            if (!this.SupportsDirectedTell || !this.Available || this.cancel.IsCancellationRequested ||
+                player?.Identity?.Key != ownerKey || player.OwnerEpoch != ownerEpoch || !target.IsValid ||
+                string.IsNullOrWhiteSpace(text) || System.Text.Encoding.UTF8.GetByteCount(text) > 8 * 1024) return null;
+            var id = Guid.NewGuid().ToString("N");
+            return this.QueuePacket(new ClientMessage(text) { RequestId = id, TellTarget = target,
+                ExpectedOwnerKey = ownerKey, ExpectedOwnerEpoch = ownerEpoch }.Encode()) ? id : null;
+        }
+
         private bool QueuePacket(byte[] packet) {
             if (this.cancel.IsCancellationRequested) return false;
             if (packet.Length + SecretMessage.MacSize <= 128_000 && this.outgoingMessages.Writer.TryWrite(packet)) return true;
@@ -101,7 +113,8 @@ namespace XIVChat_Desktop {
                 { ClientPreference.GuardedCommandsSupport, true },
             },
             Channels = ChannelSubscription.Union(this.app.Config.HistoryEnabled,
-                this.app.Config.Tabs.SelectMany(t => t.Filter.Types).Distinct().SelectMany(t => t.Types()).Select(t => (ushort)t),
+                this.app.Config.Tabs.SelectMany(t => t.Filter.Types).Distinct().SelectMany(t => t.Types()).Select(t => (ushort)t)
+                    .Concat(new[] { (ushort)ChatType.TellIncoming, (ushort)ChatType.TellOutgoing }),
                 this.app.Config.Notifications.SelectMany(n => n.Channels).Select(t => (ushort)t)),
         };
 
@@ -297,7 +310,7 @@ namespace XIVChat_Desktop {
                     break;
                 case ServerOperation.Message:
                     var message = ServerMessage.Decode(payload);
-                    await this.Record(message);
+                    await this.Record(message, true);
 
                     this.DispatchIfCurrent(() => {
                         if (this.app.Session.Add(message)) this.ReceiveMessage?.Invoke(message);
@@ -394,17 +407,21 @@ namespace XIVChat_Desktop {
                 case ServerOperation.LinkshellList:
                     break;
                 case ServerOperation.CommandResult:
-                    if (this.capabilities?.GuardedCommands == true)
-                        this.ReportCommandFailure(ServerCommandResult.Decode(payload).Failure);
+                    if (this.capabilities?.GuardedCommands == true) {
+                        var commandResult = ServerCommandResult.Decode(payload);
+                        this.DispatchIfCurrent(() => this.CommandResult?.Invoke(commandResult));
+                        if (commandResult.Stage == CommandStage.Rejected) this.ReportCommandFailure(commandResult.Failure);
+                    }
                     break;
             }
 
         }
 
-        private async Task Record(ServerMessage message) {
+        private Task Record(ServerMessage message) => this.Record(message, false);
+        private async Task Record(ServerMessage message, bool live) {
             // Capture connection ownership before asynchronous persistence; a replaced connection must not pollute the next source.
             if (!ReferenceEquals(this.app.Connection, this)) return;
-            await this.app.Session.RecordAsync(message, this.source);
+            await this.app.Session.RecordAsync(message, this.source, live);
         }
 
         private static int _backlogSequence = -1;

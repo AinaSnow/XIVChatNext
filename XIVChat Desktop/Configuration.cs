@@ -53,6 +53,7 @@ namespace XIVChat_Desktop {
         }
         // Zero means keep forever. Turning history off stops new persistence.
         public int HistoryRetentionDays { get; set; } = 90;
+        public bool OnlineAvatars { get; set; } = true;
 
         private double opacity = 1.0;
 
@@ -129,6 +130,9 @@ namespace XIVChat_Desktop {
                     || config.Tabs.Any(tab => tab == null || tab.Filter?.Types == null)) {
                     throw new InvalidDataException("Configuration is missing required keys or collections.");
                 }
+                var tabIds = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var tab in config.Tabs)
+                    if (string.IsNullOrWhiteSpace(tab.Id) || !tabIds.Add(tab.Id)) { tab.Id = Guid.NewGuid().ToString("N"); tabIds.Add(tab.Id); }
                 return config;
             } catch (Exception ex) when (ex is JsonException or ArgumentException) {
                 throw new InvalidDataException("Configuration JSON is invalid.", ex);
@@ -227,6 +231,7 @@ namespace XIVChat_Desktop {
 
     [JsonObject]
     public class Tab : IEnumerable<ServerMessage>, INotifyCollectionChanged, INotifyPropertyChanged {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
         private string name;
         private bool processMarkdown;
 

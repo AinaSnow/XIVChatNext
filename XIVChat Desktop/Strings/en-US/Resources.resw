@@ -311,4 +311,87 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>Command was not sent: invalid request or more than 8 KiB of text.</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>Command cancelled: the connection ended.</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>Command could not be applied: this game channel is unavailable.</value></data>
+  <data name="Workbench.Conversations" xml:space="preserve"><value>Conversations</value></data>
+  <data name="Workbench.Channels" xml:space="preserve"><value>Channels</value></data>
+  <data name="Workbench.Friends" xml:space="preserve"><value>Friends</value></data>
+  <data name="Workbench.History" xml:space="preserve"><value>History</value></data>
+  <data name="Workbench.Search" xml:space="preserve"><value>Search messages and notes, then press Enter</value></data>
+  <data name="Workbench.Filter" xml:space="preserve"><value>Filter list</value></data>
+  <data name="Workbench.Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Workbench.Map" xml:space="preserve"><value>Map</value></data>
+  <data name="Workbench.Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Workbench.TypeMessage" xml:space="preserve"><value>Type a message…</value></data>
+  <data name="Workbench.EditChannel" xml:space="preserve"><value>Edit channel view</value></data>
+  <data name="Workbench.ConnectFirst" xml:space="preserve"><value>Connect and log in to a character first.</value></data>
+  <data name="Workbench.OfflineHistory" xml:space="preserve"><value>Offline history</value></data>
+  <data name="Workbench.ChannelView" xml:space="preserve"><value>Filtered channel view</value></data>
+  <data name="Workbench.Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Workbench.Disconnected" xml:space="preserve"><value>Disconnected · Local history available</value></data>
+  <data name="Workbench.Channel" xml:space="preserve"><value>Channel</value></data>
+  <data name="Workbench.ChannelTarget" xml:space="preserve"><value>Messages use the current game channel. Selecting a view does not change the sending channel.</value></data>
+  <data name="Workbench.EnterHint" xml:space="preserve"><value>Enter to send · Shift+Enter for a new line</value></data>
+  <data name="Workbench.HistoryRetention" xml:space="preserve"><value>Local history: {0} days (notes and bookmarks are protected)</value></data>
+  <data name="Workbench.Forever" xml:space="preserve"><value>Forever</value></data>
+  <data name="Workbench.HistoryOff" xml:space="preserve"><value>Local history recording is off</value></data>
+  <data name="Conversation.Empty" xml:space="preserve"><value>No conversations. Select + or open a friend.</value></data>
+  <data name="Conversation.Select" xml:space="preserve"><value>Select a conversation</value></data>
+  <data name="Conversation.Pin" xml:space="preserve"><value>Pin conversation</value></data>
+  <data name="Conversation.Pinned" xml:space="preserve"><value>Pinned</value></data>
+  <data name="Conversation.Note" xml:space="preserve"><value>Conversation note</value></data>
+  <data name="Conversation.RestoreDraft" xml:space="preserve"><value>Restore unsent text</value></data>
+  <data name="Conversation.Target" xml:space="preserve"><value>Fixed Tell target: {0} @ {1}</value></data>
+  <data name="Conversation.UpgradeRequired" xml:space="preserve"><value>Update the plugin to enable fixed-target Tells.</value></data>
+  <data name="Conversation.ReadOnly" xml:space="preserve"><value>This character is offline; drafts are kept.</value></data>
+  <data name="Conversation.NotSent" xml:space="preserve"><value>Not sent. Check the connection and character.</value></data>
+  <data name="Conversation.Queued" xml:space="preserve"><value>Queued; waiting for the game…</value></data>
+  <data name="Conversation.Submitted" xml:space="preserve"><value>Submitted to game (delivery is not confirmed)</value></data>
+  <data name="Conversation.Name" xml:space="preserve"><value>Full character name</value></data>
+  <data name="Conversation.World" xml:space="preserve"><value>Home world</value></data>
+  <data name="Conversation.New" xml:space="preserve"><value>New conversation</value></data>
+  <data name="Conversation.Open" xml:space="preserve"><value>Open conversation</value></data>
+  <data name="Conversation.InvalidIdentity" xml:space="preserve"><value>Enter a full character name and select a home world.</value></data>
+  <data name="Conversation.Draft" xml:space="preserve"><value>Draft</value></data>
+  <data name="History.Owner" xml:space="preserve"><value>Character and connection</value></data>
+  <data name="History.Person" xml:space="preserve"><value>Person name</value></data>
+  <data name="History.From" xml:space="preserve"><value>From date</value></data>
+  <data name="History.Until" xml:space="preserve"><value>Until date</value></data>
+  <data name="History.BookmarksOnly" xml:space="preserve"><value>Bookmarks only</value></data>
+  <data name="History.Apply" xml:space="preserve"><value>Apply filters</value></data>
+  <data name="History.AllChannels" xml:space="preserve"><value>All channels</value></data>
+  <data name="History.AllOwners" xml:space="preserve"><value>All characters</value></data>
+  <data name="History.Unassigned" xml:space="preserve"><value>Unassigned records</value></data>
+  <data name="History.InvalidDates" xml:space="preserve"><value>End date must be on or after start date.</value></data>
+  <data name="History.Results" xml:space="preserve"><value>Loaded {0} records, newest first.</value></data>
+  <data name="History.LoadOlder" xml:space="preserve"><value>Load older</value></data>
+  <data name="History.Context" xml:space="preserve"><value>View context</value></data>
+  <data name="History.Back" xml:space="preserve"><value>Back to search</value></data>
+  <data name="History.Note" xml:space="preserve"><value>Message note</value></data>
+  <data name="History.Bookmark" xml:space="preserve"><value>Bookmark</value></data>
+  <data name="History.Unbookmark" xml:space="preserve"><value>Remove bookmark</value></data>
+  <data name="History.Removed" xml:space="preserve"><value>This record has been removed.</value></data>
+  <data name="FriendList.Cached" xml:space="preserve"><value>Cached snapshot</value></data>
+  <data name="FriendList.Online" xml:space="preserve"><value>Online (snapshot)</value></data>
+  <data name="FriendList.Offline" xml:space="preserve"><value>Offline (snapshot)</value></data>
+  <data name="FriendList.Select" xml:space="preserve"><value>Select a friend to open a fixed-target Tell</value></data>
+  <data name="Avatar.Title" xml:space="preserve"><value>Character avatar</value></data>
+  <data name="Avatar.Online" xml:space="preserve"><value>Allow online Lodestone avatar lookups</value></data>
+  <data name="Avatar.Id" xml:space="preserve"><value>Lodestone character ID or profile URL</value></data>
+  <data name="Avatar.Help" xml:space="preserve"><value>Automatic binding requires one exact match. Paste an official profile URL to bind manually. Save an empty field to unbind and disable automatic lookup. Online lookup can be disabled in Settings.</value></data>
+  <data name="Avatar.Disabled" xml:space="preserve"><value>Binding and automatic lookup disabled</value></data>
+  <data name="Avatar.Cached" xml:space="preserve"><value>Avatar cached</value></data>
+  <data name="Avatar.Placeholder" xml:space="preserve"><value>No avatar; showing name placeholder</value></data>
+  <data name="Avatar.Profile" xml:space="preserve"><value>Open Lodestone profile</value></data>
+  <data name="Avatar.Auto" xml:space="preserve"><value>Match automatically again</value></data>
+  <data name="Avatar.Invalid" xml:space="preserve"><value>Enter a valid ID or official Lodestone character profile URL.</value></data>
+  <data name="Avatar.Unavailable" xml:space="preserve"><value>Avatar unavailable:</value></data>
+  <data name="Conversation.Unknown" xml:space="preserve"><value>Game submission was not confirmed. Check game chat before retrying.</value></data>
+  <data name="Conversation.Partial" xml:space="preserve"><value>{0} parts were submitted to the game. Restored text contains the full original; check before resending.</value></data>
+  <data name="FriendList.Empty" xml:space="preserve"><value>No friend snapshot. Connect to refresh.</value></data>
+  <data name="FriendList.IdentityUnavailable" xml:space="preserve"><value>Character identity unavailable</value></data>
+  <data name="FriendList.Refreshing" xml:space="preserve"><value>Refreshing friends…</value></data>
+  <data name="FriendList.Snapshot" xml:space="preserve"><value>{0} friends · Snapshot {1}</value></data>
+  <data name="FriendList.Stale" xml:space="preserve"><value>Cached snapshot; status may have changed.</value></data>
+  <data name="FriendList.Timing" xml:space="preserve"><value>Status reflects this complete snapshot.</value></data>
+  <data name="FriendList.Unsupported" xml:space="preserve"><value>This connection does not support friend snapshots.</value></data>
+  <data name="FriendList.Unknown" xml:space="preserve"><value>Status unknown</value></data>
 </root>

@@ -23,15 +23,19 @@ namespace XIVChat_Desktop {
         public HistoryStore? Store { get; set; }
         public Exception? StorageError => Volatile.Read(ref this.storageError);
         public event Action<Exception>? PersistenceFailed;
-        public string Source { get; set; } = "local";
+        private string source = "local";
+        public string Source { get => this.source; set { if (this.source == value) return; this.source = value; this.ContextChanged?.Invoke(); } }
+        public event Action? ContextChanged;
+        public event Action<ServerMessage[], bool>? MessagesChanged;
+        public event Action? Cleared;
 
         public ChatSession(Func<Configuration> configuration) => this.configuration = configuration;
 
-        public async Task RecordAsync(ServerMessage message, string source) {
+        public async Task RecordAsync(ServerMessage message, string source, bool live = false) {
             var store = this.Store;
             if (message.Channel == 0 || !this.configuration().HistoryEnabled || store == null || this.StorageError != null) return;
             try {
-                await store.AppendAsync(source, message, HistoryStore.StorageId(source, message));
+                await store.AppendAsync(source, message, HistoryStore.StorageId(source, message), live);
                 var now = DateTime.UtcNow;
                 var last = Interlocked.Read(ref this.lastCleanupUtcTicks);
                 if (now.Ticks - last > TimeSpan.TicksPerDay && Interlocked.CompareExchange(ref this.lastCleanupUtcTicks, now.Ticks, last) == last) {
@@ -51,6 +55,7 @@ namespace XIVChat_Desktop {
             this.pendingIdentity.Clear();
             if (player != null && this.Player?.Identity?.Key != player.Identity?.Key) this.Clear();
             this.Player = player;
+            this.ContextChanged?.Invoke();
             if (player?.Identity?.Key != null) this.AddCursorPage(pending);
         }
 
@@ -59,6 +64,7 @@ namespace XIVChat_Desktop {
             this.Messages.Add(message);
             foreach (var tab in this.configuration().Tabs) tab.AddMessage(message, this.configuration());
             this.Prune();
+            this.MessagesChanged?.Invoke(new[] { message }, true);
             return true;
         }
 
@@ -72,6 +78,7 @@ namespace XIVChat_Desktop {
             this.Messages.InsertRange(this.insertAt, accepted);
             foreach (var tab in this.configuration().Tabs) tab.AddReversedChunk(accepted, sequence, this.configuration());
             this.Prune();
+            this.MessagesChanged?.Invoke(accepted, false);
         }
 
         public void AddCursorPage(ServerMessage[] messages) {
@@ -86,6 +93,7 @@ namespace XIVChat_Desktop {
             foreach (var tab in this.configuration().Tabs) tab.MergeHistory(accepted, this.configuration());
             this.Prune();
             this.insertAt = this.Messages.Count;
+            this.MessagesChanged?.Invoke(accepted, false);
         }
 
         internal static int Compare(ServerMessage left, ServerMessage right) {
@@ -127,6 +135,7 @@ namespace XIVChat_Desktop {
             this.seen.Clear();
             this.seenOrder.Clear();
             this.pendingIdentity.Clear();
+            this.Cleared?.Invoke();
         }
     }
 }

@@ -17,6 +17,19 @@ namespace XIVChat_Desktop {
         public Configuration Config { get; private set; } = null!;
         private ChatSession? session;
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
+        private WorkbenchSession? workbench;
+        public WorkbenchSession Workbench => this.workbench ??= new WorkbenchSession(this);
+        private LodestoneAvatars? avatars;
+        public LodestoneAvatars Avatars {
+            get {
+                if (this.avatars == null) {
+                    this.avatars = new LodestoneAvatars(() => this.Session.Store,
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XIVChatDesktop", "Avatars"), this.Config.OnlineAvatars);
+                    this.Config.Saved += () => this.avatars.SetEnabled(this.Config.OnlineAvatars);
+                }
+                return this.avatars;
+            }
+        }
         private DispatcherQueue? dispatcher;
         private Task? connectionTask;
 
@@ -195,6 +208,8 @@ namespace XIVChat_Desktop {
         public async Task StopSessionAsync() {
             this.Disconnect();
             if (this.connectionTask != null) await this.connectionTask;
+            if (this.workbench != null) await this.workbench.FlushAsync();
+            this.avatars?.Dispose();
             if (this.Session.Store != null) {
                 try { await this.Session.Store.DisposeAsync(); }
                 finally { this.Session.Store = null; }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
+using System.Linq;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,6 +19,14 @@ namespace XIVChat_Desktop.Controls {
         private bool updating;
         private bool disposed;
         private int unreadCount;
+        public bool FollowingLatest => this.followLatest;
+        public void ScrollToMessage(ServerMessage message) {
+            var row = rows.FirstOrDefault(r => ReferenceEquals(r.Message, message) || message.MessageId != null && r.Message.MessageId == message.MessageId);
+            if (row == null) return;
+            followLatest = false;
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => { if (!disposed) { MessageList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading); UpdateLocalizations(); } });
+        }
+        public event Action? ReadingChanged;
 
         public ChatMessageList(Tab tab) {
             this.tab = tab;
@@ -95,6 +104,7 @@ namespace XIVChat_Desktop.Controls {
                 this.unreadCount = 0;
                 this.UpdateLocalizations();
             }
+            this.ReadingChanged?.Invoke();
         }
 
         private void QueueScrollToLatest() {
@@ -117,6 +127,7 @@ namespace XIVChat_Desktop.Controls {
             this.unreadCount = 0;
             this.UpdateLocalizations();
             this.QueueScrollToLatest();
+            this.ReadingChanged?.Invoke();
         }
 
         public void UpdateLocalizations() {

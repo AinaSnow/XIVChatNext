@@ -41,8 +41,14 @@ namespace XIVChat_Desktop {
             try {
                 var first = new Tab("General") { Filter = Tab.GeneralFilter() };
                 var second = new Tab("Also general") { Filter = Tab.GeneralFilter() };
-                var config = new Configuration { LocalBacklogMessages = 10_000, BacklogMessages = 0, Tabs = new ObservableCollection<Tab> { first, second } };
+                var config = new Configuration { OnlineAvatars = false, LocalBacklogMessages = 10_000, BacklogMessages = 0, Tabs = new ObservableCollection<Tab> { first, second } };
                 typeof(App).GetProperty(nameof(Config))!.SetValue(this, config);
+                var legacy = Newtonsoft.Json.Linq.JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(config));
+                legacy.Remove("OnlineAvatars");
+                foreach (var tab in legacy["Tabs"]!.Children<Newtonsoft.Json.Linq.JObject>()) tab.Remove("Id");
+                var migrated = (Configuration)typeof(Configuration).GetMethod("Deserialize", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.Invoke(null, new object[] { legacy.ToString() })!;
+                this.Check(migrated.Tabs.Count == 2 && migrated.Tabs.Select(t => t.Name).SequenceEqual(new[] { "General", "Also general" }) && migrated.Tabs.Select(t => t.Id).Distinct().Count() == 2 && migrated.Tabs[0].Filter.Types.SetEquals(first.Filter.Types),
+                    "Legacy channel names, filters and order survive generated view IDs");
                 LocalizationHelper.Initialize(AppLanguage.English);
                 var window = new MainWindow();
                 typeof(App).GetProperty(nameof(Window))!.SetValue(this, window);
@@ -51,8 +57,8 @@ namespace XIVChat_Desktop {
 
                 for (int i = 0; i < 10_000; i++) window.AddMessage(Message(i));
                 await Task.Delay(1500);
-                var tabs = Find<TabView>((DependencyObject)window.Content);
-                var firstView = Find<ChatMessageList>((DependencyObject)((TabViewItem)tabs.SelectedItem).Content);
+                var tabs = Find<ListView>((DependencyObject)window.Content, v => v.Name == "ChannelList");
+                var firstView = Find<ChatMessageList>((DependencyObject)window.Content);
                 var list = Find<ListView>(firstView);
                 var viewer = Find<ScrollViewer>(list);
                 Check(list.Items.Count == 10_000 && second.Messages.Count == 10_000, "10,000 messages retained in both tabs");
@@ -163,7 +169,7 @@ namespace XIVChat_Desktop {
                     this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
                         new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true });
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true });
                     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
                     var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(request[0] == (byte)ClientOperation.Preferences && ClientPreferences.Decode(request[1..]).Channels == null,
@@ -201,6 +207,7 @@ namespace XIVChat_Desktop {
                         Owner = owner, OwnerEpoch = "login1", SnapshotId = "snapshot1", CapturedAt = DateTime.UtcNow,
                     };
                     snapshot.Players[69].Name = ""; snapshot.Players[69].HomeWorld = 0; snapshot.Players[69].IdentityUnavailable = true;
+                    snapshot.Players[0].Name = "Peer Name"; snapshot.Players[0].HomeWorld = 7; snapshot.Players[0].HomeWorldName = "PeerWorld";
                     var pages = FriendListProtocol.Pages(snapshot, friendRequest.RequestId);
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, pages[0]);
                     await Task.Delay(150);
@@ -233,20 +240,24 @@ namespace XIVChat_Desktop {
                     await Task.Delay(150);
                     this.Check(this.Session.Messages.Any(m => m.ContentText == LocalizationHelper.GetString("Command.ChannelChanged")),
                         "Rejected guarded command displays a localized cancellation reason");
+                    await TestConversationUi(stream, handshake.Keys.rx, handshake.Keys.tx, owner, source, timeout.Token);
                     foreach (var tab in this.Config.Tabs) tab.Filter.Types = new HashSet<FilterType> { FilterType.Say };
                     this.Config.Notifications.Add(new Notification("Tell alert") { MatchAll = true, Channels = new List<ChatType> { ChatType.TellIncoming } });
                     this.Config.HistoryEnabled = false;
                     var subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
-                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.OrderBy(x => x).SequenceEqual(new ushort[] { (ushort)ChatType.Say, (ushort)ChatType.TellIncoming }.OrderBy(x => x)),
+                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.OrderBy(x => x).SequenceEqual(new ushort[] { (ushort)ChatType.Say, (ushort)ChatType.TellIncoming, (ushort)ChatType.TellOutgoing }.OrderBy(x => x)),
                         "Disabling local history retains the union of visible and notification channels");
                     foreach (var tab in this.Config.Tabs) tab.Filter.Types.Clear();
                     this.Connection.UpdateSubscriptions();
                     subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
-                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.SequenceEqual(new ushort[] { (ushort)ChatType.TellIncoming }),
+                    this.Check(ClientPreferences.Decode(subscribed[1..]).Channels!.Order().SequenceEqual(new ushort[] { (ushort)ChatType.TellOutgoing, (ushort)ChatType.TellIncoming }.Order()),
                         "Removing visible channels preserves notification subscriptions");
                     this.Config.HistoryEnabled = true;
                     subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(ClientPreferences.Decode(subscribed[1..]).Channels == null, "Re-enabling history restores all-channel delivery");
+                    this.Window.Navigate("channels");
+                    var channelComposer = Find<TextBox>((DependencyObject)this.Window.Content, t => t.Name == "Composer");
+                    channelComposer.Text = "owner one channel draft";
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, new PlayerData("Home", "Home", "Area", "Other") {
                         Identity = foreign.Owner, OwnerEpoch = "login2",
                     });
@@ -255,6 +266,7 @@ namespace XIVChat_Desktop {
                     await Task.Delay(150);
                     this.Check(this.Session.Friends.OwnerKey == "cid:2" && this.Session.Friends.Snapshot == null,
                         "Late friend pages cannot enter the next role");
+                    this.Check(channelComposer.Text.Length == 0, "Changing characters isolates channel drafts");
                 }
                 for (int i = 0; i < 100 && this.Connected; i++) await Task.Delay(30);
                 this.Check(!this.Connected, "New-protocol connection closes after EOF");
@@ -264,11 +276,75 @@ namespace XIVChat_Desktop {
                 this.Check(this.Session.Messages.Count == 0, "Changing own character clears the active view");
             } finally {
                 this.Disconnect();
+                await this.Workbench.FlushAsync();
                 this.Session.Store = null;
                 await store.DisposeAsync();
                 Directory.Delete(tempDirectory, true);
             }
         }
+
+        private async Task TestConversationUi(NetworkStream stream, byte[] rx, byte[] tx, CharacterIdentity owner, string source, CancellationToken token) {
+            var root = (DependencyObject)this.Window.Content;
+            var target = new CharacterIdentity { ContentId = 1, Name = "Peer Name", HomeWorldId = 7, HomeWorld = "PeerWorld" };
+            this.Window.Navigate("friends");
+            var friends = Find<ListView>(root, v => v.Name == "FriendList");
+            this.Check(friends.Items.Count == 70 && friends.Items.OfType<FriendRow>().Count(f => f.Peer == null) == 1, "Friend sidebar retains all snapshot rows with unavailable identities marked");
+            friends.SelectedItem = friends.Items.OfType<FriendRow>().Single(f => f.Peer == null);
+            this.Check(this.Workbench.Conversations.Count == 0, "Unavailable friend cannot open a guessed Tell target");
+            friends.SelectedItem = friends.Items.OfType<FriendRow>().Single(f => f.Name == "Peer Name");
+            var model = this.Workbench.Conversations.Single();
+            this.Check(TellTarget.From(model.Peer) == TellTarget.From(target), "Complete friend opens its exact home-world conversation");
+            this.Window.Navigate("conversations"); this.Window.ShowConversation(model);
+            await Task.Delay(100);
+            var composer = Find<TextBox>(root, t => t.Name == "Composer");
+            composer.Text = "fixed target draft"; model.Pinned = true; model.Note = "private note";
+            this.Workbench.Save(model); await this.Workbench.FlushAsync();
+            var store = this.Session.Store!;
+            var saved = (await store.GetConversationsAsync(source, owner.Key!)).Single();
+            this.Check(saved.State is { Draft: "fixed target draft", Pinned: true, Note: "private note" }, "Conversation draft, pin and note persist in the owner partition");
+            this.Window.Navigate("channels"); this.Window.Navigate("conversations"); this.Window.ShowConversation(model);
+            this.Check(composer.Text == "fixed target draft", "Navigation restores the conversation draft");
+            this.Check(this.Workbench.Send(model, composer.Text), "Fixed-target Tell queues from the shared conversation");
+            var raw = await SecretMessage.ReadSecretMessage(stream, rx, token);
+            var sent = ClientMessage.Decode(raw[1..]);
+            this.Check(raw[0] == (byte)ClientOperation.Message && sent.TellTarget == TellTarget.From(target) && sent.ExpectedOwnerKey == owner.Key && sent.ExpectedOwnerEpoch == "login1" && composer.Text.Length == 0,
+                "Tell wire captures explicit peer and owner while clearing the submitted draft");
+            await SecretMessage.SendSecretMessage(stream, tx, new ServerCommandResult { RequestId = sent.RequestId, Stage = CommandStage.Queued });
+            await Task.Delay(80);
+            this.Check(model.SendStatus == LocalizationHelper.GetString("Conversation.Queued"), "Queued status does not claim delivery");
+            await SecretMessage.SendSecretMessage(stream, tx, new ServerCommandResult { RequestId = sent.RequestId, Stage = CommandStage.Submitted });
+            await Task.Delay(80);
+            this.Check(model.SendStatus == LocalizationHelper.GetString("Conversation.Submitted"), "Game submission status is shown separately");
+            this.Check(this.Workbench.Send(model, "recover me"), "Second Tell queues");
+            raw = await SecretMessage.ReadSecretMessage(stream, rx, token); sent = ClientMessage.Decode(raw[1..]);
+            composer.Text = "new draft";
+            await SecretMessage.SendSecretMessage(stream, tx, new ServerCommandResult { RequestId = sent.RequestId, Failure = CommandFailure.IdentityChanged });
+            await Task.Delay(80);
+            this.Check(model.Draft == "new draft" && model.FailedDraft == "recover me", "Rejection retains both the new draft and failed text");
+            var restore = Find<Button>(root, b => b.Name == "RestoreDraftButton"); Invoke(restore);
+            this.Check(composer.Text == "new draft\nrecover me", "Failed text restores without overwriting newer typing");
+            this.Window.Navigate("channels");
+            var incoming = Message(10); incoming.Channel = ChatType.TellIncoming; incoming.Owner = owner; incoming.TellPeer = target;
+            incoming.ServiceId = "smoke"; incoming.RunId = "run"; incoming.Sequence = 10; incoming.MessageId = "smoke:run:10";
+            await SecretMessage.SendSecretMessage(stream, tx, incoming);
+            for (int i = 0; i < 50 && model.Unread == 0; i++) await Task.Delay(20);
+            this.Check(model.Unread == 1, "Inactive conversation counts a live incoming Tell");
+            await this.Workbench.MarkReadAsync(model);
+            this.Check((await store.GetConversationsAsync(source, owner.Key!)).Single().Unread == 0, "Shared read state commits to SQLite");
+            var search = Find<AutoSuggestBox>(root, b => b.Name == "GlobalSearch"); search.Text = "示例";
+            this.Window.Navigate("history");
+            await Task.Delay(300);
+            var history = Find<ListView>(root, v => v.Name == "HistoryList");
+            this.Check(history.Items.Count >= 4 && history.Items.OfType<HistoryResult>().All(r => r.Query == "示例"), "History page queries SQLite and supplies the literal highlight term");
+            history.SelectedItem = history.Items.OfType<HistoryResult>().Single(r => r.Row.Message.MessageId == incoming.MessageId);
+            Invoke(Find<Button>(root, b => b.Name == "HistoryBookmarkButton")); await Task.Delay(100);
+            this.Check((await store.GetMessageAsync(XIVChatStorage.HistoryStore.StorageId(source, incoming)))?.Bookmarked == true, "History bookmark action persists");
+            Invoke(Find<Button>(root, b => b.Name == "HistoryContextButton")); await Task.Delay(150);
+            this.Check(Find<Button>(root, b => b.Name == "BackHistoryButton").Visibility == Visibility.Visible && this.Window.GetCurrentInputBox() == null,
+                "Search context is read-only and offers return navigation");
+            this.Window.Navigate("channels");
+        }
+        private static void Invoke(Button button) => ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
 
         private static ServerMessage Message(int index) {
             var text = $"Message {index}: 示例聊天消息 " + (index % 7 == 0 ? new string('W', 150) : "short");

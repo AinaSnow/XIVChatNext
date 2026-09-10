@@ -236,7 +236,7 @@ namespace XIVChatPlugin {
                 if (command == null) return;
                 var failure = GameCommandQueue.Validate(command, Volatile.Read(ref this._gameContext));
                 if (failure != null) {
-                    if (this._toGame.Take(command) != null) this.RejectCommand(command.ClientId, command.RequestId, failure.Value);
+                    if (this._toGame.Take(command) != null) this.RejectCommand(command.ClientId, command.RequestId, failure.Value, command.PartIndex);
                     continue;
                 }
                 var time = command.Channel != null ? 250 :
@@ -247,11 +247,21 @@ namespace XIVChatPlugin {
                 command = this._toGame.Take(command);
                 if (command == null) continue;
                 failure = GameCommandQueue.Validate(command, Volatile.Read(ref this._gameContext));
-                if (failure != null) { this.RejectCommand(command.ClientId, command.RequestId, failure.Value); continue; }
+                if (failure != null) { this.RejectCommand(command.ClientId, command.RequestId, failure.Value, command.PartIndex); continue; }
                 this._sendWatch.Restart();
                 if (command.Channel is { } channel) {
                     if (!this._plugin.Functions.ChangeChatChannel(channel)) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.Unavailable);
-                } else this._plugin.Functions.ProcessChatBox(command.Text!);
+                } else {
+                    if (command.TellTarget is { } target) {
+                        var world = this._plugin.DataManager.GetExcelSheet<World>().GetRowOrDefault(target.HomeWorldId);
+                        if (!target.IsValid || world?.Name.ExtractText() != target.HomeWorld) {
+                            this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.InvalidRequest, command.PartIndex);
+                            continue;
+                        }
+                    }
+                    if (!this._plugin.Functions.ProcessChatBox(command.Text!)) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.Unavailable, command.PartIndex);
+                    else if (command.TellTarget != null && command.LastPart) this.ReportTellStage(command.ClientId, command.RequestId, CommandStage.Submitted);
+                }
                 return;
             }
         }
@@ -369,8 +379,12 @@ namespace XIVChatPlugin {
                     if (clientMessage.Content == null || Encoding.UTF8.GetByteCount(clientMessage.Content) > 8 * 1024) {
                         this.RejectCommand(id, clientMessage.RequestId, CommandFailure.InvalidRequest); break;
                     }
+                    if (clientMessage.TellTarget != null && (!clientMessage.TellTarget.IsValid ||
+                        !client.GetPreference(ClientPreference.GuardedCommandsSupport, false))) {
+                        this.RejectCommand(id, clientMessage.RequestId, CommandFailure.InvalidRequest); break;
+                    }
                     var context = this.CommandContext(id, client, clientMessage.RequestId, clientMessage.ExpectedOwnerKey,
-                        clientMessage.ExpectedOwnerEpoch, clientMessage.ExpectedChannelRevision, true);
+                        clientMessage.ExpectedOwnerEpoch, clientMessage.ExpectedChannelRevision, clientMessage.TellTarget == null);
                     if (context == null) break;
                     var sanitised = clientMessage.Content
                         .Replace("\r\n", " ")
@@ -379,10 +393,13 @@ namespace XIVChatPlugin {
                     if (string.IsNullOrWhiteSpace(sanitised)) break;
                     GameCommand[] commands;
                     try {
-                        commands = ChatTextSplitter.Split(sanitised).Select(part => new GameCommand(id, clientMessage.RequestId, context,
-                            part, null, client.TokenSource.Token)).ToArray();
+                        if (clientMessage.TellTarget is { } tell) sanitised = tell.Format(sanitised);
+                        var parts = ChatTextSplitter.Split(sanitised);
+                        commands = parts.Select((part, index) => new GameCommand(id, clientMessage.RequestId, context,
+                            part, null, client.TokenSource.Token, clientMessage.TellTarget, index == parts.Length - 1, index)).ToArray();
                     } catch (ArgumentException) { this.RejectCommand(id, clientMessage.RequestId, CommandFailure.InvalidRequest); break; }
                     if (!this._toGame.TryEnqueue(commands)) this.RejectCommand(id, clientMessage.RequestId, CommandFailure.QueueFull);
+                    else if (clientMessage.TellTarget != null) this.ReportTellStage(id, clientMessage.RequestId, CommandStage.Queued);
 
                     break;
                 case ClientOperation.Shutdown:
@@ -431,7 +448,7 @@ namespace XIVChatPlugin {
                     if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true,
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true,
                         });
                     }
 
@@ -470,12 +487,18 @@ namespace XIVChatPlugin {
             return null;
         }
 
-        private void RejectCommand(Guid id, string? request, CommandFailure failure) {
+        private void RejectCommand(Guid id, string? request, CommandFailure failure, int submittedParts = 0) {
+            if (!string.IsNullOrEmpty(request)) this._toGame.CancelRequest(id, request);
             if (!this._clients.TryGetValue(id, out var client) || !client.Ready) return;
             if (client.GetPreference(ClientPreference.GuardedCommandsSupport, false))
-                client.Send(new ServerCommandResult { RequestId = request?.Length <= 64 ? request : null, Failure = failure });
+                client.Send(new ServerCommandResult { RequestId = request?.Length <= 64 ? request : null, Failure = failure, SubmittedParts = submittedParts });
             else client.Send(new ServerMessage(DateTime.UtcNow, 0, Array.Empty<byte>(), Array.Empty<byte>(),
                 new List<Chunk> { new TextChunk($"XIVChat: command cancelled ({failure}).") }));
+        }
+
+        private void ReportTellStage(Guid id, string? request, CommandStage stage) {
+            if (this._clients.TryGetValue(id, out var client) && client.Ready)
+                client.Send(new ServerCommandResult { RequestId = request, Stage = stage });
         }
 
         private void RefreshGameContext() {
@@ -895,7 +918,7 @@ namespace XIVChatPlugin {
         internal void OnLogOut(int type, int code) {
             this._ownerEpoch = Guid.NewGuid().ToString("N");
             Volatile.Write(ref this._gameContext, new GameCommandContext(null, this._ownerEpoch, this._channelRevision));
-            foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn);
+            foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn, command.PartIndex);
             this._nextHousingCheck = 0;
             this.FriendLists.Tick(null, this._ownerEpoch, DateTime.UtcNow);
             this.BroadcastAvailability(false);

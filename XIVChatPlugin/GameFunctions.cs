@@ -179,22 +179,23 @@ namespace XIVChatPlugin {
             return 0xFF | (rgb << 8);
         }
 
-        internal void ProcessChatBox(string message) {
-            if (this._easierProcessChatBox == null) {
-                return;
+        internal bool ProcessChatBox(string message) {
+            if (this._easierProcessChatBox == null || !this.Plugin.Framework.IsInFrameworkUpdateThread) {
+                return false;
             }
 
             this.HadInput = InputSetters.Normal | InputSetters.Afk;
 
             var uiModule = UIModule.Instance();
+            if (uiModule == null) return false;
 
             using var payload = new ChatPayload(message);
             var mem1 = Marshal.AllocHGlobal(400);
-            Marshal.StructureToPtr(payload, mem1, false);
-
-            this._easierProcessChatBox((nint) uiModule, mem1, nint.Zero, 0);
-
-            Marshal.FreeHGlobal(mem1);
+            try {
+                Marshal.StructureToPtr(payload, mem1, false);
+                this._easierProcessChatBox((nint) uiModule, mem1, nint.Zero, 0);
+                return true;
+            } finally { Marshal.FreeHGlobal(mem1); }
         }
 
         private nint ChangeChatChannelNameDetour(nint a1) {

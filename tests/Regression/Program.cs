@@ -8,6 +8,10 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Fixed Tell wire targets reject injection and remain independent of current channel", Phase3Tests.DirectedTell),
+    ("V2 history migration preserves annotations and isolates conversations", Phase3Tests.Storage),
+    ("Lodestone exact matching, pagination and official URL validation", Phase3Tests.Parser),
+    ("Avatar cache, manual override, cancellation and offline fallback", Phase3Tests.Avatars),
     ("Outgoing budgets include active writes and disconnect overflowing peers", StabilityTests.OutgoingBudget),
     ("Game commands are bounded, atomic and tied to connection / owner / target", StabilityTests.GameCommands),
     ("History limits apply immediately and cleared history reports a gap", StabilityTests.Backlog),

@@ -1,76 +1,132 @@
 <Window x:Class="XIVChat_Desktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="using:XIVChat_Desktop"
-        xmlns:cc="using:XIVChat_Desktop.Controls"
-        xmlns:server="using:XIVChatCommon.Message.Server"
-        xmlns:message="using:XIVChatCommon.Message"
-        mc:Ignorable="d"
-        x:Name="Main">
-    <Grid DataContext="{x:Bind}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <MenuBar Grid.Row="0">
-            <MenuBarItem x:Name="MenuMain" Title="XIVChat">
-                <MenuFlyoutItem x:Name="MenuConnect" Text="连接"
-                                Click="Connect_Click"
-                                IsEnabled="{Binding App.Connected, Converter={StaticResource NotConverter}, Mode=OneWay}" />
-                <MenuFlyoutItem x:Name="MenuDisconnect" Text="断开"
-                                Click="Disconnect_Click"
-                                IsEnabled="{Binding App.Connected, Mode=OneWay}" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="MenuMap" Text="悬浮窗地图"
-                                Click="Map_Click" />
-                <MenuFlyoutItem x:Name="MenuRefreshFriends" Text="刷新好友列表"
-                                Click="RefreshFriends_Click" IsEnabled="{Binding App.Connected, Mode=OneWay}" />
-                <MenuFlyoutItem x:Name="MenuExport" Text="导出"
-                                Click="Export_Click" />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem x:Name="MenuConfig" Text="配置"
-                                Click="Configuration_Click" />
-                <MenuFlyoutItem x:Name="MenuExit" Text="退出"
-                                Click="Exit_Click" />
-            </MenuBarItem>
-        </MenuBar>
-        <TabView x:Name="Tabs"
-                 Margin="8,0,8,8"
-                 Grid.Row="1"
-                 HorizontalAlignment="Stretch"
-                 VerticalAlignment="Stretch"
-                 AddTabButtonClick="Tabs_AddTabButtonClick"
-                 TabCloseRequested="Tabs_TabCloseRequested"
-                 SelectionChanged="Tabs_SelectionChanged" />
-        <InfoBar Grid.Row="2"
-                 Margin="8,0,8,8"
-                 IsOpen="True"
-                 Severity="Informational"
-                 Visibility="{Binding App.Config.CompactMode, Converter={StaticResource InverseBoolToVisibilityConverter}, Mode=OneWay}">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock x:Name="LoggedInAs"
-                           Text="未登录" />
-                <TextBlock x:Name="LoggedInAsSeparator"
-                           Visibility="Collapsed"
-                           Text="|" />
-                <TextBlock x:Name="CurrentWorld"
-                           Visibility="Collapsed" />
-                <TextBlock x:Name="CurrentWorldSeparator"
-                           Visibility="Collapsed"
-                           Text="|" />
-                <HyperlinkButton x:Name="LocationBtn"
-                                 Visibility="Collapsed"
-                                 Padding="2,0"
-                                 Click="LocationBtn_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE819;" FontSize="14" />
-                        <TextBlock x:Name="Location" />
+        xmlns:local="using:XIVChat_Desktop" xmlns:cc="using:XIVChat_Desktop.Controls">
+    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.Resources>
+            <Style x:Key="RailButton" TargetType="Button">
+                <Setter Property="Width" Value="60"/><Setter Property="Height" Value="66"/>
+                <Setter Property="Padding" Value="2"/><Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+            </Style>
+            <Style x:Key="StretchListItem" TargetType="ListViewItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="8,6"/>
+            </Style>
+        </Grid.Resources>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Border Padding="10,8" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <MenuBar VerticalAlignment="Center">
+                    <MenuBarItem x:Name="MenuMain" Title="XIVChat Next">
+                        <MenuFlyoutItem x:Name="MenuConnect" Click="Connect_Click"/>
+                        <MenuFlyoutItem x:Name="MenuDisconnect" Click="Disconnect_Click"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem x:Name="MenuMap" Click="Map_Click"/>
+                        <MenuFlyoutItem x:Name="MenuRefreshFriends" Click="RefreshFriends_Click"/>
+                        <MenuFlyoutItem x:Name="MenuExport" Click="Export_Click"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem x:Name="MenuConfig" Click="Configuration_Click"/>
+                        <MenuFlyoutItem x:Name="MenuExit" Click="Exit_Click"/>
+                    </MenuBarItem>
+                </MenuBar>
+                <AutoSuggestBox x:Name="GlobalSearch" Grid.Column="1" MaxWidth="480" HorizontalAlignment="Stretch"
+                                QueryIcon="Find" QuerySubmitted="GlobalSearch_QuerySubmitted" VerticalAlignment="Center"/>
+                <Button x:Name="AccountButton" Grid.Column="2" Click="Account_Click" Background="Transparent" BorderThickness="0" Padding="6,2">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                        <cc:CharacterAvatar x:Name="OwnAvatar"/>
+                        <StackPanel VerticalAlignment="Center"><TextBlock x:Name="LoggedInAs" FontWeight="SemiBold"/><TextBlock x:Name="ConnectionLabel" FontSize="11" Opacity="0.65"/></StackPanel>
                     </StackPanel>
-                </HyperlinkButton>
-            </StackPanel>
-        </InfoBar>
+                </Button>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="66"/><ColumnDefinition x:Name="SidebarColumn" Width="252"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
+                <Grid Margin="3,12,3,8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Spacing="7">
+                        <Button x:Name="NavConversations" Tag="conversations" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE8BD;" FontSize="20"/><TextBlock x:Name="NavConversationsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
+                        <Button x:Name="NavChannels" Tag="channels" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE8F2;" FontSize="20"/><TextBlock x:Name="NavChannelsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
+                        <Button x:Name="NavFriends" Tag="friends" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE716;" FontSize="20"/><TextBlock x:Name="NavFriendsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
+                        <Button x:Name="NavHistory" Tag="history" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE81C;" FontSize="20"/><TextBlock x:Name="NavHistoryText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
+                    </StackPanel>
+                    <Button x:Name="SettingsButton" Grid.Row="1" Style="{StaticResource RailButton}" Click="Configuration_Click"><FontIcon Glyph="&#xE713;" FontSize="20"/></Button>
+                </Grid>
+            </Border>
+            <Border Grid.Column="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="14,20,14,10" Spacing="12">
+                        <Grid><TextBlock x:Name="SectionTitle" FontSize="21" FontWeight="SemiBold"/><Button x:Name="AddViewButton" HorizontalAlignment="Right" Padding="5" Click="AddView_Click"><FontIcon Glyph="&#xE710;" FontSize="14"/></Button></Grid>
+                        <TextBox x:Name="ListSearch" TextChanged="ListSearch_TextChanged"/>
+                    </StackPanel>
+                    <Grid Grid.Row="1">
+                        <ListView x:Name="ChannelList" Margin="4,0" SelectionChanged="ChannelList_SelectionChanged" ItemContainerStyle="{StaticResource StretchListItem}">
+                            <ListView.ItemTemplate><DataTemplate><Grid Padding="2,7"><Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE8F2;" FontSize="16" Opacity="0.65"/><TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></Grid></DataTemplate></ListView.ItemTemplate>
+                        </ListView>
+                        <ListView x:Name="ConversationList" Margin="4,0" SelectionChanged="ConversationList_SelectionChanged" Visibility="Collapsed" ItemContainerStyle="{StaticResource StretchListItem}">
+                            <ListView.ItemTemplate><DataTemplate><Grid ColumnSpacing="9" Padding="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <cc:CharacterAvatar Identity="{Binding Peer}"/>
+                                <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Preview}" Opacity="0.65" FontSize="11" MaxLines="1" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding World}" Opacity="0.55" FontSize="10"/></StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="8"><TextBlock Text="{Binding Time}" FontSize="10" Opacity="0.55"/><TextBlock Text="{Binding Badge}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Right"/></StackPanel>
+                            </Grid></DataTemplate></ListView.ItemTemplate>
+                        </ListView>
+                        <ListView x:Name="FriendList" Margin="4,0" SelectionChanged="FriendList_SelectionChanged" Visibility="Collapsed" ItemContainerStyle="{StaticResource StretchListItem}">
+                            <ListView.ItemTemplate><DataTemplate><Grid ColumnSpacing="9" Padding="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><cc:CharacterAvatar Identity="{Binding Peer}"/><StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding World}" Opacity="0.65" FontSize="11"/><TextBlock Text="{Binding Status}" Opacity="0.65" FontSize="11"/></StackPanel></Grid></DataTemplate></ListView.ItemTemplate>
+                        </ListView>
+                        <ScrollViewer x:Name="HistoryFilters" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="14,4" Spacing="14">
+                                <ComboBox x:Name="HistoryOwnerPicker" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectionChanged="HistoryFilter_SelectionChanged"/>
+                                <ComboBox x:Name="HistoryChannelPicker" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectionChanged="HistoryFilter_SelectionChanged"/>
+                                <TextBox x:Name="HistoryPerson"/>
+                                <CalendarDatePicker x:Name="HistoryFrom" HorizontalAlignment="Stretch"/><CalendarDatePicker x:Name="HistoryUntil" HorizontalAlignment="Stretch"/>
+                                <CheckBox x:Name="HistoryBookmarks"/>
+                                <Button x:Name="HistoryApply" HorizontalAlignment="Stretch" Click="HistoryApply_Click"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                        <TextBlock x:Name="SidebarEmpty" Margin="18,20" TextWrapping="Wrap" Opacity="0.6" Visibility="Collapsed" IsHitTestVisible="False"/>
+                    </Grid>
+                    <StackPanel Grid.Row="2" Margin="14,12" Spacing="8"><TextBlock x:Name="SidebarStatus" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/><Button x:Name="RefreshFriendsButton" Click="RefreshFriends_Click" Visibility="Collapsed" HorizontalAlignment="Stretch"/></StackPanel>
+                </Grid>
+            </Border>
+            <Grid Grid.Column="2">
+                <Grid x:Name="ChatPanel"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Border Padding="20,15" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <cc:CharacterAvatar x:Name="PeerAvatar" Visibility="Collapsed" Margin="0,0,4,0"/>
+                            <StackPanel Grid.Column="1" Spacing="4"><TextBlock x:Name="ChatTitle" FontSize="18" FontWeight="SemiBold"/><TextBlock x:Name="ChatSubtitle" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/></StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3">
+                                <Button x:Name="BackHistoryButton" Click="BackHistory_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE72B;" FontSize="15"/></Button>
+                                <Button x:Name="LoadOlderButton" Click="LoadOlder_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE81C;" FontSize="15"/></Button>
+                                <ToggleButton x:Name="PinConversationButton" Click="PinConversation_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE718;" FontSize="15"/></ToggleButton>
+                                <Button x:Name="ConversationNoteButton" Click="ConversationNote_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE70B;" FontSize="15"/></Button>
+                                <Button x:Name="AvatarButton" Click="Avatar_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE722;" FontSize="15"/></Button>
+                                <Button x:Name="EditChannelButton" Click="EditChannel_Click" Padding="7"><FontIcon Glyph="&#xE70F;" FontSize="15"/></Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <ContentControl x:Name="ChatHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Margin="8"/>
+                    <StackPanel x:Name="ComposerPanel" Grid.Row="2" Margin="16,6,16,16" Spacing="7">
+                        <Button x:Name="ChannelSwitchButton" HorizontalAlignment="Left" Padding="6,3" FontSize="11"/>
+                        <TextBlock x:Name="ComposerTarget" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/>
+                        <TextBox x:Name="Composer" MinHeight="68" MaxHeight="144" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="8192" KeyDown="Input_Submit" TextChanged="Composer_TextChanged"/>
+                        <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="ComposerStatus" VerticalAlignment="Center" FontSize="11" Opacity="0.7" TextWrapping="Wrap"/><Button x:Name="RestoreDraftButton" Grid.Column="1" Visibility="Collapsed" Click="RestoreDraft_Click"/><Button x:Name="SendButton" Grid.Column="2" Click="Send_Click" MinWidth="80" Style="{StaticResource AccentButtonStyle}"/></Grid>
+                    </StackPanel>
+                </Grid>
+                <Grid x:Name="HistoryPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="22,20,22,12" Spacing="8"><TextBlock x:Name="HistoryTitle" FontSize="23" FontWeight="SemiBold"/><TextBlock x:Name="HistorySummary" Opacity="0.65" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+                    <ListView x:Name="HistoryList" Grid.Row="1" Margin="12,0" ItemContainerStyle="{StaticResource StretchListItem}" SelectionChanged="HistoryList_SelectionChanged" DoubleTapped="HistoryList_DoubleTapped">
+                        <ListView.ItemTemplate><DataTemplate><StackPanel Spacing="7" Padding="8,10"><TextBlock Text="{Binding Heading}" FontSize="11" Opacity="0.65"/><cc:HighlightedText Text="{Binding Content}" Query="{Binding Query}" FontSize="14"/><cc:HighlightedText Text="{Binding Note}" Query="{Binding Query}" FontSize="11" Opacity="0.7"/></StackPanel></DataTemplate></ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,12" Spacing="8"><Button x:Name="HistoryMoreButton" Click="HistoryMore_Click"/><Button x:Name="HistoryContextButton" Click="HistoryContext_Click" IsEnabled="False"/><Button x:Name="HistoryBookmarkButton" Click="HistoryBookmark_Click" IsEnabled="False"/><Button x:Name="HistoryNoteButton" Click="HistoryNote_Click" IsEnabled="False"/></StackPanel>
+                </Grid>
+                <ProgressRing x:Name="Busy" Width="28" Height="28" IsActive="False" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"/>
+            </Grid>
+        </Grid>
+        <Border Grid.Row="2" Padding="14,5" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="FooterStatus" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><TextBlock x:Name="LoggedInAsSeparator" Visibility="Collapsed" Text="|"/><TextBlock x:Name="CurrentWorld" FontSize="11"/><TextBlock x:Name="CurrentWorldSeparator" Visibility="Collapsed" Text="|"/><HyperlinkButton x:Name="LocationBtn" Click="LocationBtn_Click" Padding="2,0" Visibility="Collapsed"><TextBlock x:Name="Location" FontSize="11"/></HyperlinkButton></StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

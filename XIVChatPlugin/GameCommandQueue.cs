@@ -9,7 +9,7 @@ using XIVChatCommon.Message.Server;
 namespace XIVChatPlugin {
     internal sealed record GameCommandContext(string? OwnerKey, string Epoch, long ChannelRevision);
     internal sealed record GameCommand(Guid ClientId, string? RequestId, GameCommandContext Context,
-        string? Text, InputChannel? Channel, CancellationToken Cancellation);
+        string? Text, InputChannel? Channel, CancellationToken Cancellation, TellTarget? TellTarget = null, bool LastPart = true, int PartIndex = 0);
 
     /// <summary>Network threads only enqueue managed values. The framework thread validates and executes them.</summary>
     internal sealed class GameCommandQueue {
@@ -48,6 +48,7 @@ namespace XIVChatPlugin {
             }
         }
         internal void CancelClient(Guid client) { lock (this.gate) this.RemoveWhere(c => c.ClientId == client); }
+        internal void CancelRequest(Guid client, string request) { lock (this.gate) this.RemoveWhere(c => c.ClientId == client && c.RequestId == request); }
         internal GameCommand[] Clear() {
             lock (this.gate) {
                 var removed = this.commands.ToArray();
@@ -59,7 +60,7 @@ namespace XIVChatPlugin {
             if (command.Cancellation.IsCancellationRequested) return CommandFailure.Disconnected;
             if (current.OwnerKey == null) return CommandFailure.NotLoggedIn;
             if (current.OwnerKey != command.Context.OwnerKey || current.Epoch != command.Context.Epoch) return CommandFailure.IdentityChanged;
-            if (command.Channel == null && current.ChannelRevision != command.Context.ChannelRevision) return CommandFailure.ChannelChanged;
+            if (command.Channel == null && command.TellTarget == null && current.ChannelRevision != command.Context.ChannelRevision) return CommandFailure.ChannelChanged;
             return null;
         }
         internal static CommandFailure? ValidateRequest(GameCommandContext context, bool guarded, string? request,

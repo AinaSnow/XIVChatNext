@@ -311,4 +311,87 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
+  <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>
+  <data name="Workbench.Channels" xml:space="preserve"><value>频道</value></data>
+  <data name="Workbench.Friends" xml:space="preserve"><value>好友</value></data>
+  <data name="Workbench.History" xml:space="preserve"><value>历史</value></data>
+  <data name="Workbench.Search" xml:space="preserve"><value>搜索消息和备注，按 Enter</value></data>
+  <data name="Workbench.Filter" xml:space="preserve"><value>筛选列表</value></data>
+  <data name="Workbench.Send" xml:space="preserve"><value>发送</value></data>
+  <data name="Workbench.Map" xml:space="preserve"><value>地图</value></data>
+  <data name="Workbench.Add" xml:space="preserve"><value>新增</value></data>
+  <data name="Workbench.TypeMessage" xml:space="preserve"><value>输入消息…</value></data>
+  <data name="Workbench.EditChannel" xml:space="preserve"><value>编辑频道视图</value></data>
+  <data name="Workbench.ConnectFirst" xml:space="preserve"><value>请先连接并登录角色。</value></data>
+  <data name="Workbench.OfflineHistory" xml:space="preserve"><value>离线历史</value></data>
+  <data name="Workbench.ChannelView" xml:space="preserve"><value>频道筛选视图</value></data>
+  <data name="Workbench.Connected" xml:space="preserve"><value>已连接</value></data>
+  <data name="Workbench.Disconnected" xml:space="preserve"><value>未连接 · 可浏览本地历史</value></data>
+  <data name="Workbench.Channel" xml:space="preserve"><value>频道</value></data>
+  <data name="Workbench.ChannelTarget" xml:space="preserve"><value>消息发送到游戏当前频道；切换视图不会切换发送频道。</value></data>
+  <data name="Workbench.EnterHint" xml:space="preserve"><value>Enter 发送 · Shift+Enter 换行</value></data>
+  <data name="Workbench.HistoryRetention" xml:space="preserve"><value>本地历史保留：{0} 天（带备注和书签的消息受保护）</value></data>
+  <data name="Workbench.Forever" xml:space="preserve"><value>永久</value></data>
+  <data name="Workbench.HistoryOff" xml:space="preserve"><value>本地历史保存已关闭</value></data>
+  <data name="Conversation.Empty" xml:space="preserve"><value>暂无会话。点击 + 新建，或从好友列表打开。</value></data>
+  <data name="Conversation.Select" xml:space="preserve"><value>选择一个会话</value></data>
+  <data name="Conversation.Pin" xml:space="preserve"><value>置顶会话</value></data>
+  <data name="Conversation.Pinned" xml:space="preserve"><value>已置顶</value></data>
+  <data name="Conversation.Note" xml:space="preserve"><value>会话备注</value></data>
+  <data name="Conversation.RestoreDraft" xml:space="preserve"><value>恢复未发送内容</value></data>
+  <data name="Conversation.Target" xml:space="preserve"><value>固定私聊目标：{0} @ {1}</value></data>
+  <data name="Conversation.UpgradeRequired" xml:space="preserve"><value>服务端暂不支持固定目标私聊，请更新插件。</value></data>
+  <data name="Conversation.ReadOnly" xml:space="preserve"><value>当前角色未连接；草稿会保留。</value></data>
+  <data name="Conversation.NotSent" xml:space="preserve"><value>尚未发送，请检查连接和角色状态。</value></data>
+  <data name="Conversation.Queued" xml:space="preserve"><value>已排队，等待游戏处理…</value></data>
+  <data name="Conversation.Submitted" xml:space="preserve"><value>已提交游戏（不代表对方已收到）</value></data>
+  <data name="Conversation.Name" xml:space="preserve"><value>角色全名</value></data>
+  <data name="Conversation.World" xml:space="preserve"><value>所属世界</value></data>
+  <data name="Conversation.New" xml:space="preserve"><value>新建会话</value></data>
+  <data name="Conversation.Open" xml:space="preserve"><value>打开会话</value></data>
+  <data name="Conversation.InvalidIdentity" xml:space="preserve"><value>请输入完整角色名并选择所属世界。</value></data>
+  <data name="Conversation.Draft" xml:space="preserve"><value>草稿</value></data>
+  <data name="History.Owner" xml:space="preserve"><value>角色与连接</value></data>
+  <data name="History.Person" xml:space="preserve"><value>人物名称</value></data>
+  <data name="History.From" xml:space="preserve"><value>起始日期</value></data>
+  <data name="History.Until" xml:space="preserve"><value>结束日期</value></data>
+  <data name="History.BookmarksOnly" xml:space="preserve"><value>仅书签</value></data>
+  <data name="History.Apply" xml:space="preserve"><value>应用筛选</value></data>
+  <data name="History.AllChannels" xml:space="preserve"><value>所有频道</value></data>
+  <data name="History.AllOwners" xml:space="preserve"><value>所有角色</value></data>
+  <data name="History.Unassigned" xml:space="preserve"><value>未归属记录</value></data>
+  <data name="History.InvalidDates" xml:space="preserve"><value>结束日期不能早于起始日期。</value></data>
+  <data name="History.Results" xml:space="preserve"><value>已载入 {0} 条记录，按时间从新到旧排列。</value></data>
+  <data name="History.LoadOlder" xml:space="preserve"><value>加载更早记录</value></data>
+  <data name="History.Context" xml:space="preserve"><value>查看上下文</value></data>
+  <data name="History.Back" xml:space="preserve"><value>返回搜索结果</value></data>
+  <data name="History.Note" xml:space="preserve"><value>消息备注</value></data>
+  <data name="History.Bookmark" xml:space="preserve"><value>添加书签</value></data>
+  <data name="History.Unbookmark" xml:space="preserve"><value>取消书签</value></data>
+  <data name="History.Removed" xml:space="preserve"><value>这条记录已被清理。</value></data>
+  <data name="FriendList.Cached" xml:space="preserve"><value>缓存快照</value></data>
+  <data name="FriendList.Online" xml:space="preserve"><value>在线（快照状态）</value></data>
+  <data name="FriendList.Offline" xml:space="preserve"><value>离线（快照状态）</value></data>
+  <data name="FriendList.Select" xml:space="preserve"><value>选择好友打开固定目标私聊</value></data>
+  <data name="Avatar.Title" xml:space="preserve"><value>角色头像</value></data>
+  <data name="Avatar.Online" xml:space="preserve"><value>允许联网查询 Lodestone 头像</value></data>
+  <data name="Avatar.Id" xml:space="preserve"><value>Lodestone 角色 ID 或个人资料链接</value></data>
+  <data name="Avatar.Help" xml:space="preserve"><value>仅唯一匹配的角色会自动绑定。可粘贴官方资料链接手动绑定；清空后保存可取消绑定并停止自动查询。联网开关位于设置。</value></data>
+  <data name="Avatar.Disabled" xml:space="preserve"><value>已取消绑定和自动查询</value></data>
+  <data name="Avatar.Cached" xml:space="preserve"><value>已缓存头像</value></data>
+  <data name="Avatar.Placeholder" xml:space="preserve"><value>暂无头像，显示姓名占位图</value></data>
+  <data name="Avatar.Profile" xml:space="preserve"><value>打开 Lodestone 资料</value></data>
+  <data name="Avatar.Auto" xml:space="preserve"><value>重新自动匹配</value></data>
+  <data name="Avatar.Invalid" xml:space="preserve"><value>请输入有效 ID 或官方 Lodestone 角色资料链接。</value></data>
+  <data name="Avatar.Unavailable" xml:space="preserve"><value>头像暂不可用：</value></data>
+  <data name="Conversation.Unknown" xml:space="preserve"><value>未确认游戏提交结果；请核对游戏聊天后再决定是否重发。</value></data>
+  <data name="Conversation.Partial" xml:space="preserve"><value>已有 {0} 段提交游戏。恢复的是完整原文，重发前请核对。</value></data>
+  <data name="FriendList.Empty" xml:space="preserve"><value>暂无好友快照。连接后可以刷新。</value></data>
+  <data name="FriendList.IdentityUnavailable" xml:space="preserve"><value>角色身份暂不可用</value></data>
+  <data name="FriendList.Refreshing" xml:space="preserve"><value>正在刷新好友列表…</value></data>
+  <data name="FriendList.Snapshot" xml:space="preserve"><value>{0} 位好友 · 快照 {1}</value></data>
+  <data name="FriendList.Stale" xml:space="preserve"><value>当前为缓存，状态可能已变化。</value></data>
+  <data name="FriendList.Timing" xml:space="preserve"><value>状态以此次完整快照为准。</value></data>
+  <data name="FriendList.Unsupported" xml:space="preserve"><value>当前连接不支持好友快照。</value></data>
+  <data name="FriendList.Unknown" xml:space="preserve"><value>状态未知</value></data>
 </root>
