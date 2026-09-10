@@ -45,6 +45,32 @@ try {
             throw new Exception($"Service {property.Name} was not assigned before configuration loading.");
     }
     Console.WriteLine($"PASS All {services.Length} services survive constructor initialization");
+    var clientStateType = services.Single(p => p.Name == "ClientState").PropertyType;
+    var playerStateType = services.Single(p => p.Name == "PlayerState").PropertyType;
+    var clientState = DispatchProxy.Create(clientStateType, typeof(LogoutStateProxy));
+    var playerState = DispatchProxy.Create(playerStateType, typeof(LogoutStateProxy));
+    pluginType.GetField("<ClientState>k__BackingField", flags)!.SetValue(instance, clientState);
+    pluginType.GetField("<PlayerState>k__BackingField", flags)!.SetValue(instance, playerState);
+    var serverType = assembly.GetType("XIVChatPlugin.Server", true)!;
+    var server = RuntimeHelpers.GetUninitializedObject(serverType);
+    serverType.GetField("_plugin", flags)!.SetValue(server, instance);
+    var identity = serverType.GetMethod("CurrentIdentity", flags)!;
+    var playerData = serverType.GetMethod("GeneratePlayerData", flags)!;
+    foreach (var (loggedIn, loaded) in new[] { (false, true), (true, false), (true, true) }) {
+        ((LogoutStateProxy)clientState).LoggedIn = loggedIn;
+        ((LogoutStateProxy)playerState).Loaded = loaded;
+        // Default RowRef has already been cleared, even though both loading flags may remain true.
+        for (int frame = 0; frame < 100; frame++) {
+            if (identity.Invoke(server, null) != null || playerData.Invoke(server, null) != null)
+                throw new Exception("Cleared world reference retained an actionable player identity.");
+        }
+    }
+    Console.WriteLine("PASS Real plugin identity and player-data readers tolerate cleared world rows for 300 logout frames");
+    serverType.GetField("_loggedOut", flags)!.SetValue(server, true);
+    ((LogoutStateProxy)clientState).ReadsForbidden = ((LogoutStateProxy)playerState).ReadsForbidden = true;
+    if (identity.Invoke(server, null) != null || playerData.Invoke(server, null) != null)
+        throw new Exception("Logout barrier did not clear identity.");
+    Console.WriteLine("PASS Logout barrier avoids native service reads until the next login event");
     if (!File.Exists(Path.ChangeExtension(pluginPath, ".json"))) throw new Exception("Development manifest missing.");
     if (!File.Exists(Path.ChangeExtension(pluginPath, ".pdb"))) throw new Exception("Debug symbols missing.");
     Console.WriteLine("PASS Development manifest and debug symbols accompany the DLL");
@@ -60,4 +86,19 @@ public class StopBeforeConfigurationProxy : DispatchProxy {
         if (method?.Name == "GetPluginConfig") throw new ConfigurationReachedException();
         throw new Exception($"Unexpected service call before configuration: {method?.Name}");
     }
+}
+
+public class LogoutStateProxy : DispatchProxy {
+    public bool LoggedIn { get; set; } = true;
+    public bool Loaded { get; set; } = true;
+    public bool ReadsForbidden { get; set; }
+    protected override object? Invoke(MethodInfo? method, object?[]? arguments) => ReadsForbidden
+        ? throw new Exception("Native state was read after logout") : method?.Name switch {
+        "get_IsLoggedIn" => LoggedIn,
+        "get_IsLoaded" => Loaded,
+        "get_ContentId" => (ulong)1,
+        "get_CharacterName" => "Logout Test",
+        "get_HomeWorld" => Activator.CreateInstance(method.ReturnType),
+        _ => throw new Exception("Unexpected service read during logout: " + method?.Name),
+    };
 }

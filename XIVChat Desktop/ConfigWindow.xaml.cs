@@ -27,6 +27,9 @@ namespace XIVChat_Desktop {
             this.LanguageChooser.SelectionChanged += LanguageChooser_SelectionChanged;
 
             Localize.BindWindow(this, UpdateLocalizations);
+            ((App)Application.Current).Notifier.StatusChanged += UpdateNotificationStatus;
+            this.Closed += (_, _) => ((App)Application.Current).Notifier.StatusChanged -= UpdateNotificationStatus;
+            UpdateNotificationStatus();
         }
 
         public void UpdateLocalizations() {
@@ -155,6 +158,15 @@ namespace XIVChat_Desktop {
 
             var dialog = new ManageNotification(notification);
             dialog.Activate();
+        }
+
+        private void UpdateNotificationStatus() {
+            NotificationPlatformStatus.Text = ((App)Application.Current).Notifier.PlatformError == null ? "" : LocalizationHelper.GetString("Notify.SystemUnavailable");
+        }
+        private async void NotificationTest_Click(object sender, RoutedEventArgs e) {
+            await ((App)Application.Current).Notifier.TestAsync();
+            NotificationPlatformStatus.Text = LocalizationHelper.GetString(this.Config.NotificationOptions.IsQuiet(DateTime.Now) ? "Notify.TestQuiet" :
+                ((App)Application.Current).Notifier.PlatformError != null ? "Notify.SystemUnavailable" : "Notify.TestSent");
         }
 
         private void Notifications_Add_Click(object sender, RoutedEventArgs e) {

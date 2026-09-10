@@ -100,6 +100,7 @@ namespace XIVChat_Desktop {
         }
 
         public ObservableCollection<Notification> Notifications { get; set; } = new ObservableCollection<Notification>();
+        public NotificationOptions NotificationOptions { get; set; } = new();
 
         private void OnPropertyChanged(string propName) {
             this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
@@ -130,6 +131,9 @@ namespace XIVChat_Desktop {
                     || config.Tabs.Any(tab => tab == null || tab.Filter?.Types == null)) {
                     throw new InvalidDataException("Configuration is missing required keys or collections.");
                 }
+                config.NotificationOptions ??= new NotificationOptions();
+                if (!config.NotificationOptions.ValidTimes || config.Notifications.Any(rule => rule == null || rule.Channels == null || rule.Substrings == null))
+                    throw new InvalidDataException("Notification settings are invalid.");
                 var tabIds = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var tab in config.Tabs)
                     if (string.IsNullOrWhiteSpace(tab.Id) || !tabIds.Add(tab.Id)) { tab.Id = Guid.NewGuid().ToString("N"); tabIds.Add(tab.Id); }
@@ -413,7 +417,7 @@ namespace XIVChat_Desktop {
         public IReadOnlyCollection<string> Regexes {
             get => this.regexes;
             set {
-                this.regexes = value;
+                this.regexes = value ?? Array.Empty<string>();
                 this.ResetRegexes();
             }
         }
@@ -440,13 +444,13 @@ namespace XIVChat_Desktop {
 
         private List<Regex> ParseRegexes() {
             return this.Regexes
-                .Select(regex => new Regex(regex, RegexOptions.Compiled))
+                .Take(64).Select(regex => new Regex(regex, RegexOptions.Compiled, TimeSpan.FromMilliseconds(50)))
                 .ToList();
         }
 
         [SuppressMessage("ReSharper", "ConvertIfStatementToReturnStatement")]
         public bool Matches(ServerMessage message) {
-            if (!this.Channels.Contains(message.Channel)) {
+            if (!this.Channels.Any(channel => ((ushort)channel & 127) == ((ushort)message.Channel & 127))) {
                 return false;
             }
 
@@ -464,8 +468,9 @@ namespace XIVChat_Desktop {
                 return true;
             }
 
-            if (this.ParsedRegexes.Value.Any(regex => regex.IsMatch(text))) {
-                return true;
+            foreach (var regex in this.ParsedRegexes.Value) {
+                try { if (regex.IsMatch(text)) return true; }
+                catch (RegexMatchTimeoutException) { }
             }
 
             return false;

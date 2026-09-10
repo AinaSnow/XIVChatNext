@@ -205,7 +205,7 @@ namespace XIVChatPlugin {
         }
 
         internal bool RefreshChatChannel() {
-            if (!this.Plugin.Framework.IsInFrameworkUpdateThread) return false;
+            if (!this.Plugin.Framework.IsInFrameworkUpdateThread || !this.Plugin.ClientState.IsLoggedIn || !this.Plugin.PlayerState.IsLoaded) return false;
             var agent = AgentChatLog.Instance();
             if (agent == null) return false;
             var channel = (uint) agent->CurrentChannel;

@@ -29,7 +29,14 @@ namespace XIVChat_Desktop {
         private ClientPreferences preferences;
         private long? channelRevision;
         private PlayerData? commandPlayer;
+        private bool established;
+        private bool intentionalDisconnect;
+        public string Id { get; } = Guid.NewGuid().ToString("N");
+        public string Source => this.source;
+        public string Endpoint => this.host + ":" + this.port;
+        public PlayerData? LastPlayer { get; private set; }
         public bool SupportsDirectedTell => this.capabilities?.DirectedTell == true;
+        public bool SupportsGameEvents => this.capabilities?.GameEvents == true;
         public event Action<ServerCommandResult>? CommandResult;
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
@@ -102,7 +109,7 @@ namespace XIVChat_Desktop {
             if (this.cancel.IsCancellationRequested) return false;
             if (packet.Length + SecretMessage.MacSize <= 128_000 && this.outgoingMessages.Writer.TryWrite(packet)) return true;
             this.ReportCommandFailure(CommandFailure.QueueFull);
-            this.Disconnect();
+            this.Disconnect(false);
             return false;
         }
 
@@ -111,6 +118,7 @@ namespace XIVChat_Desktop {
                 { ClientPreference.BacklogNewestMessagesFirst, true },
                 { ClientPreference.WorkbenchSupport, true },
                 { ClientPreference.GuardedCommandsSupport, true },
+                { ClientPreference.GameEventsSupport, true },
             },
             Channels = ChannelSubscription.Union(this.app.Config.HistoryEnabled,
                 this.app.Config.Tabs.SelectMany(t => t.Filter.Types).Distinct().SelectMany(t => t.Types()).Select(t => (ushort)t)
@@ -132,7 +140,8 @@ namespace XIVChat_Desktop {
         private void ReportCommandFailure(CommandFailure failure) => this.DispatchIfCurrent(() =>
             this.app.Window.AddSystemMessage(LocalizationHelper.GetString("Command." + failure)));
 
-        public void Disconnect() {
+        public void Disconnect(bool intentional = true) {
+            if (intentional) this.intentionalDisconnect = true;
             this.cancel.Cancel();
             this.cancelChannel.Writer.TryWrite(1);
         }
@@ -188,6 +197,7 @@ namespace XIVChat_Desktop {
 
                 // tell the server our preferences
                 await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, this.preferences, this.cancel.Token);
+                this.established = true;
 
                 // check if backlog or catch-up is needed
                 if (sameHost) {
@@ -275,7 +285,6 @@ namespace XIVChat_Desktop {
                 if (!this.cancel.IsCancellationRequested && !(ex is OperationCanceledException)) {
                     this.DispatchIfCurrent(() => {
                         this.app.Window.AddSystemMessage(string.Format(LocalizationHelper.GetString("Status.CommunicationError"), ex.Message));
-                        if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
                     });
                 }
             } finally {
@@ -288,7 +297,7 @@ namespace XIVChat_Desktop {
                 if (receiver != null) await receiver;
                 this.Available = false;
                 this.DispatchIfCurrent(() => {
-                    if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
+                    this.app.ConnectionEnded(this, this.established && !this.intentionalDisconnect);
                 });
             }
         }
@@ -317,9 +326,7 @@ namespace XIVChat_Desktop {
                     });
                     break;
                 case ServerOperation.Shutdown:
-                    this.DispatchIfCurrent(() => {
-                        if (ReferenceEquals(this.app.Connection, this)) this.app.Disconnect();
-                    });
+                    this.Disconnect(false);
                     break;
                 case ServerOperation.PlayerData:
                     var playerData = payload.Length == 0 ? null : PlayerData.Decode(payload);
@@ -368,6 +375,7 @@ namespace XIVChat_Desktop {
                     // Capture configuration changes made while capability negotiation was in flight.
                     if (newServerSession && this.capabilities.ChannelSubscriptions) this.QueuePacket(this.preferences.Encode());
                     this.DispatchIfCurrent(this.UpdateFriendsContext);
+                    this.OnPropertyChanged(nameof(this.SupportsGameEvents));
                     if (newServerSession && this.capabilities.CursorBacklog) {
                         HistoryCursor? cursor = null;
                         try {
@@ -397,6 +405,12 @@ namespace XIVChat_Desktop {
                     if (this.capabilities?.FriendPresence != true || rawMessage.Length > 1024) break;
                     var presence = ServerFriendPresence.Decode(payload);
                     this.DispatchIfCurrent(() => this.app.Session.Friends.Presence.Add(presence, DateTime.UtcNow));
+                    break;
+                case ServerOperation.GameEvent:
+                    if (this.capabilities?.GameEvents != true || rawMessage.Length > ServerGameEvent.MaxPacketBytes) break;
+                    var gameEvent = ServerGameEvent.Decode(payload);
+                    if (!gameEvent.IsValid(true) || gameEvent.ServiceId != this.capabilities.ServiceId || gameEvent.RunId != this.capabilities.RunId) break;
+                    if (ReferenceEquals(this.app.Connection, this)) await this.app.Notifier.ReceiveEventAsync(this.source, gameEvent, this);
                     break;
                 case ServerOperation.PlayerList:
                     if (this.capabilities?.FriendSnapshots != true || rawMessage.Length > FriendListProtocol.MaxPageBytes) break;
@@ -489,6 +503,7 @@ namespace XIVChat_Desktop {
 
         private void SetPlayerData(PlayerData? playerData) {
             this.commandPlayer = playerData;
+            if (playerData != null) this.LastPlayer = playerData;
             var visibility = playerData == null ? Visibility.Collapsed : Visibility.Visible;
 
             this.DispatchIfCurrent(() => {

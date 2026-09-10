@@ -34,7 +34,7 @@ namespace XIVChat_Desktop {
         }
     }
 
-    internal sealed class DesktopSmokeApp : App {
+    internal sealed partial class DesktopSmokeApp : App {
         private readonly List<string> results = new();
         protected override async void OnLaunched(LaunchActivatedEventArgs args) {
             // Do not run App.OnLaunched: the smoke test must not read or save the user's configuration.
@@ -43,6 +43,7 @@ namespace XIVChat_Desktop {
                 var second = new Tab("Also general") { Filter = Tab.GeneralFilter() };
                 var config = new Configuration { OnlineAvatars = false, LocalBacklogMessages = 10_000, BacklogMessages = 0, Tabs = new ObservableCollection<Tab> { first, second } };
                 typeof(App).GetProperty(nameof(Config))!.SetValue(this, config);
+                this.Notifier.Sink = notificationSink;
                 var legacy = Newtonsoft.Json.Linq.JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(config));
                 legacy.Remove("OnlineAvatars");
                 foreach (var tab in legacy["Tabs"]!.Children<Newtonsoft.Json.Linq.JObject>()) tab.Remove("Id");
@@ -138,6 +139,7 @@ namespace XIVChat_Desktop {
                 Check(first.Messages.SequenceEqual(window.Messages) && list.Items.Count == 5, "Tab and virtualized backlog stay synchronized");
 
                 await this.TestDisconnectedConnection();
+                await this.TestIntentionalDisconnect();
                 await this.TestWorkbenchConnection();
                 window.Close();
                 results.Add("PASS Desktop smoke test completed");
@@ -169,6 +171,9 @@ namespace XIVChat_Desktop {
             for (int i = 0; i < 40 && this.Connected; i++) await Task.Delay(50);
             this.Check(!this.Connected, "Desktop clears connection state after truncated-frame EOF");
             this.Check(this.Window.Messages.Any(message => message.ContentText.StartsWith("Message 99:")), "Last complete message is delivered before EOF cleanup");
+            await this.Notifier.FlushAsync();
+            this.Check(notificationSink.Deliveries.Count(d => d.Candidate.Kind == NotificationKind.ConnectionLost) == 1,
+                "Truncated EOF produces exactly one abnormal disconnect notification");
         }
 
         private void Check(bool condition, string message) {
@@ -196,8 +201,8 @@ namespace XIVChat_Desktop {
                     this.Check(preferences[0] == (byte)XIVChatCommon.Message.Client.ClientOperation.Preferences, "New desktop begins with backward-compatible preferences");
                     await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx,
                         new ServerCapabilities { ServiceId = "smoke", RunId = "run", CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true });
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true });
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
                     var request = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(request[0] == (byte)ClientOperation.Preferences && ClientPreferences.Decode(request[1..]).Channels == null,
                         "History-enabled desktop negotiates all channels");
@@ -292,6 +297,7 @@ namespace XIVChat_Desktop {
                     this.Config.HistoryEnabled = true;
                     subscribed = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, timeout.Token);
                     this.Check(ClientPreferences.Decode(subscribed[1..]).Channels == null, "Re-enabling history restores all-channel delivery");
+                    await TestNotificationsAsync(stream, handshake.Keys.tx, owner, source);
                     this.Window.Navigate("channels");
                     var channelComposer = Find<TextBox>((DependencyObject)this.Window.Content, t => t.Name == "Composer");
                     channelComposer.Text = "owner one channel draft";
@@ -305,6 +311,7 @@ namespace XIVChat_Desktop {
                         "Late friend pages cannot enter the next role");
                     this.Check(this.Session.Friends.Presence.Get(1) == null, "Role changes clear previously online friends");
                     this.Check(channelComposer.Text.Length == 0, "Changing characters isolates channel drafts");
+                    await TestOldNotificationAsync();
                 }
                 for (int i = 0; i < 100 && this.Connected; i++) await Task.Delay(30);
                 this.Check(!this.Connected, "New-protocol connection closes after EOF");
@@ -314,10 +321,15 @@ namespace XIVChat_Desktop {
                 this.Check(this.Session.Messages.Count == 0, "Changing own character clears the active view");
             } finally {
                 this.Disconnect();
+                await this.Notifier.FlushAsync();
                 await this.Workbench.FlushAsync();
                 this.Session.Store = null;
                 await store.DisposeAsync();
-                Directory.Delete(tempDirectory, true);
+                // Navigation badge readers can still hold a SQLite handle while their queued result completes.
+                for (var attempt = 0; ; attempt++) {
+                    try { Directory.Delete(tempDirectory, true); break; }
+                    catch (IOException) when (attempt < 30) { await Task.Delay(50); }
+                }
             }
         }
 

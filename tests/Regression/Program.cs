@@ -8,6 +8,11 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Notification policy suppresses reading, replay, DND and expired duties", NotificationTests.Policy),
+    ("Notification bursts coalesce and retain source / owner routing", NotificationTests.Grouping),
+    ("Game event wire validation and notification activation arguments", NotificationTests.Protocol),
+    ("Event migration, retention, pagination and unread state", NotificationTests.Storage),
+    ("Worker-thread duty callbacks remain bounded and reject previous logins", NotificationTests.GameQueue),
     ("Active presence validates replies, limits requests and expires across reconnects", PresenceTests.Session),
     ("Native presence queries coalesce, bound queues and fence timeout/login replies", PresenceTests.Coordinator),
     ("Fixed Tell wire targets reject injection and remain independent of current channel", Phase3Tests.DirectedTell),

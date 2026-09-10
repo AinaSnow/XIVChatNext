@@ -183,6 +183,7 @@ namespace XIVChatPlugin {
             this.ClientState.Login += this.Server.OnLogIn;
             this.ClientState.Logout += this.Server.OnLogOut;
             this.ClientState.TerritoryChanged += this.Server.OnTerritoryChange;
+            this.ClientState.CfPop += this.Server.OnDutyReady;
         }
 
         private void StopServer() {
@@ -191,6 +192,7 @@ namespace XIVChatPlugin {
             this.ClientState.Login -= this.Server.OnLogIn;
             this.ClientState.Logout -= this.Server.OnLogOut;
             this.ClientState.TerritoryChanged -= this.Server.OnTerritoryChange;
+            this.ClientState.CfPop -= this.Server.OnDutyReady;
             this.Server.Dispose();
         }
 

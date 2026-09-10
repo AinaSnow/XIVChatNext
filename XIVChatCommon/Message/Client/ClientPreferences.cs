@@ -37,6 +37,9 @@ namespace XIVChatCommon.Message.Client {
 
         [Preference(typeof(bool))]
         GuardedCommandsSupport = 4,
+
+        [Preference(typeof(bool))]
+        GameEventsSupport = 5,
     }
 
     public static class ClientPreferencesExtension {

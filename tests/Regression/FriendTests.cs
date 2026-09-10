@@ -116,7 +116,7 @@ internal static class FriendTests {
                 try { await store.SaveFriendSnapshotAsync("source", FriendListProtocol.Pages(snapshot, "req")[0]); throw new Exception("Partial saved"); }
                 catch (ArgumentException) { }
             }
-            var backup = Directory.GetFiles(dir, "*.before-v3-*.bak").Single();
+            var backup = Directory.GetFiles(dir, "*.before-v4-*.bak").Single();
             using var backupDb = new SqliteConnection($"Data Source={backup};Pooling=False"); backupDb.Open();
             using var version = backupDb.CreateCommand(); version.CommandText = "PRAGMA user_version";
             Check(Convert.ToInt32(version.ExecuteScalar()) == 1, "Backup is not pre-migration");

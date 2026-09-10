@@ -64,8 +64,15 @@ and manual requests, ownership fields, no partial publication/persistence, error
 and rejection of pages from the previous character.
 
 The stability additions verify channel/message submission order, captured owner/channel guards,
-localized command rejection, and the history/view/notification subscription union. There are
-36 desktop checks, followed by the completion marker.
+localized command rejection, and the history/view/notification subscription union.
+
+The fourth-phase suite has 41 regression groups and 87 desktop checks, followed by a completion
+marker. `DesktopNotificationsSmoke.cs` supplies a recording notification sink: it tests encrypted
+live Tell/keyword delivery, foreground suppression, DND, expiry, deduplication, event read state,
+old-role navigation, intentional versus abnormal disconnects and notification settings localization.
+It does not register or display system notifications. Duty callbacks also have a concurrent bounded
+queue test, including logout and late previous-login deliveries. See [the notification report](../docs/PHASE4_NOTIFICATIONS_2026-09-11.md)
+for the system notification and real-game validation boundaries.
 
 Rebuild without the test targets before running the regular desktop app:
 
@@ -93,7 +100,9 @@ dotnet run --project tests/PluginLoadRegression/PluginLoadRegression.csproj -- '
 This requires .NET 10 and the local Dalamud assemblies. It supplies proxy services to the actual
 compiled constructor and deliberately stops at `GetPluginConfig`, before hooks or networking.
 It verifies all constructor dependencies were assigned and that the development manifest and
-debug symbols exist. It does not load the plugin into the game or read/write game configuration.
+debug symbols exist. It also invokes the real identity and player-data readers over 300 simulated
+logout frames with a cleared world RowRef, including when loading flags remain true.
+It does not load the plugin into the game or read/write game configuration.
 
 ```powershell
 dotnet build XIVChatPlugin/XIVChatPlugin.csproj -c Debug

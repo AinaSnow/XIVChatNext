@@ -566,4 +566,49 @@
   <data name="Presence.Timeout" xml:space="preserve"><value>查询超时</value></data>
   <data name="Presence.Unavailable" xml:space="preserve"><value>暂时无法查询</value></data>
   <data name="Presence.Checking" xml:space="preserve"><value>查询中…</value></data>
+  <data name="Workbench.Events" xml:space="preserve"><value>事件</value></data>
+  <data name="Event.DutyReady" xml:space="preserve"><value>排本就绪</value></data>
+  <data name="Event.Login" xml:space="preserve"><value>角色已登录</value></data>
+  <data name="Event.Logout" xml:space="preserve"><value>角色已登出</value></data>
+  <data name="Event.TerritoryChanged" xml:space="preserve"><value>地点已变更</value></data>
+  <data name="Event.ConnectionLost" xml:space="preserve"><value>连接中断</value></data>
+  <data name="Event.NotificationTest" xml:space="preserve"><value>测试通知</value></data>
+  <data name="Event.UnknownDuty" xml:space="preserve"><value>副本已就绪。</value></data>
+  <data name="Event.UnknownTerritory" xml:space="preserve"><value>新地点</value></data>
+  <data name="Event.Expired" xml:space="preserve"><value>这条排本提醒已过期。</value></data>
+  <data name="Event.ReturnToGame" xml:space="preserve"><value>请返回游戏查看邀请。</value></data>
+  <data name="Event.Kind" xml:space="preserve"><value>事件类型</value></data>
+  <data name="Event.Refresh" xml:space="preserve"><value>查看最新事件</value></data>
+  <data name="Event.MarkRead" xml:space="preserve"><value>将已显示事件标为已读</value></data>
+  <data name="Event.Empty" xml:space="preserve"><value>此视图暂无事件。</value></data>
+  <data name="Event.CaptureHelp" xml:space="preserve"><value>连接期间记录游戏事件，保留时间沿用本地历史设置。</value></data>
+  <data name="Event.AllKinds" xml:space="preserve"><value>全部事件类型</value></data>
+  <data name="Event.Offline" xml:space="preserve"><value>未连接 · 仍可浏览已保存的事件。</value></data>
+  <data name="Event.Connected" xml:space="preserve"><value>已接通游戏事件。</value></data>
+  <data name="Event.Unsupported" xml:space="preserve"><value>当前插件尚未支持游戏事件，本地断线提醒仍可使用。</value></data>
+  <data name="Event.Count" xml:space="preserve"><value>已显示 {0} 条事件</value></data>
+  <data name="Event.NewAvailable" xml:space="preserve"><value>有新的事件，点击“查看最新事件”刷新。</value></data>
+  <data name="Event.Unread" xml:space="preserve"><value>{0} 条未读事件</value></data>
+  <data name="Notify.DutyReady" xml:space="preserve"><value>排本就绪</value></data>
+  <data name="Notify.Tell" xml:space="preserve"><value>收到悄悄话</value></data>
+  <data name="Notify.Keyword" xml:space="preserve"><value>关键词匹配</value></data>
+  <data name="Notify.ConnectionLost" xml:space="preserve"><value>异常断线</value></data>
+  <data name="Notify.LoginLogout" xml:space="preserve"><value>角色上下线提醒</value></data>
+  <data name="Notify.TerritoryChanged" xml:space="preserve"><value>地点变更提醒</value></data>
+  <data name="Notify.Sound" xml:space="preserve"><value>播放提示音</value></data>
+  <data name="Notify.DoNotDisturb" xml:space="preserve"><value>免打扰</value></data>
+  <data name="Notify.QuietHours" xml:space="preserve"><value>定时免打扰</value></data>
+  <data name="Notify.QuietStart" xml:space="preserve"><value>开始</value></data>
+  <data name="Notify.QuietEnd" xml:space="preserve"><value>结束</value></data>
+  <data name="Notify.RulesHelp" xml:space="preserve"><value>正在前台阅读的消息不提醒，同一会话的连续消息会合并。免打扰关闭弹窗和声音，事件仍会记录；开始与结束相同表示全天。</value></data>
+  <data name="Notify.KeywordRules" xml:space="preserve"><value>关键词规则</value></data>
+  <data name="Notify.Test" xml:space="preserve"><value>发送测试通知</value></data>
+  <data name="Notify.TestBody" xml:space="preserve"><value>点击此通知可打开对应事件记录。</value></data>
+  <data name="Notify.TestQuiet" xml:space="preserve"><value>已记录测试事件，免打扰已抑制弹窗。</value></data>
+  <data name="Notify.TestSent" xml:space="preserve"><value>已记录测试事件，请查看 Windows 通知。</value></data>
+  <data name="Notify.KeywordTitle" xml:space="preserve"><value>消息匹配了提醒规则</value></data>
+  <data name="Notify.Batch" xml:space="preserve"><value>{0} 条新消息 · {1}</value></data>
+  <data name="Notify.SystemUnavailable" xml:space="preserve"><value>Windows 通知暂不可用，事件仍保留在事件列表中。</value></data>
+  <data name="Notify.TargetMissing" xml:space="preserve"><value>此通知的原始记录已不在本地。</value></data>
+  <data name="Notify.OpenFailed" xml:space="preserve"><value>无法打开此通知对应的记录。</value></data>
 </root>

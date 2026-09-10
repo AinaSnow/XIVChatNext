@@ -107,7 +107,25 @@
             </StackPanel>
         </TabViewItem>
         <TabViewItem x:Name="TabNotifications" Header="通知" IsClosable="False">
-            <Grid Margin="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16" Spacing="14">
+                <Grid ColumnSpacing="16" RowSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <CheckBox local:Localize.Content="Notify.DutyReady" IsChecked="{x:Bind Config.NotificationOptions.DutyReady, Mode=TwoWay}"/>
+                    <CheckBox Grid.Column="1" local:Localize.Content="Notify.Tell" IsChecked="{x:Bind Config.NotificationOptions.Tell, Mode=TwoWay}"/>
+                    <CheckBox Grid.Row="1" local:Localize.Content="Notify.Keyword" IsChecked="{x:Bind Config.NotificationOptions.Keyword, Mode=TwoWay}"/>
+                    <CheckBox Grid.Row="1" Grid.Column="1" local:Localize.Content="Notify.ConnectionLost" IsChecked="{x:Bind Config.NotificationOptions.ConnectionLost, Mode=TwoWay}"/>
+                    <CheckBox Grid.Row="2" local:Localize.Content="Notify.LoginLogout" IsChecked="{x:Bind Config.NotificationOptions.LoginLogout, Mode=TwoWay}"/>
+                    <CheckBox Grid.Row="2" Grid.Column="1" local:Localize.Content="Notify.TerritoryChanged" IsChecked="{x:Bind Config.NotificationOptions.TerritoryChanged, Mode=TwoWay}"/>
+                </Grid>
+                <CheckBox local:Localize.Content="Notify.Sound" IsChecked="{x:Bind Config.NotificationOptions.Sound, Mode=TwoWay}"/>
+                <CheckBox local:Localize.Content="Notify.DoNotDisturb" IsChecked="{x:Bind Config.NotificationOptions.DoNotDisturb, Mode=TwoWay}"/>
+                <CheckBox local:Localize.Content="Notify.QuietHours" IsChecked="{x:Bind Config.NotificationOptions.QuietHours, Mode=TwoWay}"/>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TimePicker local:Localize.Header="Notify.QuietStart" ClockIdentifier="24HourClock" Time="{x:Bind Config.NotificationOptions.QuietStart, Mode=TwoWay}"/>
+                    <TimePicker local:Localize.Header="Notify.QuietEnd" ClockIdentifier="24HourClock" Time="{x:Bind Config.NotificationOptions.QuietEnd, Mode=TwoWay}"/>
+                </StackPanel>
+                <TextBlock local:Localize.Text="Notify.RulesHelp" TextWrapping="Wrap" Opacity="0.65" FontSize="12"/>
+                <TextBlock local:Localize.Text="Notify.KeywordRules" FontWeight="SemiBold"/>
+            <Grid MinHeight="160" MaxHeight="220">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -140,6 +158,9 @@
                             Click="Notifications_Delete_Click" />
                 </StackPanel>
             </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="10"><Button local:Localize.Content="Dialog.Save" Click="Save_Click"/><Button local:Localize.Content="Notify.Test" Click="NotificationTest_Click"/></StackPanel>
+                <TextBlock x:Name="NotificationPlatformStatus" TextWrapping="Wrap" Opacity="0.65" FontSize="12"/>
+            </StackPanel></ScrollViewer>
         </TabViewItem>
     </TabView>
 </Window>

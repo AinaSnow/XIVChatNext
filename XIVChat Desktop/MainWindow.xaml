@@ -52,6 +52,7 @@
                         <Button x:Name="NavChannels" Tag="channels" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE8F2;" FontSize="20"/><TextBlock x:Name="NavChannelsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
                         <Button x:Name="NavFriends" Tag="friends" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE716;" FontSize="20"/><TextBlock x:Name="NavFriendsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
                         <Button x:Name="NavHistory" Tag="history" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE81C;" FontSize="20"/><TextBlock x:Name="NavHistoryText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
+                        <Button x:Name="NavEvents" Tag="events" Style="{StaticResource RailButton}" Click="Navigate_Click"><Grid><StackPanel Spacing="5"><FontIcon Glyph="&#xE787;" FontSize="20"/><TextBlock x:Name="NavEventsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel><TextBlock x:Name="EventsBadge" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/></Grid></Button>
                     </StackPanel>
                     <Button x:Name="SettingsButton" Grid.Row="1" Style="{StaticResource RailButton}" Click="Configuration_Click"><FontIcon Glyph="&#xE713;" FontSize="20"/></Button>
                 </Grid>
@@ -87,6 +88,13 @@
                             </StackPanel>
                         </ScrollViewer>
                         <TextBlock x:Name="SidebarEmpty" Margin="18,20" TextWrapping="Wrap" Opacity="0.6" Visibility="Collapsed" IsHitTestVisible="False"/>
+                        <StackPanel x:Name="EventFilters" Visibility="Collapsed" Margin="14,4" Spacing="14">
+                            <ComboBox x:Name="EventOwnerPicker" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectionChanged="EventFilter_Changed"/>
+                            <ComboBox x:Name="EventKindPicker" HorizontalAlignment="Stretch" DisplayMemberPath="Label" SelectionChanged="EventFilter_Changed"/>
+                            <Button x:Name="EventRefreshButton" HorizontalAlignment="Stretch" Click="EventRefresh_Click"/>
+                            <TextBlock x:Name="EventCapabilityText" TextWrapping="Wrap" FontSize="11" Opacity="0.65"/>
+                            <TextBlock x:Name="EventCaptureHelp" TextWrapping="Wrap" FontSize="11" Opacity="0.65"/>
+                        </StackPanel>
                     </Grid>
                     <StackPanel Grid.Row="2" Margin="14,12" Spacing="8"><TextBlock x:Name="SidebarStatus" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/><Button x:Name="RefreshFriendsButton" Click="RefreshFriends_Click" Visibility="Collapsed" HorizontalAlignment="Stretch"/></StackPanel>
                 </Grid>
@@ -121,6 +129,19 @@
                         <ListView.ItemTemplate><DataTemplate><StackPanel Spacing="7" Padding="8,10"><TextBlock Text="{Binding Heading}" FontSize="11" Opacity="0.65"/><cc:HighlightedText Text="{Binding Content}" Query="{Binding Query}" FontSize="14"/><cc:HighlightedText Text="{Binding Note}" Query="{Binding Query}" FontSize="11" Opacity="0.7"/></StackPanel></DataTemplate></ListView.ItemTemplate>
                     </ListView>
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,12" Spacing="8"><Button x:Name="HistoryMoreButton" Click="HistoryMore_Click"/><Button x:Name="HistoryContextButton" Click="HistoryContext_Click" IsEnabled="False"/><Button x:Name="HistoryBookmarkButton" Click="HistoryBookmark_Click" IsEnabled="False"/><Button x:Name="HistoryNoteButton" Click="HistoryNote_Click" IsEnabled="False"/></StackPanel>
+                </Grid>
+                <Grid x:Name="EventsPanel" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="22,20,22,12" Spacing="8"><TextBlock x:Name="EventsTitle" FontSize="23" FontWeight="SemiBold"/><TextBlock x:Name="EventsSummary" Opacity="0.65" FontSize="12" TextWrapping="Wrap"/></StackPanel>
+                    <Grid Grid.Row="1">
+                        <ListView x:Name="EventsList" Margin="12,0" ItemContainerStyle="{StaticResource StretchListItem}">
+                            <ListView.ItemTemplate><DataTemplate><Grid Padding="8,12" ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <FontIcon Glyph="{Binding Glyph}" FontSize="21" VerticalAlignment="Top" Margin="0,3,0,0" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="15"/><TextBlock Text="{Binding Details}" TextWrapping="Wrap"/><TextBlock Text="{Binding Context}" FontSize="11" Opacity="0.65" TextWrapping="Wrap"/><TextBlock Text="{Binding Expiry}" FontSize="11" Opacity="0.65"/></StackPanel>
+                            </Grid></DataTemplate></ListView.ItemTemplate>
+                        </ListView>
+                        <TextBlock x:Name="EventsEmpty" Margin="24,20" Opacity="0.65" TextWrapping="Wrap" IsHitTestVisible="False"/>
+                    </Grid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,12" Spacing="8"><Button x:Name="EventsMoreButton" Click="EventsMore_Click"/><Button x:Name="EventsReadButton" Click="EventsRead_Click"/></StackPanel>
                 </Grid>
                 <ProgressRing x:Name="Busy" Width="28" Height="28" IsActive="False" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"/>
             </Grid>

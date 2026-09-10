@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Windows.AppNotifications;
-using Microsoft.Windows.AppNotifications.Builder;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
 
@@ -19,6 +17,8 @@ namespace XIVChat_Desktop {
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
         private WorkbenchSession? workbench;
         public WorkbenchSession Workbench => this.workbench ??= new WorkbenchSession(this);
+        private NotificationCenter? notifier;
+        public NotificationCenter Notifier => this.notifier ??= new NotificationCenter(this);
         private LodestoneAvatars? avatars;
         public LodestoneAvatars Avatars {
             get {
@@ -126,6 +126,7 @@ namespace XIVChat_Desktop {
             } catch (Exception ex) {
                 this.Session.ReportStorageError(ex);
             }
+            this.Notifier.InitializePlatform();
             this.InitialiseWindow();
             if (this.Session.StorageError != null) this.Window.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + this.Session.StorageError.Message);
             this.Session.PersistenceFailed += ex => this.Dispatch(() => this.Window?.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + ex.Message));
@@ -138,6 +139,7 @@ namespace XIVChat_Desktop {
                 ApplyTheme(this.Config.Theme);
                 ApplyAlwaysOnTop(this.Config.AlwaysOnTop);
                 wnd.Activate();
+                this.Notifier.WindowReady();
 
                 if (this.configLoadException != null || this.configRecoveredFromBackup) {
                     var dialog = new ContentDialog {
@@ -200,15 +202,17 @@ namespace XIVChat_Desktop {
                 return;
             }
 
-            this.Connection = new Connection(this, host, port);
-            this.Connection.ReceiveMessage += this.OnReceiveMessage;
-            this.connectionTask = Task.Run(this.Connection.Connect);
+            var connection = new Connection(this, host, port);
+            this.Connection = connection;
+            connection.ReceiveMessage += message => this.Notifier.MessageReceived(message, connection);
+            this.connectionTask = Task.Run(connection.Connect);
         }
 
         public async Task StopSessionAsync() {
             this.Disconnect();
             if (this.connectionTask != null) await this.connectionTask;
             if (this.workbench != null) await this.workbench.FlushAsync();
+            if (this.notifier != null) { await this.notifier.FlushAsync(); this.notifier.Dispose(); }
             this.avatars?.Dispose();
             if (this.Session.Store != null) {
                 try { await this.Session.Store.DisposeAsync(); }
@@ -256,43 +260,10 @@ namespace XIVChat_Desktop {
             });
         }
 
-        private void OnReceiveMessage(ServerMessage message) {
-            if (!this.Config.Notifications.Any(notif => notif.Matches(message))) {
-                return;
-            }
-
-            var sender = message.GetSenderPlayer();
-
-            string title;
-            if (sender != null) {
-                var name = sender.Name;
-
-                if (sender.Server != 0) {
-                    name += $" ({Util.WorldName(sender.Server)})";
-                }
-
-                title = name;
-            } else {
-                title = "Notification";
-            }
-
-            var text = message.ContentText;
-            var attribution = LocalizationHelper.GetString("ChatType." + message.Channel);
-
-            Win10Notify(title, text, attribution);
-        }
-
-        private static void Win10Notify(string title, string text, string? attribution) {
-            var builder = new AppNotificationBuilder()
-                .AddText(title)
-                .AddText(text);
-
-            if (attribution != null) {
-                builder.AddText(attribution);
-            }
-
-            var notification = builder.BuildNotification();
-            AppNotificationManager.Default.Show(notification);
+        internal void ConnectionEnded(Connection connection, bool unexpected) {
+            if (!ReferenceEquals(this.Connection, connection)) return;
+            if (unexpected) this.Notifier.ConnectionLost(connection);
+            this.Disconnect();
         }
     }
 }

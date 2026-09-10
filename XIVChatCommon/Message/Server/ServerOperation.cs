@@ -14,5 +14,6 @@
         History = 12,
         CommandResult = 13,
         FriendPresence = 14,
+        GameEvent = 15,
     }
 }

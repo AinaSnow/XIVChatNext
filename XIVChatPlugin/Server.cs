@@ -60,9 +60,15 @@ namespace XIVChatPlugin {
         internal FriendListCoordinator FriendLists { get; }
         private FriendPresenceCoordinator FriendPresence { get; }
         private string _ownerEpoch = Guid.NewGuid().ToString("N");
+        private bool _loggedOut;
 
         private readonly MessageBacklog _backlog;
         private readonly string _runId = Guid.NewGuid().ToString("N");
+        private long _eventSequence;
+        private CharacterIdentity? _eventOwner;
+        private DateTime? _loginEventAt;
+        private (uint Id, DateTime At)? _territoryEvent;
+        private readonly GameEventQueue _pendingDutyEvents = new();
 
         private TcpListener? _listener;
 
@@ -100,6 +106,7 @@ namespace XIVChatPlugin {
             this.RefreshGameContext();
 
             this._sendWatch.Start();
+            this._eventOwner = this.CurrentIdentity();
 
             this.FriendLists = new FriendListCoordinator(new GameFriendListReader(plugin), (request, message) => {
                 if (!request.Cancellation.IsCancellationRequested && this._clients.TryGetValue(request.ClientId, out var client))
@@ -209,15 +216,17 @@ namespace XIVChatPlugin {
             this._plugin.Config.BacklogCount, Math.Clamp(this._plugin.Config.BacklogMaxMiB, 1, 256) * 1024L * 1024);
 
         internal void OnFrameworkUpdate(IFramework framework) {
+            if (this._tokenSource.IsCancellationRequested) return;
             if (!this._awaitingState.IsEmpty || this._toGame.Usage.Count > 0 || Environment.TickCount64 >= this._nextHousingCheck)
                 this._plugin.Functions.RefreshChatChannel();
             this.RefreshGameContext();
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             this.FriendPresence.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
-            var player = this._plugin.ObjectTable.LocalPlayer;
+            var eventOwner = this.CurrentIdentity();
+            var player = eventOwner == null ? null : this._plugin.ObjectTable.LocalPlayer;
+            if (eventOwner != null) this._eventOwner = eventOwner;
             if (player != null && this._sendPlayerData) {
-                this.BroadcastPlayerData();
-                this._sendPlayerData = false;
+                this._sendPlayerData = !this.BroadcastPlayerData();
             }
 
             if (Environment.TickCount64 >= this._nextHousingCheck) {
@@ -234,6 +243,24 @@ namespace XIVChatPlugin {
                 client.Send((Encodable?)this.GeneratePlayerData() ?? EmptyPlayerData.Instance);
                 client.Send(Volatile.Read(ref this._channelSnapshot));
                 if (client.GetPreference(ClientPreference.HousingLocationSupport, false)) client.Send(this._lastHousingLocation);
+            }
+            // State precedes events so a new desktop can validate the active login episode.
+            if (player != null && eventOwner != null) {
+                if (this._loginEventAt is { } loginAt) {
+                    this._loginEventAt = null;
+                    this.BroadcastGameEvent(this.CreateGameEvent(GameEventKind.Login, eventOwner, loginAt));
+                }
+                if (this._territoryEvent is { } changed) {
+                    this._territoryEvent = null;
+                    var territory = this._plugin.DataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(changed.Id);
+                    this.BroadcastGameEvent(this.CreateGameEvent(GameEventKind.TerritoryChanged, eventOwner, changed.At,
+                        changed.Id, territory?.PlaceName.ValueNullable?.Name.ExtractText() ?? ""));
+                }
+            }
+            foreach (var pending in this._pendingDutyEvents.Drain(eventOwner?.Key, this._ownerEpoch)) {
+                var duty = this.CreateGameEvent(GameEventKind.DutyReady, eventOwner!, pending.At, pending.DataId, pending.Name);
+                duty.ExpiresAt = duty.Timestamp.AddSeconds(45);
+                this.BroadcastGameEvent(duty);
             }
             // Remove invalid work promptly, but bound per-frame processing and execute at most one command.
             for (var i = 0; i < 32; i++) {
@@ -461,7 +488,7 @@ namespace XIVChatPlugin {
                     if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true,
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true,
                         });
                     }
 
@@ -515,7 +542,7 @@ namespace XIVChatPlugin {
         }
 
         private void RefreshGameContext() {
-            var owner = this._plugin.PlayerState.IsLoaded ? this.CurrentIdentity()?.Key : null;
+            var owner = this.CurrentIdentity()?.Key;
             var previous = Volatile.Read(ref this._gameContext);
             if (previous.OwnerKey == owner && previous.Epoch == this._ownerEpoch && previous.ChannelRevision == this._channelRevision) return;
             Volatile.Write(ref this._gameContext, new GameCommandContext(owner, this._ownerEpoch, this._channelRevision));
@@ -867,21 +894,26 @@ namespace XIVChatPlugin {
         }
 
         private PlayerData? GeneratePlayerData() {
+            var identity = this.CurrentIdentity();
+            if (identity == null) return null;
             var player = this._plugin.ObjectTable.LocalPlayer;
             if (player == null) {
                 return null;
             }
 
-            var homeWorld = player.HomeWorld.Value.Name.ExtractText();
-            var currentWorld = player.CurrentWorld.Value.Name.ExtractText();
+            var homeWorldRow = player.HomeWorld.ValueNullable;
+            var currentWorldRow = player.CurrentWorld.ValueNullable;
+            if (homeWorldRow == null || currentWorldRow == null) return null;
+            var homeWorld = homeWorldRow.Value.Name.ExtractText();
+            var currentWorld = currentWorldRow.Value.Name.ExtractText();
             var territoryType = this._plugin.ClientState.TerritoryType;
             var territory = this._plugin.DataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(territoryType);
-            var location = territory?.PlaceName.Value.Name.ExtractText() ?? "???";
+            var location = territory?.PlaceName.ValueNullable?.Name.ExtractText() ?? "???";
             var name = player.Name.TextValue;
 
             var mapId = this._plugin.ClientState.MapId;
             if (mapId == 0) {
-                mapId = territory?.Map.Value.RowId ?? territoryType;
+                mapId = territory?.Map.RowId ?? territoryType;
             }
 
             uint? mapIdOpt = mapId > 0 ? mapId : null;
@@ -900,27 +932,37 @@ namespace XIVChatPlugin {
             }
 
             return new PlayerData(homeWorld, currentWorld, location, name, mapIdOpt, mapX, mapY, mapFilenameId, mapSizeFactor) {
-                Identity = this.CurrentIdentity(), OwnerEpoch = this._ownerEpoch,
+                Identity = identity, OwnerEpoch = this._ownerEpoch,
             };
         }
 
         private CharacterIdentity? CurrentIdentity() {
+            // Logout clears world row references before IsLoaded necessarily becomes false.
+            if (this._loggedOut || !this._plugin.ClientState.IsLoggedIn) return null;
             var state = this._plugin.PlayerState;
             if (!state.IsLoaded) return null;
+            var contentId = state.ContentId;
+            var name = state.CharacterName;
+            var homeWorld = state.HomeWorld;
+            var world = homeWorld.ValueNullable;
+            if (contentId == 0 || string.IsNullOrWhiteSpace(name) || homeWorld.RowId == 0 || world == null) return null;
             return new CharacterIdentity {
-                ContentId = state.ContentId, Name = state.CharacterName,
-                HomeWorldId = (ushort)state.HomeWorld.RowId, HomeWorld = state.HomeWorld.Value.Name.ExtractText(),
+                ContentId = contentId, Name = name,
+                HomeWorldId = (ushort)homeWorld.RowId, HomeWorld = world.Value.Name.ExtractText(),
             };
         }
 
-        private void BroadcastPlayerData() {
-            var playerData = (Encodable?) this.GeneratePlayerData() ?? EmptyPlayerData.Instance;
-
+        private bool BroadcastPlayerData() {
+            var playerData = this.GeneratePlayerData();
+            if (playerData == null) return false;
             this.BroadcastMessage(playerData);
+            return true;
         }
 
         internal void OnLogIn() {
+            this._loggedOut = false;
             this._ownerEpoch = Guid.NewGuid().ToString("N");
+            this._loginEventAt = DateTime.UtcNow;
             this.RefreshGameContext();
             this._nextHousingCheck = 0;
             this.BroadcastAvailability(true);
@@ -929,6 +971,13 @@ namespace XIVChatPlugin {
         }
 
         internal void OnLogOut(int type, int code) {
+            this._loggedOut = true;
+            if (this._eventOwner is { } owner) this.BroadcastGameEvent(this.CreateGameEvent(GameEventKind.Logout, owner, DateTime.UtcNow));
+            this._eventOwner = null;
+            this._loginEventAt = null;
+            this._territoryEvent = null;
+            this._pendingDutyEvents.Clear();
+            this._sendPlayerData = false;
             this._ownerEpoch = Guid.NewGuid().ToString("N");
             Volatile.Write(ref this._gameContext, new GameCommandContext(null, this._ownerEpoch, this._channelRevision));
             foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn, command.PartIndex);
@@ -939,10 +988,27 @@ namespace XIVChatPlugin {
             this.BroadcastMessage(EmptyPlayerData.Instance);
         }
 
-        internal void OnTerritoryChange(uint territory) { this._sendPlayerData = true; this._nextHousingCheck = 0; }
+        internal void OnTerritoryChange(uint territory) {
+            this._sendPlayerData = true; this._nextHousingCheck = 0;
+            this._territoryEvent = (territory, DateTime.UtcNow);
+        }
+
+        internal void OnDutyReady(ContentFinderCondition duty) {
+            this._pendingDutyEvents.TryEnqueue(duty.RowId, duty.Name.ExtractText(), DateTime.UtcNow, Volatile.Read(ref this._gameContext));
+        }
+
+        private ServerGameEvent CreateGameEvent(GameEventKind kind, CharacterIdentity owner, DateTime at, uint dataId = 0, string name = "") => new() {
+            EventId = $"{this._plugin.Config.ServiceId}/{this._runId}/event/{++this._eventSequence}",
+            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId,
+            Owner = ConversationIdentity.Copy(owner), OwnerEpoch = this._ownerEpoch,
+            Kind = kind, Timestamp = at, DataId = dataId, Name = name.Length > 256 ? name[..256] : name,
+        };
+
+        private void BroadcastGameEvent(ServerGameEvent entry) => this.BroadcastMessage(entry, ClientPreference.GameEventsSupport);
 
         public void Dispose() {
             this._tokenSource.Cancel();
+            this._pendingDutyEvents.Complete();
             this._listener?.Stop();
             this._running = false;
             foreach (var id in this._clients.Keys) {

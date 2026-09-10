@@ -566,4 +566,49 @@
   <data name="Presence.Timeout" xml:space="preserve"><value>Query timed out</value></data>
   <data name="Presence.Unavailable" xml:space="preserve"><value>Currently unavailable</value></data>
   <data name="Presence.Checking" xml:space="preserve"><value>Checking…</value></data>
+  <data name="Workbench.Events" xml:space="preserve"><value>Events</value></data>
+  <data name="Event.DutyReady" xml:space="preserve"><value>Duty ready</value></data>
+  <data name="Event.Login" xml:space="preserve"><value>Logged in</value></data>
+  <data name="Event.Logout" xml:space="preserve"><value>Logged out</value></data>
+  <data name="Event.TerritoryChanged" xml:space="preserve"><value>Location changed</value></data>
+  <data name="Event.ConnectionLost" xml:space="preserve"><value>Connection interrupted</value></data>
+  <data name="Event.NotificationTest" xml:space="preserve"><value>Test notification</value></data>
+  <data name="Event.UnknownDuty" xml:space="preserve"><value>Your duty is ready.</value></data>
+  <data name="Event.UnknownTerritory" xml:space="preserve"><value>New location</value></data>
+  <data name="Event.Expired" xml:space="preserve"><value>This duty reminder has expired.</value></data>
+  <data name="Event.ReturnToGame" xml:space="preserve"><value>Return to the game to check the invitation.</value></data>
+  <data name="Event.Kind" xml:space="preserve"><value>Event type</value></data>
+  <data name="Event.Refresh" xml:space="preserve"><value>Show latest events</value></data>
+  <data name="Event.MarkRead" xml:space="preserve"><value>Mark displayed events as read</value></data>
+  <data name="Event.Empty" xml:space="preserve"><value>No events in this view yet.</value></data>
+  <data name="Event.CaptureHelp" xml:space="preserve"><value>Game events are recorded while connected. They follow your local history retention settings.</value></data>
+  <data name="Event.AllKinds" xml:space="preserve"><value>All event types</value></data>
+  <data name="Event.Offline" xml:space="preserve"><value>Offline · saved events remain available.</value></data>
+  <data name="Event.Connected" xml:space="preserve"><value>Game events are connected.</value></data>
+  <data name="Event.Unsupported" xml:space="preserve"><value>This plugin has not enabled game events. Local connection alerts remain available.</value></data>
+  <data name="Event.Count" xml:space="preserve"><value>{0} events displayed</value></data>
+  <data name="Event.NewAvailable" xml:space="preserve"><value>New events are available. Choose Show latest events to refresh.</value></data>
+  <data name="Event.Unread" xml:space="preserve"><value>{0} unread events</value></data>
+  <data name="Notify.DutyReady" xml:space="preserve"><value>Duty ready</value></data>
+  <data name="Notify.Tell" xml:space="preserve"><value>Incoming private messages</value></data>
+  <data name="Notify.Keyword" xml:space="preserve"><value>Keyword matches</value></data>
+  <data name="Notify.ConnectionLost" xml:space="preserve"><value>Unexpected disconnects</value></data>
+  <data name="Notify.LoginLogout" xml:space="preserve"><value>Login and logout alerts</value></data>
+  <data name="Notify.TerritoryChanged" xml:space="preserve"><value>Location change alerts</value></data>
+  <data name="Notify.Sound" xml:space="preserve"><value>Play notification sounds</value></data>
+  <data name="Notify.DoNotDisturb" xml:space="preserve"><value>Do not disturb</value></data>
+  <data name="Notify.QuietHours" xml:space="preserve"><value>Scheduled quiet hours</value></data>
+  <data name="Notify.QuietStart" xml:space="preserve"><value>Start</value></data>
+  <data name="Notify.QuietEnd" xml:space="preserve"><value>End</value></data>
+  <data name="Notify.RulesHelp" xml:space="preserve"><value>Messages being read in the foreground stay quiet. Messages from one conversation are grouped. Do not disturb silences popups and sounds, while events are still recorded; equal start and end times mean all day.</value></data>
+  <data name="Notify.KeywordRules" xml:space="preserve"><value>Keyword rules</value></data>
+  <data name="Notify.Test" xml:space="preserve"><value>Send test notification</value></data>
+  <data name="Notify.TestBody" xml:space="preserve"><value>Click this notification to open its event record.</value></data>
+  <data name="Notify.TestQuiet" xml:space="preserve"><value>The test event was recorded. Do not disturb suppressed the popup.</value></data>
+  <data name="Notify.TestSent" xml:space="preserve"><value>Test event recorded; check your Windows notifications.</value></data>
+  <data name="Notify.KeywordTitle" xml:space="preserve"><value>Message matched a rule</value></data>
+  <data name="Notify.Batch" xml:space="preserve"><value>{0} new messages · {1}</value></data>
+  <data name="Notify.SystemUnavailable" xml:space="preserve"><value>Windows notifications are unavailable. Events remain in the event list.</value></data>
+  <data name="Notify.TargetMissing" xml:space="preserve"><value>The notification's original record is no longer available.</value></data>
+  <data name="Notify.OpenFailed" xml:space="preserve"><value>Could not open the notification's record.</value></data>
 </root>

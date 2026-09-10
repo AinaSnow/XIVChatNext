@@ -14,7 +14,7 @@ public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMe
 
 /// <summary>All writes run on one worker. Completion means the transaction committed.</summary>
 public sealed partial class HistoryStore : IAsyncDisposable {
-    private const int SchemaVersion = 3;
+    private const int SchemaVersion = 4;
     private readonly string connectionString;
     private readonly SqliteConnection writer;
     private readonly Channel<Write> writes = Channel.CreateBounded<Write>(new BoundedChannelOptions(2048) {
@@ -52,6 +52,7 @@ public sealed partial class HistoryStore : IAsyncDisposable {
                         captured_at INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(source,owner_key));
                     """, tx);
                 if (version < 3) MigrateWorkbench(connection, tx);
+                if (version < 4) MigrateEvents(connection, tx);
                 Execute(connection, $"PRAGMA user_version={SchemaVersion}", tx);
                 tx.Commit();
             }
@@ -239,6 +240,9 @@ public sealed partial class HistoryStore : IAsyncDisposable {
                 AND NOT EXISTS (SELECT 1 FROM favorite_sources WHERE message_id=messages.id)
                 """, tx, ("$before", Millis(utcNow.AddDays(-retentionDays))));
             command.ExecuteNonQuery();
+            using var events = Command(db, "DELETE FROM events WHERE timestamp<$before", tx,
+                ("$before", Millis(utcNow.AddDays(-retentionDays))));
+            events.ExecuteNonQuery();
         });
     }
 
