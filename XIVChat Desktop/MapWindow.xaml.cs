@@ -3,7 +3,7 @@ using Microsoft.UI.Windowing;
 using System;
 using System.Diagnostics;
 using System.Globalization;
-using System.Text.Json;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -11,6 +11,7 @@ namespace XIVChat_Desktop {
     public sealed partial class MapWindow : Window {
         private static MapWindow? _instance;
         private string? localizedPlaceName;
+        private int renderVersion;
 
         public MapWindow() {
             this.InitializeComponent();
@@ -21,11 +22,9 @@ namespace XIVChat_Desktop {
         }
 
         private void MapWindow_Closed(object sender, WindowEventArgs args) {
+            this.renderVersion++;
             _instance = null;
         }
-
-        private string? _currentMapFilenameId;
-        private ushort? _currentMapSizeFactor;
 
         public static void ShowMap(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null) {
             if (_instance == null) {
@@ -37,20 +36,15 @@ namespace XIVChat_Desktop {
         }
 
         public async void UpdateLocation(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null) {
+            int request = ++this.renderVersion;
             localizedPlaceName = placeName;
-            _currentMapFilenameId = mapFilenameId;
-            _currentMapSizeFactor = sizeFactor;
+            var currentMapFilenameId = mapFilenameId;
+            var currentMapSizeFactor = sizeFactor;
 
             if (mapId.HasValue && mapId.Value > 0) {
-                if (string.IsNullOrEmpty(_currentMapFilenameId) && Microsoft.UI.Xaml.Application.Current is App app && app.Window?.CurrentPlayerData?.mapId == mapId.Value) {
-                    _currentMapFilenameId = app.Window.CurrentPlayerData.mapFilenameId;
-                    if (!_currentMapSizeFactor.HasValue) _currentMapSizeFactor = app.Window.CurrentPlayerData.mapSizeFactor;
-                }
-            } else {
-                if (Microsoft.UI.Xaml.Application.Current is App app && app.Window?.CurrentPlayerData?.mapId > 0) {
-                    mapId = app.Window.CurrentPlayerData.mapId;
-                    if (string.IsNullOrEmpty(_currentMapFilenameId)) _currentMapFilenameId = app.Window.CurrentPlayerData.mapFilenameId;
-                    if (!_currentMapSizeFactor.HasValue) _currentMapSizeFactor = app.Window.CurrentPlayerData.mapSizeFactor;
+                if (string.IsNullOrEmpty(currentMapFilenameId) && Microsoft.UI.Xaml.Application.Current is App app && app.Window?.CurrentPlayerData?.mapId == mapId.Value) {
+                    currentMapFilenameId = app.Window.CurrentPlayerData.mapFilenameId;
+                    if (!currentMapSizeFactor.HasValue) currentMapSizeFactor = app.Window.CurrentPlayerData.mapSizeFactor;
                 }
             }
 
@@ -72,26 +66,9 @@ namespace XIVChat_Desktop {
             float parsedX = x ?? 0f;
             float parsedY = y ?? 0f;
 
-            if (string.IsNullOrEmpty(_currentMapFilenameId) && parsedId > 0) {
-                try {
-                    string metaUrl = $"https://cafemaker.wakingsands.com/Map/{parsedId}";
-                    string fallbackMetaUrl = $"https://xivapi.com/Map/{parsedId}";
-                    string? json = await LocalAssetCache.GetCachedTextAsync("maps/meta", $"{parsedId}.json", TimeSpan.FromDays(30), metaUrl, fallbackMetaUrl);
-                    if (!string.IsNullOrEmpty(json)) {
-                        using var doc = JsonDocument.Parse(json);
-                        if (doc.RootElement.TryGetProperty("MapFilenameId", out var mfProp) && mfProp.ValueKind == JsonValueKind.String) {
-                            _currentMapFilenameId = mfProp.GetString();
-                        }
-                        if (doc.RootElement.TryGetProperty("SizeFactor", out var sfProp) && sfProp.TryGetUInt16(out ushort sfVal)) {
-                            _currentMapSizeFactor = sfVal;
-                        }
-                    }
-                } catch { }
-            }
-
             string fallbackUrl;
             if (parsedId > 0 && parsedX > 0 && parsedY > 0) {
-                fallbackUrl = $"https://map.wakingsands.com/#f=mark&id={parsedId}&x={parsedX:0.0}&y={parsedY:0.0}";
+                fallbackUrl = FormattableString.Invariant($"https://map.wakingsands.com/#f=mark&id={parsedId}&x={parsedX:0.0}&y={parsedY:0.0}");
             } else if (parsedId > 0) {
                 fallbackUrl = $"https://map.wakingsands.com/#f=mark&id={parsedId}";
             } else {
@@ -100,27 +77,30 @@ namespace XIVChat_Desktop {
 
             try {
                 await App.EnsureWebView2Async(this.MapWebView);
+                if (request != this.renderVersion) return;
                 try {
                     this.MapWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("cache.local", LocalAssetCache.CacheDir, Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
                 } catch { }
 
-                if (!string.IsNullOrEmpty(_currentMapFilenameId) && _currentMapFilenameId.Contains('/')) {
-                    var parts = _currentMapFilenameId.Split('/');
+                // Numeric map scale and filename must come from the same game record.
+                if (parsedId > 0 && currentMapSizeFactor > 0 && currentMapFilenameId != null && Regex.IsMatch(currentMapFilenameId, @"\A[a-z0-9]+/[0-9]+\z")) {
+                    var parts = currentMapFilenameId.Split('/');
                     string folder = parts[0];
                     string filename = $"{parts[0]}.{parts[1]}.jpg";
                     string xivapiUrl = $"https://xivapi.com/m/{folder}/{filename}";
                     string cafeUrl = $"https://cafemaker.wakingsands.com/m/{folder}/{filename}";
                     string cachedMapUrl = await LocalAssetCache.GetCachedImageAsync($"maps/{folder}", filename, xivapiUrl, cafeUrl);
+                    if (request != this.renderVersion) return;
 
-                    float sf = _currentMapSizeFactor.HasValue && _currentMapSizeFactor.Value > 0 ? _currentMapSizeFactor.Value : 100f;
+                    float sf = currentMapSizeFactor.Value;
                     string pinHtml = "";
                     if (parsedX > 0 && parsedY > 0) {
-                        float percentX = Math.Clamp((parsedX - 1.0f) * (sf / 100.0f) / 41.0f * 100.0f, 1.0f, 99.0f);
-                        float percentY = Math.Clamp((parsedY - 1.0f) * (sf / 100.0f) / 41.0f * 100.0f, 1.0f, 99.0f);
-                        string coordStr = !string.IsNullOrEmpty(placeName) ? placeName : $"X: {parsedX:0.0}, Y: {parsedY:0.0}";
+                        string percentX = ((parsedX - 1.0f) * (sf / 100.0f) / 41.0f * 100.0f).ToString("0.00", CultureInfo.InvariantCulture);
+                        string percentY = ((parsedY - 1.0f) * (sf / 100.0f) / 41.0f * 100.0f).ToString("0.00", CultureInfo.InvariantCulture);
+                        string coordStr = WebUtility.HtmlEncode(!string.IsNullOrEmpty(placeName) ? placeName : $"X: {parsedX:0.0}, Y: {parsedY:0.0}");
                         pinHtml = $@"
-        <div class='coord-badge' style='left: {percentX:0.00}%; top: {percentY:0.00}%;'>{coordStr}</div>
-        <div class='pin' style='left: {percentX:0.00}%; top: {percentY:0.00}%;'>
+        <div class='coord-badge' style='left: {percentX}%; top: {percentY}%;'>{coordStr}</div>
+        <div class='pin' style='left: {percentX}%; top: {percentY}%;'>
             <svg class='pin-icon' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
                 <path d='M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z' fill='#FF2D55' stroke='#FFFFFF' stroke-width='1.5'/>
             </svg>
@@ -153,7 +133,10 @@ namespace XIVChat_Desktop {
 </html>";
                     this.MapWebView.CoreWebView2.NavigateToString(html);
                 } else {
-                    this.MapWebView.CoreWebView2.Navigate(fallbackUrl);
+                    string label = WebUtility.HtmlEncode(placeName ?? LocalizationHelper.GetString("Map.Title"));
+                    string missing = WebUtility.HtmlEncode(LocalizationHelper.GetString("Map.MissingMetadata"));
+                    string external = parsedId > 0 ? $"<p><a style='color:#95bfff' href='{WebUtility.HtmlEncode(fallbackUrl)}'>{WebUtility.HtmlEncode(LocalizationHelper.GetString("Map.ExternalMap"))}</a></p>" : "";
+                    this.MapWebView.CoreWebView2.NavigateToString($"<html><meta charset='utf-8'><body style='background:#12141a;color:#eee;font-family:sans-serif;padding:32px'><h3>{label}</h3><p>{missing}</p>{external}</body></html>");
                 }
             } catch (Exception ex) {
                 Debug.WriteLine($"WebView2 load failed: {ex.Message}");

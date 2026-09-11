@@ -173,9 +173,9 @@ namespace XIVChat_Desktop {
                                     float.TryParse(m2.Groups[4].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out targetY);
                                 }
                             }
-                            if (targetX <= 0 || targetY <= 0) {
-                                targetX = textChunk.MapX ?? 0;
-                                targetY = textChunk.MapY ?? 0;
+                            if (textChunk.MapX > 0 && textChunk.MapY > 0) {
+                                targetX = textChunk.MapX.Value;
+                                targetY = textChunk.MapY.Value;
                             }
                             string targetName = !string.IsNullOrEmpty(textChunk.MapPlaceName) ? textChunk.MapPlaceName : textChunk.Content;
                             string? targetFilenameId = textChunk.MapFilenameId;

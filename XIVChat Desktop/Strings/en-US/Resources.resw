@@ -611,4 +611,10 @@
   <data name="Notify.SystemUnavailable" xml:space="preserve"><value>Windows notifications are unavailable. Events remain in the event list.</value></data>
   <data name="Notify.TargetMissing" xml:space="preserve"><value>The notification's original record is no longer available.</value></data>
   <data name="Notify.OpenFailed" xml:space="preserve"><value>Could not open the notification's record.</value></data>
+  <data name="Item.Collectible" xml:space="preserve"><value>Collectible</value></data>
+  <data name="Item.EventItem" xml:space="preserve"><value>Key item</value></data>
+  <data name="Item.BaseStatsOnly" xml:space="preserve"><value>Base item attributes; excludes actual melds, instance-specific stats and level sync.</value></data>
+  <data name="Item.GameDataSource" xml:space="preserve"><value>Game files · captured</value></data>
+  <data name="Map.MissingMetadata" xml:space="preserve"><value>This record is missing map data required to place a reliable marker.</value></data>
+  <data name="Map.ExternalMap" xml:space="preserve"><value>Look up on Waking Sands map (external reference)</value></data>
 </root>

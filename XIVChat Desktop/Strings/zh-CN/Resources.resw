@@ -611,4 +611,10 @@
   <data name="Notify.SystemUnavailable" xml:space="preserve"><value>Windows 通知暂不可用，事件仍保留在事件列表中。</value></data>
   <data name="Notify.TargetMissing" xml:space="preserve"><value>此通知的原始记录已不在本地。</value></data>
   <data name="Notify.OpenFailed" xml:space="preserve"><value>无法打开此通知对应的记录。</value></data>
+  <data name="Item.Collectible" xml:space="preserve"><value>收藏品</value></data>
+  <data name="Item.EventItem" xml:space="preserve"><value>任务物品</value></data>
+  <data name="Item.BaseStatsOnly" xml:space="preserve"><value>物品基础属性，不含实际镶嵌、个体自定义属性或等级同步。</value></data>
+  <data name="Item.GameDataSource" xml:space="preserve"><value>游戏文件 · 记录于</value></data>
+  <data name="Map.MissingMetadata" xml:space="preserve"><value>这条记录缺少完整地图数据，无法可靠绘制位置。</value></data>
+  <data name="Map.ExternalMap" xml:space="preserve"><value>到 Waking Sands 地图查询（外部资料）</value></data>
 </root>

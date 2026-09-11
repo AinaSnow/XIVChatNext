@@ -673,6 +673,8 @@ namespace XIVChatPlugin {
             byte? currentItemMateriaSlots = null;
             bool? currentItemIsAdvancedMeldingPermitted = null;
             List<string>? currentItemStats = null;
+            XIVChatCommon.GameItemDetails? currentItemDetails = null;
+            XIVChatCommon.GameDataSource? currentDataSource = null;
 
             void Append(string text) {
                 chunks.Add(new TextChunk(text) {
@@ -698,7 +700,9 @@ namespace XIVChatPlugin {
                     ItemEquipLevel = currentItemEquipLevel,
                     ItemMateriaSlots = currentItemMateriaSlots,
                     ItemIsAdvancedMeldingPermitted = currentItemIsAdvancedMeldingPermitted,
-                    ItemStats = currentItemStats
+                    ItemStats = currentItemStats,
+                    ItemDetails = currentItemDetails,
+                    DataSource = currentDataSource,
                 });
             }
 
@@ -749,6 +753,7 @@ namespace XIVChatPlugin {
                         currentMapX = mapLink.XCoord; currentMapY = mapLink.YCoord;
                         currentMapFilenameId = map.Filename; currentMapSizeFactor = map.SizeFactor;
                         currentMapPlaceName = map.PlaceName;
+                        currentDataSource = this._metadata.Source();
                         break;
                     case PayloadType.Item:
                         var itemLink = (ItemPayload)payload;
@@ -760,6 +765,7 @@ namespace XIVChatPlugin {
                         currentItemRarity = item?.Rarity; currentItemCategory = item?.Category;
                         currentItemEquipLevel = item?.EquipLevel; currentItemMateriaSlots = item?.MateriaSlots;
                         currentItemIsAdvancedMeldingPermitted = item?.AdvancedMelding; currentItemStats = item?.Stats;
+                        currentItemDetails = item?.Details; currentDataSource = item?.Source;
                         break;
                     case PayloadType.Unknown:
                         var rawPayload = (RawPayload) payload;
@@ -792,6 +798,7 @@ namespace XIVChatPlugin {
                             currentItemMateriaSlots = null;
                             currentItemIsAdvancedMeldingPermitted = null;
                             currentItemStats = null;
+                            currentItemDetails = null; currentDataSource = null;
                         }
 
                         break;

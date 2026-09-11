@@ -8,6 +8,8 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Item kinds preserve collectible, HQ and key-item identities", GameCardTests.Identity),
+    ("Item HQ values join by parameter ID and appended wire data remains compatible", GameCardTests.AttributesAndWire),
     ("Notification policy suppresses reading, replay, DND and expired duties", NotificationTests.Policy),
     ("Notification bursts coalesce and retain source / owner routing", NotificationTests.Grouping),
     ("Game event wire validation and notification activation arguments", NotificationTests.Protocol),

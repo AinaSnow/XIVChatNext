@@ -80,6 +80,16 @@ Rebuild without the test targets before running the regular desktop app:
 dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
 ```
 
+## Game-card source checks
+
+The regression runner includes item kind handling, HQ deltas joined by parameter ID,
+and structured metadata wire compatibility (43 groups total). To check the real card WebViews,
+build the desktop with `-p:CustomAfterMicrosoftCommonTargets=<absolute path to tests/DesktopCardsSmoke.targets>`
+and run the resulting executable. The eight checks use fixtures and do not connect to the game
+or load/save user configuration. Results and a rendered card image are written beside the executable.
+Always rebuild the desktop with `-t:Rebuild` without the test target afterward to restore the normal entry point.
+See [data-source findings](../docs/GAME_CARD_SOURCES_2026-09-12.md) for source choices and remaining live checks.
+
 ## Game integration
 
 The live single-character send/receive, SQLite persistence, offline replay and two reconnect checks

@@ -3,6 +3,9 @@ using Microsoft.UI.Windowing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using XIVChatCommon;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -10,6 +13,7 @@ namespace XIVChat_Desktop {
     public sealed partial class ItemWindow : Window {
         private static ItemWindow? _instance;
         private Action? refreshLocalizedItem;
+        private int renderVersion;
 
         public ItemWindow() {
             this.InitializeComponent();
@@ -20,6 +24,8 @@ namespace XIVChat_Desktop {
         }
 
         private void ItemWindow_Closed(object sender, WindowEventArgs args) {
+            this.renderVersion++;
+            this.refreshLocalizedItem = null;
             _instance = null;
         }
 
@@ -33,14 +39,14 @@ namespace XIVChat_Desktop {
         }
 
         public async void UpdateItem(uint? itemId, bool isHq, string? itemName, XIVChatCommon.Message.TextChunk? chunk = null) {
-            if (itemId.HasValue && itemId.Value > 1000000) {
-                isHq = true;
-                itemId = itemId.Value - 1000000;
-            } else if (itemId.HasValue && itemId.Value > 500000) {
-                isHq = true;
-                itemId = itemId.Value - 500000;
-            }
-            refreshLocalizedItem = () => UpdateItem(itemId, isHq, itemName, chunk);
+            int request = ++this.renderVersion;
+            var originalId = itemId;
+            var originalHq = isHq;
+            var identity = GameItemIdentity.Resolve(itemId ?? 0, chunk?.ItemKind, isHq);
+            itemId = identity.Id;
+            isHq = identity.Kind == GameItemKind.Hq;
+            static string Encode(string? value) => WebUtility.HtmlEncode(value ?? "");
+            refreshLocalizedItem = () => UpdateItem(originalId, originalHq, itemName, chunk);
             string cleanName = itemName?.Trim() ?? "";
             cleanName = Regex.Replace(cleanName, @"^[\uE000-\uF8FF\[（【(]+|[\]）】)]+$", "").Trim();
 
@@ -57,12 +63,16 @@ namespace XIVChat_Desktop {
                     _ => "#ffd700"  // 默认金色
                 };
                 string displayName = !string.IsNullOrEmpty(chunk.ItemName) ? chunk.ItemName : (!string.IsNullOrEmpty(cleanName) ? cleanName : $"{LocalizationHelper.GetString("Item.Category")} #{itemId}");
+                displayName = Encode(displayName);
                 string hqBadge = isHq ? @"<span class=""hq-badge""><svg width=""12"" height=""12"" viewBox=""0 0 24 24"" fill=""#111"" style=""margin-right:2px; vertical-align:-1px;""><path d=""M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z""/></svg>HQ</span>" : "";
                 string categoryText = !string.IsNullOrEmpty(chunk.ItemCategory) ? chunk.ItemCategory : LocalizationHelper.GetString("Item.Category");
+                categoryText = Encode(categoryText);
+                if (identity.Kind is GameItemKind.Collectible or GameItemKind.EventItem)
+                    hqBadge = $"<span class=\"hq-badge\">{Encode(LocalizationHelper.GetString(identity.Kind == GameItemKind.Collectible ? "Item.Collectible" : "Item.EventItem"))}</span>";
                 string levelText = chunk.ItemLevel.HasValue && chunk.ItemLevel.Value > 0 ? $" | {LocalizationHelper.GetString("Item.Level")} {chunk.ItemLevel}" : "";
                 string equipLevelText = chunk.ItemEquipLevel.HasValue && chunk.ItemEquipLevel.Value > 0 ? $" ({LocalizationHelper.GetString("Item.EquipLevel")} {chunk.ItemEquipLevel})" : "";
                 string descHtml = !string.IsNullOrEmpty(chunk.ItemDescription)
-                    ? $"<div class=\"description\">{chunk.ItemDescription}</div>"
+                    ? $"<div class=\"description\">{Encode(chunk.ItemDescription)}</div>"
                     : ((chunk.ItemStats != null && chunk.ItemStats.Count > 0) || (chunk.ItemMateriaSlots.HasValue && chunk.ItemMateriaSlots.Value > 0) ? "" : $"<div class=\"description\">{LocalizationHelper.GetString("Item.NoDescription")}</div>");
 
                 string iconImgHtml = "";
@@ -73,18 +83,32 @@ namespace XIVChat_Desktop {
                     string xivapiUrl = $"https://xivapi.com/i/{folderStr}/{iconStr}.png";
                     string ghUrl = $"https://raw.githubusercontent.com/xivapi/ffxiv-datamining/master/icons/{folderStr}/{iconStr}.png";
                     string cachedIconUrl = await LocalAssetCache.GetCachedImageAsync($"icons/{folderStr}", $"{iconStr}.png", iconUrl, xivapiUrl, ghUrl);
+                    if (request != this.renderVersion) return;
                     string hqOverlayHtml = isHq ? "<div class=\"hq-overlay\">HQ</div>" : "";
                     string onErrorJs = $"if (this.src.indexOf('cafemaker') !== -1) {{ this.src='{xivapiUrl}'; }} else if (this.src.indexOf('xivapi.com') !== -1) {{ this.src='{ghUrl}'; }} else {{ this.parentNode.style.display='none'; }}";
                     iconImgHtml = $"<div class=\"icon-container\"><img src=\"{cachedIconUrl}\" class=\"icon\" onerror=\"{onErrorJs}\" />{hqOverlayHtml}</div>";
                 }
 
                 string statsHtml = "";
-                if (chunk.ItemStats != null && chunk.ItemStats.Count > 0) {
+                var displayStats = chunk.ItemDetails != null
+                    ? chunk.ItemDetails.Parameters.Where(p => p.Value(isHq) != 0).Select(p => $"{p.Name} {p.Value(isHq):+0;-0;0}").ToList()
+                    : chunk.ItemStats;
+                if (displayStats != null && displayStats.Count > 0) {
                     string statsItems = "";
-                    foreach (var stat in chunk.ItemStats) {
-                        statsItems += $"<div class=\"stat-row\">• {stat}</div>";
+                    foreach (var stat in displayStats) {
+                        statsItems += $"<div class=\"stat-row\">• {Encode(stat)}</div>";
                     }
                     statsHtml = $"<div class=\"stats-box\"><div class=\"stats-title\">{LocalizationHelper.GetString("Item.Stats")}</div>{statsItems}</div>";
+                }
+
+                string sourceHtml = "";
+                if (chunk.ItemDetails?.EquipSlotCategoryId > 0) {
+                    sourceHtml += $"<div class=\"description\">{Encode(chunk.ItemDetails.ClassJobs)}<br>{Encode(LocalizationHelper.GetString("Item.BaseStatsOnly"))}</div>";
+                }
+                if (chunk.DataSource is { Provider: "game-files" } source) {
+                    string captured = source.RetrievedAtUnixMilliseconds is > 0 and < 253402300800000
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(source.RetrievedAtUnixMilliseconds).ToLocalTime().ToString("g") : "";
+                    sourceHtml += $"<div class=\"description\" style=\"font-size:12px;color:#8c96ab\">{Encode(LocalizationHelper.GetString("Item.GameDataSource"))} · {Encode(source.Language)} · {Encode(source.Version)}<br>{Encode(captured)}</div>";
                 }
 
                 string materiaHtml = "";
@@ -234,11 +258,13 @@ namespace XIVChat_Desktop {
     {statsHtml}
     {materiaHtml}
     {descHtml}
+    {sourceHtml}
   </div>
 </body>
 </html>";
             } else {
                 string displayName = !string.IsNullOrEmpty(cleanName) ? cleanName : $"{LocalizationHelper.GetString("Item.Category")} #{itemId}";
+                displayName = Encode(displayName);
                 htmlContent = $@"<!DOCTYPE html>
 <html lang=""{LocalizationHelper.LanguageCode}"">
 <head>
@@ -263,6 +289,7 @@ namespace XIVChat_Desktop {
 
             try {
                 await App.EnsureWebView2Async(this.ItemWebView);
+                if (request != this.renderVersion) return;
                 try {
                     this.ItemWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("cache.local", LocalAssetCache.CacheDir, Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
                 } catch { }
