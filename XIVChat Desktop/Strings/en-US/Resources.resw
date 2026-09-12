@@ -759,4 +759,7 @@
   <data name="Export.AllConnections" xml:space="preserve"><value>All connections</value></data>
   <data name="Export.SavedConnection" xml:space="preserve"><value>Saved game connection</value></data>
   <data name="Windows.AnchorUnavailable" xml:space="preserve"><value>The previous reading position is unavailable. Returned to the latest messages.</value></data>
+  <data name="Card.NoChinese" xml:space="preserve"><value>Chinese unavailable</value></data>
+  <data name="Card.TextLoading" xml:space="preserve"><value>Loading card text…</value></data>
+  <data name="Card.DataDetails" xml:space="preserve"><value>Data sources and versions</value></data>
 </root>

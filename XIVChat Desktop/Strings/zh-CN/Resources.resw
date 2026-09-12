@@ -759,4 +759,7 @@
   <data name="Export.AllConnections" xml:space="preserve"><value>全部连接</value></data>
   <data name="Export.SavedConnection" xml:space="preserve"><value>已保存的游戏连接</value></data>
   <data name="Windows.AnchorUnavailable" xml:space="preserve"><value>原阅读位置不在当前记录中，已返回最新。</value></data>
+  <data name="Card.NoChinese" xml:space="preserve"><value>暂无中文</value></data>
+  <data name="Card.TextLoading" xml:space="preserve"><value>正在加载卡片文本…</value></data>
+  <data name="Card.DataDetails" xml:space="preserve"><value>数据来源与版本</value></data>
 </root>

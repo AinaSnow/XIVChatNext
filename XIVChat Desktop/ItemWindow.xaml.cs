@@ -3,6 +3,7 @@ using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
@@ -34,8 +35,8 @@ namespace XIVChat_Desktop {
             CardBack.Content = L("Card.Back"); CardCopy.Content = L("Card.Copy"); CardFavorite.Content = L("Card.Favorite");
             CardSources.Content = L("Card.MessageSources"); CardRefresh.Content = L("Card.Refresh"); CardOriginal.Content = L("Card.Original");
             state.ShowChinese = LocalizationHelper.LanguageCode.StartsWith("zh") && CardOriginal.IsChecked != true;
-            _ = RenderAsync();
             if (state.ShowChinese && state.Item.ItemId > 0) _ = TranslateSafelyAsync(state, cancellation.Token);
+            else { CardStatusText.Text = L(state.StatusKey); _ = RenderAsync(); }
         }
         private static string L(string key) => LocalizationHelper.GetString(key);
         public static void ShowItem(uint? itemId, bool isHq, string? itemName, TextChunk? chunk = null, CardOrigin? origin = null) {
@@ -44,39 +45,47 @@ namespace XIVChat_Desktop {
         public void UpdateItem(uint? itemId, bool isHq, string? itemName, TextChunk? chunk = null, CardOrigin? origin = null) {
             parents.Clear(); Open(itemId, isHq, itemName, chunk, origin ?? App.Cards.Origin());
         }
-        private void Open(uint? id, bool hq, string? name, TextChunk? chunk, CardOrigin origin) {
+        private void Open(uint? id, bool hq, string? name, TextChunk? chunk, CardOrigin origin, bool refreshChinese = false) {
             cancellation.Cancel(); cancellation.Dispose(); cancellation = new();
             var identity = GameItemIdentity.Resolve(id ?? 0, chunk?.ItemKind, hq);
             var copy = chunk == null ? new TextChunk(name ?? "") : MessagePack.MessagePackSerializer.Deserialize<TextChunk>(MessagePack.MessagePackSerializer.Serialize(chunk));
             copy.ItemId = identity.Id; copy.ItemKind = (uint)identity.Kind; copy.ItemName ??= name ?? "#" + identity.Id;
             state = new ItemCardState { Item = copy, Origin = origin, ShowChinese = LocalizationHelper.LanguageCode.StartsWith("zh") && CardOriginal.IsChecked != true };
+            state.RefreshChinese = refreshChinese;
+            CardCopy.IsEnabled = CardFavorite.IsEnabled = !state.ShowChinese;
             CardBack.Visibility = parents.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             CardStatusText.Text = L("Card.Loading"); _ = RenderAsync(); _ = LoadAsync(state, cancellation.Token);
         }
         private bool IsCurrent(ItemCardState target, CancellationToken token) => !closed && !token.IsCancellationRequested && ReferenceEquals(state, target);
         private async Task LoadAsync(ItemCardState target, CancellationToken token) {
+            bool textPending = target.ShowChinese;
+            if (textPending) target.TextOperations++;
             try {
-                var translated = TranslateItemAsync(target, token);
+                var translated = target.ShowChinese ? App.Cards.Chinese.ItemAsync(target.Item.ItemId ?? 0, target.Item.ItemKind == (uint)GameItemKind.EventItem, target.RefreshChinese, token) : Task.FromResult<ChineseTextRow?>(null);
                 var equipment = LoadEquipmentAsync(target, token);
                 var loaded = await App.Cards.LoadAsync(target.Origin, CardQuery.Item, target.Item.ItemId ?? 0, target.Item.ItemKind ?? 0, 0, null, target.Item.DataSource, token);
                 if (!IsCurrent(target, token)) return;
+                var chinese = await translated;
+                if (!IsCurrent(target, token)) return;
                 if (loaded.Page?.Item is { } item) { target.Item = item; target.DataScope = loaded.Page.DataScope; target.Cached = loaded.Cached; }
-                CardStatusText.Text = L(loaded.Cached ? "Card.Cached" : loaded.Page != null ? "Card.Ready" : "Card.DataUnavailable");
+                target.Chinese = chinese ?? target.Chinese;
+                if (textPending) { target.TextOperations--; textPending = false; }
+                target.StatusKey = loaded.Cached ? "Card.Cached" : loaded.Page != null ? "Card.Ready" : "Card.DataUnavailable";
+                CardStatusText.Text = L(target.StatusKey);
                 _ = LoadIconAsync(target, token); await RenderAsync();
                 if (target.Item.ItemKind != (uint)GameItemKind.EventItem)
                     await Task.WhenAll(LoadPageAsync(target, CardQuery.Recipes, 0, token), LoadPageAsync(target, CardQuery.Sources, 0, token));
-                await Task.WhenAll(translated, equipment);
+                await equipment;
             } catch (OperationCanceledException) { }
             catch (Exception ex) { if (IsCurrent(target, token)) CardStatusText.Text = L("Card.DataUnavailable") + " " + ex.Message; }
-        }
-        private async Task TranslateItemAsync(ItemCardState target, CancellationToken token) {
-            if (!LocalizationHelper.LanguageCode.StartsWith("zh")) return;
-            var text = await App.Cards.Chinese.ItemAsync(target.Item.ItemId ?? 0, target.Item.ItemKind == (uint)GameItemKind.EventItem, false, token);
-            if (IsCurrent(target, token)) { target.Chinese = text; await RenderAsync(); }
+            finally { if (textPending) target.TextOperations--; if (IsCurrent(target, token)) await RenderAsync(); }
         }
         private async Task TranslateSafelyAsync(ItemCardState target, CancellationToken token) {
+            target.TextOperations++;
+            CardCopy.IsEnabled = CardFavorite.IsEnabled = false;
             try {
-                if (target.Chinese == null) await TranslateItemAsync(target, token);
+                CardStatusText.Text = L("Card.TextLoading"); await RenderAsync();
+                var chinese = target.Chinese ?? await App.Cards.Chinese.ItemAsync(target.Item.ItemId ?? 0, target.Item.ItemKind == (uint)GameItemKind.EventItem, false, token);
                 await Task.WhenAll(
                     LoadEquipmentAsync(target, token),
                     NamesAsync(target, "Item", target.Recipes?.Recipes.SelectMany(r => r.Ingredients.Select(i => i.Item.Id)) ?? Array.Empty<uint>(), token),
@@ -85,21 +94,23 @@ namespace XIVChat_Desktop {
                     NamesAsync(target, "GilShop", target.Sources?.Sources.Where(s => s.Kind == ItemSourceKind.GilShop).Select(s => s.Id) ?? Array.Empty<uint>(), token),
                     NamesAsync(target, "GatheringType", target.Sources?.Sources.Select(s => s.GatheringTypeId) ?? Array.Empty<uint>(), token),
                     NamesAsync(target, "PlaceName", target.Sources?.Sources.Select(s => s.Location?.PlaceNameId ?? 0) ?? Array.Empty<uint>(), token));
-                if (IsCurrent(target, token)) await RenderAsync();
+                if (IsCurrent(target, token)) { target.Chinese = chinese; CardStatusText.Text = L(target.StatusKey); }
             } catch (OperationCanceledException) { }
+            catch (Exception ex) { if (IsCurrent(target, token)) CardStatusText.Text = L("Card.DataUnavailable") + " " + ex.Message; }
+            finally { target.TextOperations--; if (IsCurrent(target, token)) await RenderAsync(); }
         }
         private async Task LoadEquipmentAsync(ItemCardState target, CancellationToken token) {
+            int version = ++target.EquipmentVersion; target.EquipmentLoading = true;
             var snapshot = await App.Cards.EquipmentAsync(target.Origin);
             if (!IsCurrent(target, token)) return;
-            target.Equipment = snapshot; await RenderAsync();
             await NamesAsync(target, "Item", snapshot?.Items.SelectMany(i => i.Materia.Select(m => m.Item.Id).Append(i.Item.ItemId ?? 0)) ?? Array.Empty<uint>(), token);
             await NamesAsync(target, "BaseParam", snapshot?.Items.SelectMany(i => i.Materia.Select(m => m.ParameterId).Concat(i.Item.ItemDetails?.Parameters.Select(p => p.Id) ?? Array.Empty<uint>())) ?? Array.Empty<uint>(), token);
-            if (IsCurrent(target, token)) await RenderAsync();
+            if (IsCurrent(target, token) && version == target.EquipmentVersion) { target.Equipment = snapshot; target.EquipmentLoading = false; await RenderAsync(); }
         }
         private async void EquipmentChanged() { try { await LoadEquipmentAsync(state, cancellation.Token); } catch (OperationCanceledException) { } }
         private async Task NamesAsync(ItemCardState target, string table, IEnumerable<uint> ids, CancellationToken token) {
             if (!target.ShowChinese) return;
-            var names = await App.Cards.Chinese.NamesAsync(table, ids.Where(id => id > 0), token);
+            var names = await App.Cards.Chinese.NamesAsync(table, ids.Where(id => id > 0), token, target.RefreshChinese);
             if (!IsCurrent(target, token)) return;
             if (!target.Names.TryGetValue(table, out var previous)) target.Names[table] = previous = new();
             foreach (var pair in names) previous[pair.Key] = pair.Value;
@@ -110,10 +121,7 @@ namespace XIVChat_Desktop {
             await RenderAsync();
             var result = await App.Cards.LoadAsync(target.Origin, query, target.Item.ItemId ?? 0, target.Item.ItemKind ?? 0, page, target.DataScope, target.Item.DataSource, token);
             if (!IsCurrent(target, token)) return;
-            if (recipes) { target.Recipes = result.Page; target.RecipesLoading = false; target.RecipesStatus = result.Status; target.RecipesCached = result.Cached; }
-            else { target.Sources = result.Page; target.SourcesLoading = false; target.SourcesStatus = result.Status; target.SourcesCached = result.Cached; }
-            await RenderAsync();
-            if (result.Page is not { } data) return;
+            if (result.Page is { } data) {
             if (recipes) await Task.WhenAll(
                 NamesAsync(target, "Item", data.Recipes.SelectMany(r => r.Ingredients.Select(i => i.Item.Id)), token),
                 NamesAsync(target, "CraftType", data.Recipes.Select(r => r.CraftTypeId), token));
@@ -122,6 +130,10 @@ namespace XIVChat_Desktop {
                 NamesAsync(target, "GilShop", data.Sources.Where(s => s.Kind == ItemSourceKind.GilShop).Select(s => s.Id), token),
                 NamesAsync(target, "GatheringType", data.Sources.Select(s => s.GatheringTypeId), token),
                 NamesAsync(target, "PlaceName", data.Sources.Select(s => s.Location?.PlaceNameId ?? 0), token));
+            }
+            if (!IsCurrent(target, token)) return;
+            if (recipes) { target.Recipes = result.Page; target.RecipesLoading = false; target.RecipesStatus = result.Status; target.RecipesCached = result.Cached; }
+            else { target.Sources = result.Page; target.SourcesLoading = false; target.SourcesStatus = result.Status; target.SourcesCached = result.Cached; }
             if (IsCurrent(target, token)) await RenderAsync();
         }
         private async Task LoadIconAsync(ItemCardState target, CancellationToken token) {
@@ -136,6 +148,8 @@ namespace XIVChat_Desktop {
             if (closed) return;
             int version = ++renderVersion;
             try {
+                // Coalesce metadata, icon and translation arrivals into one visual update.
+                await Task.Delay(35); if (closed || version != renderVersion) return;
                 await App.EnsureWebView2Async(ItemWebView); if (closed || version != renderVersion) return;
                 if (!webReady) {
                     webReady = true; ItemWebView.CoreWebView2.WebMessageReceived += WebMessage;
@@ -143,13 +157,21 @@ namespace XIVChat_Desktop {
                     ItemWebView.CoreWebView2.NavigationCompleted += async (_, _) => { try { await ItemWebView.CoreWebView2.ExecuteScriptAsync("window.scrollTo(0," + restoreScroll.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"); } catch (Exception) { } };
                     ItemWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("cache.local", LocalAssetCache.CacheDir, CoreWebView2HostResourceAccessKind.Allow);
                 }
-                double scroll = 0;
-                if (ReferenceEquals(renderedState, state)) double.TryParse(await ItemWebView.CoreWebView2.ExecuteScriptAsync("window.scrollY || 0"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out scroll);
+                CardCopy.IsEnabled = CardFavorite.IsEnabled = !state.TextLoading;
+                AppWindow.Title = "XIVChat - " + (state.TextLoading ? L("Card.TextLoading") : state.Name);
+                if (state.TextLoading && ReferenceEquals(renderedState, state)) return;
+                var html = GameCardHtml.Build(state);
+                bool same = ReferenceEquals(renderedState, state);
+                var patched = webReady && documentUri != "about:blank" && await ItemWebView.CoreWebView2.ExecuteScriptAsync(
+                    "(()=>{const main=document.querySelector('main');if(!main)return false;const y=" + (same ? "window.scrollY" : "0") +
+                    ";const expanded=" + (same ? "document.querySelector('#card-provenance')?.open===true" : "false") +
+                    ";const parsed=new DOMParser().parseFromString(" + JsonSerializer.Serialize(html) + ", 'text/html');main.replaceWith(parsed.querySelector('main'));document.documentElement.lang=parsed.documentElement.lang;document.querySelector('#card-provenance').open=expanded;window.scrollTo(0,y);return true;})()") == "true";
                 if (closed || version != renderVersion) return;
-                restoreScroll = scroll; renderedState = state;
-                AppWindow.Title = "XIVChat - " + state.Name;
-                documentUri = "data:text/html;charset=utf-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(GameCardHtml.Build(state)));
-                ItemWebView.CoreWebView2.Navigate(documentUri);
+                restoreScroll = 0; renderedState = state;
+                if (!patched) {
+                    documentUri = "data:text/html;charset=utf-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(html));
+                    ItemWebView.CoreWebView2.Navigate(documentUri);
+                }
             } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); if (!closed) CardStatusText.Text = ex.Message; }
         }
         private async void WebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) {
@@ -176,14 +198,15 @@ namespace XIVChat_Desktop {
             if (!parents.TryPop(out var previous)) return;
             Open(previous.Item.ItemId, previous.Item.ItemKind == 1_000_000, previous.Item.ItemName, previous.Item, previous.Origin);
         }
-        private void Copy_Click(object sender, RoutedEventArgs e) { var data = new DataPackage(); data.SetText(GameCardHtml.Copy(state)); Clipboard.SetContent(data); CardStatusText.Text = L("Card.Copied"); }
+        private void Copy_Click(object sender, RoutedEventArgs e) { if (state.TextLoading) return; var data = new DataPackage(); data.SetText(GameCardHtml.Copy(state)); Clipboard.SetContent(data); CardStatusText.Text = L("Card.Copied"); }
         private async void Favorite_Click(object sender, RoutedEventArgs e) {
             var target = state;
+            if (target.TextLoading) return;
             try { var favorite = await App.Cards.FavoriteAsync(target.Origin, target.Item, false, target.Name); if (ReferenceEquals(target, state)) { target.Origin = target.Origin with { FavoriteId = favorite.Id }; CardStatusText.Text = L("Card.Saved"); } }
             catch (Exception ex) { CardStatusText.Text = ex.Message; }
         }
         private async void Sources_Click(object sender, RoutedEventArgs e) { if (App.Window != null) await App.Window.ShowCardSourcesAsync(state.Origin); }
-        private void Refresh_Click(object sender, RoutedEventArgs e) => Open(state.Item.ItemId, state.Item.ItemKind == 1_000_000, state.Item.ItemName, state.Item, state.Origin);
+        private void Refresh_Click(object sender, RoutedEventArgs e) => Open(state.Item.ItemId, state.Item.ItemKind == 1_000_000, state.Item.ItemName, state.Item, state.Origin, refreshChinese: true);
         private void Original_Click(object sender, RoutedEventArgs e) => LocalizeCard();
     }
 }

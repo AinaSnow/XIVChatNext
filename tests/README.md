@@ -150,6 +150,13 @@ Results, English/Chinese rendered windows and the saved fixture appear beside th
 Build with `-t:Rebuild` without test targets afterward to restore the regular entry point.
 See [phase-six validation and live boundaries](../docs/PHASE6_SCREENSHOTS_2026-09-12.md).
 
+## Card text polish
+
+Card text polish (2026-09-13): the combined `DesktopCardsSmoke.targets` workflow now emits
+61 passing checks including protocol fixture validation. Added cases cover delayed Chinese text,
+marked original-language fallbacks, item/name cache refresh, localized copying/favorites, and DOM
+updates retaining reading position and expanded provenance. See [the polish report](../docs/CARD_TEXT_POLISH_2026-09-13.md).
+
 ## Workspace, layouts and history export
 
 The regression runner now has 56 groups, including validated layout storage, view identity

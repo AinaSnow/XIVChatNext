@@ -131,6 +131,14 @@ internal static class Phase5Tests {
             };
             var names = await provider.NamesAsync("Item", new uint[] { 4, 5, 4 }, default);
             Check(names.Count == 2 && names[4] == "铜矿", "Batch labels missing or unrequested IDs accepted");
+            var calls = handler.Calls;
+            await provider.NamesAsync("Item", new uint[] { 4, 5 }, default);
+            Check(handler.Calls == calls, "Fresh names unnecessarily requested again");
+            handler.Reply = (_, _) => Task.FromResult(Json("""{"version":"new","schema":"s","rows":[{"row_id":4,"fields":{"Name":"更新铜矿"}},{"row_id":5,"fields":{"Name":"更新铁矿"}}]}"""));
+            var refreshedNames = await provider.NamesAsync("Item", new uint[] { 4, 5 }, default, refresh: true);
+            Check(handler.Calls == calls + 1 && refreshedNames[4] == "更新铜矿", "Explicit refresh reused fresh name cache");
+            handler.Reply = (_, _) => throw new HttpRequestException("offline");
+            Check((await provider.NamesAsync("Item", new uint[] { 4, 5 }, default, refresh: true))[4] == "更新铜矿", "Failed name refresh destroyed readable cached text");
             handler.Reply = (_, _) => Task.FromResult(Json("""{"row_id":55,"version":"map-v2","schema":"s","fields":{"PlaceName":{"fields":{"Name":"中文地图"}},"SizeFactor":99999}}"""));
             var map = await provider.MapAsync(55, false, default); Check(map?.Name == "中文地图" && map.Version == "map-v2", "Map translation lost its text or provenance");
             try { await provider.NamesAsync("../anything", new uint[] { 1 }, default); throw new Exception("Unapproved table accepted"); } catch (ArgumentException) { }

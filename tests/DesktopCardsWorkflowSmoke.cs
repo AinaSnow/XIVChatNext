@@ -25,22 +25,28 @@ namespace XIVChat_Desktop {
     internal sealed partial class DesktopCardsSmokeApp {
         private readonly string cardTestDirectory = Path.Combine(Path.GetTempPath(), "xfw-card-ui-" + Guid.NewGuid().ToString("N"));
         private sealed class ChineseFixture : HttpMessageHandler {
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) {
+            internal string Suffix = "";
+            internal int FullRequests, NameRequests;
+            internal TaskCompletionSource? PendingText;
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) {
                 var rows = request.RequestUri!.Query.TrimStart('?').Split('&').FirstOrDefault(q => q.StartsWith("rows="));
-                object Row(uint id) => new { row_id = id, fields = new { Name = id == 123 ? "中文测试戒指" : "中文资料 " + id, Singular = "中文 NPC " + id,
+                object Row(uint id) => new { row_id = id, fields = new { Name = (id == 123 ? "中文测试戒指" : "中文资料 " + id) + Suffix, Singular = "中文 NPC " + id,
                     Description = "中文说明：数值来自游戏文件。", BaseParam = new[] { new { row_id = 1, fields = new { Name = "力量" } } } } };
                 object body;
-                if (rows != null) body = new { version = "chinese-fixture-v2", schema = "fixture", rows = Uri.UnescapeDataString(rows[5..]).Split(',').Select(uint.Parse).Select(Row).ToArray() };
+                if (rows != null) { NameRequests++; body = new { version = "chinese-fixture-v2", schema = "fixture", rows = Uri.UnescapeDataString(rows[5..]).Split(',').Select(uint.Parse).Select(Row).ToArray() }; }
                 else {
+                    FullRequests++;
+                    if (PendingText != null) await PendingText.Task.WaitAsync(token);
                     var id = uint.Parse(request.RequestUri.Segments.Last());
-                    body = new { version = "chinese-fixture-v2", schema = "fixture", row_id = id, fields = new { Name = id == 123 ? "中文测试戒指" : "中文资料 " + id,
-                        Description = "中文说明：数值来自游戏文件。", BaseParam = new[] { new { row_id = 1, fields = new { Name = "力量" } } } } };
+                    body = new { version = "chinese-fixture-v2", schema = "fixture", row_id = id, fields = new { Name = (id == 123 ? "中文测试戒指" : "中文资料 " + id) + Suffix,
+                        Description = "中文说明：数值来自游戏文件。", BaseParam = new[] { new { row_id = 1, fields = new { Name = "力量" } }, new { row_id = 21, fields = new { Name = "物理防御" } }, new { row_id = 24, fields = new { Name = "魔法防御" } } } } };
                 }
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json") });
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json") };
             }
         }
+        private readonly ChineseFixture chineseFixture = new();
         private void ConfigureChineseFixture() => typeof(App).GetField("cards", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(this,
-            new GameCardSession(this, new ChineseGameText(Path.Combine(cardTestDirectory, "chinese"), new HttpClient(new ChineseFixture()))));
+            new GameCardSession(this, new ChineseGameText(Path.Combine(cardTestDirectory, "chinese"), new HttpClient(chineseFixture))));
         private static T Control<T>(Window window, string name) where T : FrameworkElement => (T)((FrameworkElement)window.Content).FindName(name);
         private static void Click(Window window, string name) => ((IInvokeProvider)new ButtonAutomationPeer(Control<Button>(window, name)).GetPattern(PatternInterface.Invoke)).Invoke();
         private static async Task Until(Func<bool> condition) { for (int i = 0; i < 150; i++) { if (condition()) return; await Task.Delay(50); } throw new Exception("Native card condition timed out"); }
@@ -138,7 +144,23 @@ namespace XIVChat_Desktop {
                 Click(item, "CardSources"); await Until(() => Control<TextBlock>(window, "ChatSubtitle").Text.Contains("The original ring message"));
                 Check(Control<FrameworkElement>(window, "ComposerPanel").Visibility == Visibility.Collapsed, "Source action opens read-only message context");
                 LocalizationHelper.ApplyLanguage(AppLanguage.ChineseSimplified); await Wait(web, "document.querySelector('h1').innerText.includes('中文测试戒指') && document.body.innerText.includes('力量 +105')");
-                Check(await web.CoreWebView2.ExecuteScriptAsync("document.body.innerText.includes('chinese-fixture-v2') && document.body.innerText.includes('workflow-game-v2')") == "true", "Chinese text retains independent translation and game provenance");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("document.body.textContent.includes('chinese-fixture-v2') && document.body.textContent.includes('workflow-game-v2') && !document.querySelector('#card-provenance').open") == "true", "Chinese and game provenance remain available in a collapsed details section");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("document.body.innerText.includes('Ring（暂无中文）') && document.body.innerText.includes('Fixture shop') === false") == "true", "Untranslated fields are marked while translated source names replace game originals");
+                var shownState = (ItemCardState)typeof(ItemWindow).GetField("state", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(item)!;
+                Check(GameCardHtml.Copy(shownState).StartsWith("中文测试戒指 HQ") && GameCardHtml.Copy(shownState).Contains("力量 105"), "Copied names and attributes use the same Chinese text and game values as the card");
+                var fullRequests = chineseFixture.FullRequests; var nameRequests = chineseFixture.NameRequests;
+                chineseFixture.Suffix = " · 已更新";
+                Click(item, "CardRefresh");
+                await Wait(web, "document.querySelector('h1').innerText.includes('已更新') && document.body.innerText.includes('中文资料 234 · 已更新')");
+                Check(chineseFixture.FullRequests > fullRequests && chineseFixture.NameRequests > nameRequests, "Refresh bypasses both full-item and linked-name caches");
+                Click(item, "CardFavorite"); await Until(() => Control<TextBlock>(item, "CardStatusText").Text.Contains("已收藏"));
+                var refreshedFavorite = (await store.GetCardFavoritesAsync(origin.Source, origin.OwnerKey)).Single();
+                Check(refreshedFavorite.Name == "中文测试戒指 · 已更新" && refreshedFavorite.Note == "Keep this note", "Favorite stores the displayed translated name and preserves user notes");
+                await web.CoreWebView2.ExecuteScriptAsync("window.cardDocumentMarker=42;document.querySelector('#card-provenance').open=true;window.scrollTo(0,120)");
+                var scrollBefore = await web.CoreWebView2.ExecuteScriptAsync("window.scrollY");
+                await web.CoreWebView2.ExecuteScriptAsync("send('compare:12')");
+                await Wait(web, "document.querySelector('.positive')?.innerText === '+20'");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("window.cardDocumentMarker===42 && document.querySelector('#card-provenance').open && Math.abs(window.scrollY-" + scrollBefore + ")<2") == "true", "Card updates retain the document, reading position and expanded details");
                 var original = Control<CheckBox>(item, "CardOriginal"); original.IsChecked = true;
                 typeof(ItemWindow).GetMethod("Original_Click", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(item, new object[] { original, new RoutedEventArgs() });
                 await Wait(web, "document.querySelector('h1').innerText.includes('Fixture ring 123') && document.body.innerText.includes('Strength +105')"); Check(true, "Original-language switch preserves numeric values");

@@ -105,14 +105,14 @@ namespace XIVChat_Desktop {
                 token.ThrowIfCancellationRequested(); return cached;
             }
         }
-        public async Task<Dictionary<uint, string>> NamesAsync(string table, IEnumerable<uint> ids, CancellationToken token) {
+        public async Task<Dictionary<uint, string>> NamesAsync(string table, IEnumerable<uint> ids, CancellationToken token, bool refresh = false) {
             if (!Tables.Contains(table)) throw new ArgumentException("Unsupported game text table.");
             var result = new Dictionary<uint, string>(); var missing = new List<uint>();
             foreach (var id in ids.Distinct().Take(64)) {
                 var cached = await this.Read("name/chs/" + table + "/" + id, token);
                 if (cached?.Id != id || cached?.Table != table) cached = null;
                 if (cached?.Id == id && cached.Table == table && cached.Name.Length > 0) result[id] = cached.Name;
-                if (!Fresh(cached)) missing.Add(id);
+                if (refresh || !Fresh(cached)) missing.Add(id);
             }
             foreach (var batch in missing.Chunk(32)) {
                 try {

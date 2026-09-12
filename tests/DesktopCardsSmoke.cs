@@ -49,24 +49,31 @@ namespace XIVChat_Desktop {
                     DataSource = new() { Language = "English", Version = "fixture-version", RetrievedAtUnixMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() },
                 };
                 item.UpdateItem(123, true, "Example", chunk);
-                try { await Wait(web, "document.body.innerText.includes('fixture-version')"); }
+                try { await Wait(web, "document.body.textContent.includes('fixture-version')"); }
                 catch (Exception ex) { throw new Exception(Control<TextBlock>(item, "CardStatusText").Text, ex); }
                 string text = await web.CoreWebView2.ExecuteScriptAsync("document.body.innerText");
                 Check(text.Contains("Defense +35") && text.Contains("Magic Defense +35") && !text.Contains("WRONG LEGACY"), "Structured HQ totals override legacy strings and preserve both defenses");
                 Check(await web.CoreWebView2.ExecuteScriptAsync("document.getElementById('injected') === null && document.body.innerText.includes('literal markup')") == "true", "Game descriptions render as text without HTML interpretation");
-                Check(text.Contains("fixture-version") && text.Contains("English") && text.Contains("Base item attributes"), "Card displays provenance and base-stat scope");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("document.body.textContent.includes('fixture-version') && document.body.textContent.includes('English')") == "true" && text.Contains("Base item attributes"), "Card retains provenance and base-stat scope");
                 LocalizationHelper.ApplyLanguage(AppLanguage.ChineseSimplified);
-                await Wait(web, "document.body.innerText.includes('游戏文件')");
+                await Wait(web, "document.body.textContent.includes('游戏文件') && document.querySelector('h1').innerText.includes('中文测试戒指')");
                 Check(true, "Open card relocalizes while retaining game-data language");
                 using (var capture = File.Create(Path.Combine(AppContext.BaseDirectory, "cards-item-preview.png")))
                     await web.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png, capture.AsRandomAccessStream());
                 chunk.ItemKind = 500_000; chunk.ItemName = "Collectible fixture";
                 item.UpdateItem(123, true, "Example", chunk);
                 await Wait(web, "document.body.innerText.includes('收藏品')");
-                Check(await web.CoreWebView2.ExecuteScriptAsync("!document.body.innerText.includes('HQ') && document.body.innerText.includes('Defense +32')") == "true", "Collectible kind overrides HQ boolean and excludes HQ bonuses");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("!document.body.innerText.includes('HQ') && document.body.innerText.includes('物理防御 +32') && document.body.innerText.includes('魔法防御 +32')") == "true", "Collectible kind overrides HQ boolean and excludes HQ bonuses");
                 item.UpdateItem(2_000_123, true, "Key item", new TextChunk("key") { ItemKind = 2_000_000, ItemName = "Key fixture" });
                 await Wait(web, "document.body.innerText.includes('任务物品')");
                 Check(await web.CoreWebView2.ExecuteScriptAsync("!document.body.innerText.includes('HQ')") == "true", "Key-item card does not display HQ badge");
+                chineseFixture.PendingText = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                item.UpdateItem(9999, false, "日本語の装備", new TextChunk("日本語の装備") { ItemName = "日本語の装備", ItemCategory = "指輪", ItemDescription = "日本語の説明" });
+                await Wait(web, "document.querySelector('h1')?.innerText.includes('正在加载卡片文本')===true");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("!document.body.innerText.includes('日本語')") == "true" && !Control<Button>(item, "CardCopy").IsEnabled, "Slow translation shows a stable loading state instead of a partially translated card");
+                chineseFixture.PendingText.SetResult(); chineseFixture.PendingText = null;
+                await Wait(web, "document.querySelector('h1')?.innerText.includes('中文资料 9999')===true");
+                Check(await web.CoreWebView2.ExecuteScriptAsync("document.body.innerText.includes('指輪（暂无中文）') && document.body.innerText.includes('中文说明') && !document.body.innerText.includes('日本語の説明')") == "true", "Japanese fallback is explicitly marked beside translated Chinese text");
                 var map = new MapWindow(); map.Activate();
                 map.UpdateLocation(null, 10, 20, "Unknown <map>");
                 var mapWeb = Web(map, "MapWebView");
