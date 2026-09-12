@@ -104,7 +104,7 @@
 ### 远程游戏截图（2026-09-12 实现并完成主要实机联调）
 
 - 客户端对当前活动游戏连接提供“截取画面”入口；插件按请求截取一帧，客户端显示预览、拍摄时间和来源角色，支持放大、重新截取和保存到本地。第一版为手动单次截图。
-- 已核对本机 Dalamud SDK：`ITextureProvider.CreateFromImGuiViewportAsync` 可捕获游戏主视口，包含 Dalamud 界面；`ITextureReadbackProvider.SaveToStreamAsync` 可将纹理编码为图片流。接口可用性与实际游戏捕获均已确认，最小化／停止渲染仍待补验。参见 [捕获接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureProvider/) 与 [图像导出接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureReadbackProvider/)。
+- 已核对本机 Dalamud SDK：`ITextureProvider.CreateFromImGuiViewportAsync` 可捕获游戏主视口，包含 Dalamud 界面；`ITextureReadbackProvider.SaveToStreamAsync` 可将纹理编码为图片流。接口可用性与实际游戏捕获均已确认，后台最小化截图由用户手动实测通过；强制停止渲染仍待补验。参见 [捕获接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureProvider/) 与 [图像导出接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureReadbackProvider/)。
 - 首先验证主视口捕获、JPEG 编码和纹理释放，再接入协议及完整界面。默认使用压缩 JPEG，提供清晰度选项，并限制图片尺寸与总字节数；具体档位在实机画质和传输耗时验证后确定。
 - 复用现有加密连接，追加截图能力协商、请求、分片响应和错误响应。遵守单条消息 `128,000` 字节限制，为序列化及加密开销预留空间；携带请求标识、角色／登录轮次、图片格式、尺寸、总大小、分片序号及数量。
 - 接收端限制总大小、分片数、并发请求和组装时间，完整校验后才展示；拒绝越界、缺片、冲突重复分片及过期响应。断线、登出或切角色时取消旧请求，清理临时数据，旧截图不得显示为当前角色的新画面。
@@ -129,7 +129,7 @@
 3. 工作台、会话、好友列表与私聊入口、Lodestone 头像、历史搜索及旧配置迁移。
 4. 游戏事件、通知规则、免打扰和点击定位。
 5. 游戏卡片、装备对比、配方、获取来源和收藏。实现、离线／协议／窗口验证及本轮可执行的现场验收已完成：换装非零差值、双戒指／HQ／特殊装备、职业和等级限制、已有魔晶石读取、收藏资料与来源上下文、材料返回、商店地图、中日文、最近卡片分页、断线缓存和重连。实际新增／拆卸魔晶石、另一角色登录不计为实测通过；跨角色等边界保留自动化覆盖。见 [第五阶段记录](PHASE5_CARDS_2026-09-12.md) 与 [现场联调](PHASE5_LIVE_INTEGRATION_2026-09-12.md)。
-6. 远程游戏截图：插件捕获／编码、能力协商／分片传输、客户端预览与保存已实现；52 组通用回归、31 项截图窗口检查、87 项原有聊天检查与插件入口验证通过。随后完成实际游戏两档画质、保存、原尺寸预览、后台遮挡、连续七张预览、30 张协议捕获／ping／短时资源观察、客户端断开／重连验收。最小化／停止渲染、插件重载与长时间资源测试仍未列为现场通过，见 [第六阶段记录](PHASE6_SCREENSHOTS_2026-09-12.md) 与 [实机联调](PHASE6_LIVE_INTEGRATION_2026-09-12.md)。
+6. 远程游戏截图：插件捕获／编码、能力协商／分片传输、客户端预览与保存已实现；52 组通用回归、31 项截图窗口检查、87 项原有聊天检查与插件入口验证通过。随后完成实际游戏两档画质、保存、原尺寸预览、后台遮挡、连续七张预览、30 张协议捕获／ping／短时资源观察、客户端断开／重连验收。用户随后确认后台最小化截图正常，第六阶段主要功能验收收尾；强制停止渲染、插件重载与长时间资源测试保留到整体联调补验，见 [第六阶段记录](PHASE6_SCREENSHOTS_2026-09-12.md) 与 [实机联调](PHASE6_LIVE_INTEGRATION_2026-09-12.md)。
 7. 多窗口、布局、导出及整体联调；补齐前面阶段尚未完成的现场验证。
 
 验收覆盖：
