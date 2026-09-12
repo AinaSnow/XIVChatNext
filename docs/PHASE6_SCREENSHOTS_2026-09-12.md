@@ -1,6 +1,6 @@
 # 第六阶段：远程游戏截图
 
-2026-09-12：实现与自动化验证完成，真实游戏捕获尚待联调。用户已关闭游戏，本报告中的测试图片为 Windows 原生编码器生成的确定性夹具，不能视为实际游戏截图。
+2026-09-12：实现与自动化验证完成。最初在游戏关闭时使用 Windows 原生编码器生成的确定性夹具验证，下述自动化结果不等于实机捕获。用户随后启动游戏，已完成两档画质、保存、后台遮挡、连续捕获、预览缩放和断开／重连检查，详见 [实机联调](PHASE6_LIVE_INTEGRATION_2026-09-12.md)。
 
 ## 已实现
 
@@ -11,7 +11,7 @@
 
 ## 捕获与传输
 
-插件在 `UiBuilder.Draw` 中安排一次主视口捕获，包含游戏及 Dalamud 界面；异步取得纹理后缩放、转为不透明 JPEG 并释放资源。使用本机 SDK 的 `ITextureProvider.CreateFromImGuiViewportAsync`、`CreateFromExistingTextureAsync` 与 `ITextureReadbackProvider.SaveToStreamAsync`。已检查本机实现和编译兼容性，尚未验证真实帧。[捕获接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureProvider/)、[导出接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureReadbackProvider/)
+插件在 `UiBuilder.Draw` 中安排一次主视口捕获，包含游戏及 Dalamud 界面；异步取得纹理后缩放、转为不透明 JPEG 并释放资源。使用本机 SDK 的 `ITextureProvider.CreateFromImGuiViewportAsync`、`CreateFromExistingTextureAsync` 与 `ITextureReadbackProvider.SaveToStreamAsync`。已检查本机实现和编译兼容性，并在后续实机联调中验证真实帧。[捕获接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureProvider/)、[导出接口](https://dalamud.dev/api/Dalamud.Plugin.Services/Interfaces/ITextureReadbackProvider/)
 
 复用现有加密 TCP 连接，追加能力字段、偏好和消息编号，保留原有编号。请求和每个分片携带请求 ID、角色标识及登录轮次；数据含捕获时间、尺寸、格式、总字节数、分片索引／数量与 SHA-256。完整组装后校验摘要和 JPEG 头中的尺寸，再交给 Windows JPEG 解码器；解码器尺寸也必须一致。
 
@@ -25,7 +25,7 @@
 | 捕获等待 | 10 秒取消；渲染任务迟到后释放纹理 |
 | 捕获与传输 | 插件总计 30 秒取消；客户端最多等待 35 秒 |
 
-图片分片之间让出执行时间；队列繁忙时短暂等待并受总超时限制。相同重复分片忽略，冲突重复、元数据改变、摘要错误、越界或归属错误均拒绝。缺片不发布图片，等待超时或取消后释放组装状态。连续截图、慢连接及 GPU 纹理实际释放情况仍需现场测量。
+图片分片之间让出执行时间；队列繁忙时短暂等待并受总超时限制。相同重复分片忽略，冲突重复、元数据改变、摘要错误、越界或归属错误均拒绝。缺片不发布图片，等待超时或取消后释放组装状态。连续截图已完成短时现场测量；慢连接和 GPU 纹理释放的专项归因仍未实测。
 
 ## 自动化验证
 
@@ -39,4 +39,6 @@
 
 ## 尚需真实游戏验证
 
-使用当前登录角色连接新版插件与客户端，验证前台首图、两档画质和保存文件；再验证后台遮挡、最小化／停止渲染、恢复后的新帧，记录实际耗时。连续截图时观察内存和聊天响应，并检查断开／重连与插件重载。当前不将这些场景列为实测通过。
+已完成实际游戏首图、两档画质、保存、后台遮挡、连续截图与短时资源观察、图片传输期间 ping 和客户端断开／重连。30 张协议截图全部通过，平均完整图片耗时 270.7 ms；详情与限制见 [实机联调](PHASE6_LIVE_INTEGRATION_2026-09-12.md)。
+
+最小化／停止渲染、改变游戏分辨率、插件重载和长时间资源稳定性仍未列为本轮实测通过；最小化场景待用户手动操作后补验。
