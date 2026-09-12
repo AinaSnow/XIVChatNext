@@ -617,4 +617,84 @@
   <data name="Item.GameDataSource" xml:space="preserve"><value>游戏文件 · 记录于</value></data>
   <data name="Map.MissingMetadata" xml:space="preserve"><value>这条记录缺少完整地图数据，无法可靠绘制位置。</value></data>
   <data name="Map.ExternalMap" xml:space="preserve"><value>到 Waking Sands 地图查询（外部资料）</value></data>
+  <data name="Workbench.Favorites" xml:space="preserve"><value>收藏</value></data>
+  <data name="Card.Back" xml:space="preserve"><value>返回</value></data>
+  <data name="Card.Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="Card.Favorite" xml:space="preserve"><value>收藏</value></data>
+  <data name="Card.MessageSources" xml:space="preserve"><value>来源消息</value></data>
+  <data name="Card.Refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="Card.Original" xml:space="preserve"><value>游戏原文</value></data>
+  <data name="Card.Loading" xml:space="preserve"><value>加载中…</value></data>
+  <data name="Card.DataUnavailable" xml:space="preserve"><value>暂无资料。请连接支持此功能的插件，或查看已有快照。</value></data>
+  <data name="Card.Cached" xml:space="preserve"><value>已保存快照 · 离线资料</value></data>
+  <data name="Card.Ready" xml:space="preserve"><value>游戏资料已加载</value></data>
+  <data name="Card.Copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="Card.Saved" xml:space="preserve"><value>已收藏到此角色</value></data>
+  <data name="Card.Open" xml:space="preserve"><value>打开</value></data>
+  <data name="Card.Remove" xml:space="preserve"><value>取消收藏</value></data>
+  <data name="Card.More" xml:space="preserve"><value>加载更多</value></data>
+  <data name="Card.NoFavorites" xml:space="preserve"><value>此角色还没有收藏物品或地图卡片。</value></data>
+  <data name="Card.NoMessageSources" xml:space="preserve"><value>此卡片没有已保存的来源消息。</value></data>
+  <data name="Card.Previous" xml:space="preserve"><value>上一页</value></data>
+  <data name="Card.Next" xml:space="preserve"><value>下一页</value></data>
+  <data name="Card.ChineseSource" xml:space="preserve"><value>中文文本 · FFCafe XIVAPI（chs）</value></data>
+  <data name="Card.Recipes" xml:space="preserve"><value>制作配方</value></data>
+  <data name="Card.NoRecipes" xml:space="preserve"><value>当前游戏文件中未找到制作配方。</value></data>
+  <data name="Card.Yield" xml:space="preserve"><value>产出</value></data>
+  <data name="Card.RequiresUnlock" xml:space="preserve"><value>可能需要任务、秘籍、专精、成就或商店解锁条件，请在游戏中确认。</value></data>
+  <data name="Card.Truncated" xml:space="preserve"><value>关联超过 2,048 条，仅显示前 2,048 条。</value></data>
+  <data name="Card.Acquisition" xml:space="preserve"><value>获取来源</value></data>
+  <data name="Card.SourceScope" xml:space="preserve"><value>展示可确认的金币商店与采集区域；其他来源及解锁状态尚未完整收录。</value></data>
+  <data name="Card.NoSources" xml:space="preserve"><value>当前游戏文件中未找到可确认的商店或采集来源。</value></data>
+  <data name="Card.GilShop" xml:space="preserve"><value>金币商店</value></data>
+  <data name="Card.Gathering" xml:space="preserve"><value>采集</value></data>
+  <data name="Card.NpcUnknown" xml:space="preserve"><value>商店 NPC 尚未确认</value></data>
+  <data name="Card.ListPrice" xml:space="preserve"><value>标示价格</value></data>
+  <data name="Card.Unknown" xml:space="preserve"><value>未知</value></data>
+  <data name="Card.OpenMap" xml:space="preserve"><value>打开地图</value></data>
+  <data name="Card.PositionUnknown" xml:space="preserve"><value>精确坐标尚未确认。</value></data>
+  <data name="Card.Timed" xml:space="preserve"><value>可能为限时、刻限或隐藏采集点，未追踪实时开放状态。</value></data>
+  <data name="Card.Comparison" xml:space="preserve"><value>装备对比</value></data>
+  <data name="Card.NoEquipment" xml:space="preserve"><value>此角色暂无装备快照，登录游戏并连接后可获取。</value></data>
+  <data name="Card.EquipmentLive" xml:space="preserve"><value>当前装备快照</value></data>
+  <data name="Card.EquipmentCached" xml:space="preserve"><value>上次保存的装备 · 非实时</value></data>
+  <data name="Card.CompareSlot" xml:space="preserve"><value>对比部位</value></data>
+  <data name="Card.SyncNote" xml:space="preserve"><value>当前处于等级同步，以下显示未同步的基础数值。</value></data>
+  <data name="Card.Candidate" xml:space="preserve"><value>此物品</value></data>
+  <data name="Card.Equipped" xml:space="preserve"><value>已装备</value></data>
+  <data name="Card.Difference" xml:space="preserve"><value>基础差值</value></data>
+  <data name="Card.ActualMateria" xml:space="preserve"><value>已装备物品的实际魔晶石</value></data>
+  <data name="Card.CustomStats" xml:space="preserve"><value>特殊自定义属性暂无法可靠解析。</value></data>
+  <data name="Card.NoMateria" xml:space="preserve"><value>未记录魔晶石。</value></data>
+  <data name="Card.MateriaNote" xml:space="preserve"><value>魔晶石单独列出，不计入基础差值；未计算镶嵌上限、套装、食物及同步效果。</value></data>
+  <data name="Card.Compare.NoSnapshot" xml:space="preserve"><value>暂无装备快照。</value></data>
+  <data name="Card.Compare.MissingDetails" xml:space="preserve"><value>缺少结构化属性，无法计算差值。</value></data>
+  <data name="Card.Compare.WrongSlot" xml:space="preserve"><value>装备部位不同，仅并列查看。</value></data>
+  <data name="Card.Compare.WrongJob" xml:space="preserve"><value>此物品不符合快照角色的职业限制。</value></data>
+  <data name="Card.Compare.LevelTooLow" xml:space="preserve"><value>快照角色等级低于此物品的要求。</value></data>
+  <data name="Card.Compare.Weapon" xml:space="preserve"><value>武器仅并列查看，未评估伤害与副手联动。</value></data>
+  <data name="Card.Compare.SpecialEquipment" xml:space="preserve"><value>特殊装备或占用多个部位的装备仅并列查看。</value></data>
+  <data name="Card.Slot.0" xml:space="preserve"><value>主手</value></data>
+  <data name="Card.Slot.1" xml:space="preserve"><value>副手</value></data>
+  <data name="Card.Slot.2" xml:space="preserve"><value>头部</value></data>
+  <data name="Card.Slot.3" xml:space="preserve"><value>身体</value></data>
+  <data name="Card.Slot.4" xml:space="preserve"><value>手部</value></data>
+  <data name="Card.Slot.5" xml:space="preserve"><value>腰部</value></data>
+  <data name="Card.Slot.6" xml:space="preserve"><value>腿部</value></data>
+  <data name="Card.Slot.7" xml:space="preserve"><value>脚部</value></data>
+  <data name="Card.Slot.8" xml:space="preserve"><value>耳部</value></data>
+  <data name="Card.Slot.9" xml:space="preserve"><value>颈部</value></data>
+  <data name="Card.Slot.10" xml:space="preserve"><value>腕部</value></data>
+  <data name="Card.Slot.11" xml:space="preserve"><value>右指</value></data>
+  <data name="Card.Slot.12" xml:space="preserve"><value>左指</value></data>
+  <data name="Card.Slot.13" xml:space="preserve"><value>灵魂水晶</value></data>
+  <data name="Card.CurrentOwner" xml:space="preserve"><value>当前角色</value></data>
+  <data name="Card.AllOwners" xml:space="preserve"><value>全部角色与服务器</value></data>
+  <data name="Card.SavedCards" xml:space="preserve"><value>已收藏</value></data>
+  <data name="Card.Recent" xml:space="preserve"><value>最近出现</value></data>
+  <data name="Card.Search" xml:space="preserve"><value>名称或备注</value></data>
+  <data name="Card.Group" xml:space="preserve"><value>分组</value></data>
+  <data name="Card.Tags" xml:space="preserve"><value>标签</value></data>
+  <data name="Card.Edit" xml:space="preserve"><value>编辑资料</value></data>
+  <data name="Card.RecentScope" xml:space="preserve"><value>从最近消息提取的卡片；加载更多以查看更早的消息。</value></data>
 </root>

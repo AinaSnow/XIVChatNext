@@ -165,7 +165,7 @@ namespace XIVChat_Desktop {
                 }
                 if (message != null) {
                     // A notification from another role opens read-only history, preserving the active connection and composer owner.
-                    SaveComposer(); UnselectConversation(); section = "history"; eventLoadVersion++; UpdateNavigation();
+                    SaveComposer(); UnselectConversation(); section = "history"; cardSourceOrigin = null; eventLoadVersion++; UpdateNavigation();
                     EventsPanel.Visibility = ChatPanel.Visibility = Visibility.Collapsed; HistoryPanel.Visibility = Visibility.Visible;
                     await LoadHistoryOwnersAsync();
                     historySyncing = true;

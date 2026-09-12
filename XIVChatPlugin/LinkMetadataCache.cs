@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 using XIVChatCommon;
+using XIVChatCommon.Message;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using Lumina.Excel.Sheets;
@@ -13,10 +14,11 @@ namespace XIVChatPlugin {
     internal sealed record MapMetadata(uint Id, string? Filename, ushort? SizeFactor, string? PlaceName);
 
     internal sealed class LinkMetadataCache {
-        private readonly IDataManager data;
+        private readonly GameSheetSource data;
         private object? gameData;
         private int language = -1;
         private string? version;
+        internal string Scope { get; private set; } = "";
         internal GameDataSource Source() => new() {
             Language = this.data.Language.ToString(), Version = this.version,
             RetrievedAtUnixMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
@@ -25,12 +27,14 @@ namespace XIVChatPlugin {
         private readonly BoundedCache<(uint Map, uint Territory), MapMetadata> maps = new(512);
         internal (int Items, int Maps, long Hits, long Misses) Usage =>
             (this.items.Count, this.maps.Count, this.items.Hits + this.maps.Hits, this.items.Misses + this.maps.Misses);
-        internal LinkMetadataCache(IDataManager data) => this.data = data;
+        internal LinkMetadataCache(IDataManager data) : this(new GameSheetSource(data)) { }
+        internal LinkMetadataCache(GameSheetSource data) => this.data = data;
 
         // A loaded GameData instance is tied to one installed game-data version. Nothing persists across it.
         internal bool RefreshScope() {
             if (ReferenceEquals(this.gameData, this.data.GameData) && this.language == (int)this.data.Language) return false;
             this.gameData = this.data.GameData; this.language = (int)this.data.Language;
+            this.Scope = Guid.NewGuid().ToString("N");
             this.version = null;
             try {
                 var path = Path.Combine(this.data.GameData.DataPath.Parent!.FullName, "ffxivgame.ver");
@@ -42,6 +46,16 @@ namespace XIVChatPlugin {
         internal ItemMetadata? Item(uint id, ItemKind kind) {
             this.RefreshScope();
             return this.items.Get((id, kind), key => this.ReadItem(key.Id, key.Kind));
+        }
+        internal TextChunk? ItemChunk(uint id, ItemKind kind) {
+            var item = this.Item(id, kind);
+            return item == null ? null : new TextChunk(item.Name) {
+                ItemId = id, ItemKind = (uint)kind, IsHq = kind == ItemKind.Hq,
+                ItemName = CardProtocol.Text(item.Name, 512), ItemDescription = CardProtocol.Text(item.Description, 8192),
+                ItemIconId = item.Icon, ItemLevel = item.Level, ItemRarity = item.Rarity, ItemCategory = item.Category,
+                ItemEquipLevel = item.EquipLevel, ItemMateriaSlots = item.MateriaSlots, ItemIsAdvancedMeldingPermitted = item.AdvancedMelding,
+                ItemStats = item.Stats, ItemDetails = item.Details, DataSource = item.Source,
+            };
         }
         internal MapMetadata Map(uint map, uint territory) {
             this.RefreshScope();
@@ -89,7 +103,21 @@ namespace XIVChatPlugin {
             var details = new GameItemDetails {
                 Parameters = GameItemDetails.Merge(values, bonuses), EquipSlotCategoryId = row.EquipSlotCategory.RowId,
                 ClassJobs = row.ClassJobCategory.ValueNullable?.Name.ExtractText() ?? "", CanBeHq = row.CanBeHq,
+                ClassJobCategoryId = row.ClassJobCategory.RowId, ItemCategoryId = row.ItemUICategory.RowId,
+                SpecialEquipment = row.ItemSpecialBonus.RowId != 0 || row.EquipRestriction.RowId != 0 || row.Rarity == 7,
             };
+            if (row.EquipSlotCategory.ValueNullable is { } slot) {
+                var flags = new[] { slot.MainHand, slot.OffHand, slot.Head, slot.Body, slot.Gloves, slot.Waist,
+                    slot.Legs, slot.Feet, slot.Ears, slot.Neck, slot.Wrists, slot.FingerR, slot.FingerL, slot.SoulCrystal };
+                details.EquipSlots = flags.Select((value, index) => (value, index)).Where(v => v.value > 0).Select(v => v.index).ToArray();
+            }
+            if (row.ClassJobCategory.ValueNullable is { } jobCategory) {
+                // Category column identifiers use English abbreviations, independently of displayed sheet language.
+                details.AllowedJobs = this.data.GameData.Excel.GetSheet<ClassJob>(Lumina.Data.Language.English).Where(job => {
+                    var abbreviation = job.Abbreviation.ExtractText();
+                    return typeof(ClassJobCategory).GetProperty(abbreviation)?.GetValue(jobCategory) is true;
+                }).Select(job => job.RowId).Take(64).ToArray();
+            }
             var stats = details.Parameters.Where(p => p.Value(kind == ItemKind.Hq) != 0)
                 .Select(p => $"{p.Name} {p.Value(kind == ItemKind.Hq):+0;-0;0}").ToList();
             return new ItemMetadata(row.Name.ExtractText(), row.Description.ExtractText(), row.Icon, (ushort)row.LevelItem.RowId,

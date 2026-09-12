@@ -107,6 +107,7 @@ namespace XIVChat_Desktop {
 
         public static IEnumerable<Inline> ChunksToTextBlock(ServerMessage message, double fontSize, bool processMarkdown, bool showTimestamp, bool lightTheme = false) {
             var elements = new List<Inline>();
+            var cardOrigin = ((App)Application.Current).Cards.Origin(message);
 
             if (showTimestamp) {
                 var timestampString = message.Timestamp.ToLocalTime().ToString("t", CultureInfo.CurrentUICulture);
@@ -182,7 +183,7 @@ namespace XIVChat_Desktop {
                             ushort? targetSizeFactor = textChunk.MapSizeFactor;
 
                             hyperlink.Click += (s, args) => {
-                                MapWindow.ShowMap(targetMapId > 0 ? targetMapId : null, targetX > 0 ? targetX : null, targetY > 0 ? targetY : null, targetName, targetFilenameId, targetSizeFactor);
+                                MapWindow.ShowMap(targetMapId > 0 ? targetMapId : null, targetX > 0 ? targetX : null, targetY > 0 ? targetY : null, targetName, targetFilenameId, targetSizeFactor, cardOrigin, textChunk.DataSource);
                             };
 
                             elements.Add(hyperlink);
@@ -223,7 +224,7 @@ namespace XIVChat_Desktop {
 
                             var passedChunk = textChunk;
                             hyperlink.Click += (s, args) => {
-                                ItemWindow.ShowItem(targetItemId > 0 ? targetItemId : null, targetIsHq, targetName, passedChunk);
+                                ItemWindow.ShowItem(targetItemId > 0 ? targetItemId : null, targetIsHq, targetName, passedChunk, cardOrigin);
                             };
 
                             elements.Add(hyperlink);

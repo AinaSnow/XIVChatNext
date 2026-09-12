@@ -10,11 +10,16 @@ public sealed record HistoryQuery(string? OwnerKey = null, string? Text = null, 
     string? Person = null, DateTime? FromUtc = null, DateTime? UntilUtc = null,
     long BeforeRow = long.MaxValue, int Limit = 100, DateTime? BeforeTimestampUtc = null, string? Source = null,
     string? PeerKey = null, bool BookmarksOnly = false);
-public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMessage Message, string Note, bool Bookmarked);
+public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMessage Message, string Note, bool Bookmarked, string Source = "") {
+    public ServerMessage Message { get; init; } = Attach(Message, Id, Source);
+    private static ServerMessage Attach(ServerMessage message, string id, string source) {
+        message.LocalStorageId = id; if (source.Length > 0) message.LocalSource = source; return message;
+    }
+}
 
 /// <summary>All writes run on one worker. Completion means the transaction committed.</summary>
 public sealed partial class HistoryStore : IAsyncDisposable {
-    private const int SchemaVersion = 4;
+    private const int SchemaVersion = 5;
     private readonly string connectionString;
     private readonly SqliteConnection writer;
     private readonly Channel<Write> writes = Channel.CreateBounded<Write>(new BoundedChannelOptions(2048) {
@@ -53,6 +58,7 @@ public sealed partial class HistoryStore : IAsyncDisposable {
                     """, tx);
                 if (version < 3) MigrateWorkbench(connection, tx);
                 if (version < 4) MigrateEvents(connection, tx);
+                if (version < 5) MigrateCards(connection, tx);
                 Execute(connection, $"PRAGMA user_version={SchemaVersion}", tx);
                 tx.Commit();
             }
@@ -196,7 +202,7 @@ public sealed partial class HistoryStore : IAsyncDisposable {
                     "\"" + query.Text.Replace("\"", "\"\"") + "\"");
             } else Filter("(instr(lower(m.search_text),lower($text))>0 OR instr(lower(m.note),lower($text))>0)", "$text", query.Text);
         }
-        cmd.CommandText = "SELECT m.row_id,m.id,m.owner_key,m.payload,m.note,m.bookmarked FROM messages m WHERE "
+        cmd.CommandText = "SELECT m.row_id,m.id,m.owner_key,m.payload,m.note,m.bookmarked,m.source FROM messages m WHERE "
             + string.Join(" AND ", conditions) + " ORDER BY m.timestamp DESC,m.row_id DESC LIMIT $limit";
         // SqliteCommand.Cancel is a no-op. Interrupt native execution and cover the pre-execution race with a progress callback.
         SQLitePCL.raw.sqlite3_progress_handler(db.Handle, 1000, _ => token.IsCancellationRequested ? 1 : 0, null);
@@ -208,7 +214,7 @@ public sealed partial class HistoryStore : IAsyncDisposable {
             while (reader.Read()) {
                 token.ThrowIfCancellationRequested();
                 rows.Add(new HistoryRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
-                    MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[3]), reader.GetString(4), reader.GetBoolean(5)));
+                    MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[3]), reader.GetString(4), reader.GetBoolean(5), reader.GetString(6)));
             }
             return rows;
         } catch (SqliteException) when (token.IsCancellationRequested) {

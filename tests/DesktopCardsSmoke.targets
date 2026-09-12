@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'XIVChat Desktop'">
     <Compile Include="$(MSBuildThisFileDirectory)DesktopCardsSmoke.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)DesktopCardsWorkflowSmoke.cs" />
   </ItemGroup>
 </Project>

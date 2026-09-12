@@ -32,10 +32,12 @@ namespace XIVChat_Desktop {
         public ChatSession(Func<Configuration> configuration) => this.configuration = configuration;
 
         public async Task RecordAsync(ServerMessage message, string source, bool live = false) {
+            if (message.LocalSource != source || message.LocalStorageId == null) message.LocalStorageId = HistoryStore.StorageId(source, message);
+            message.LocalSource = source;
             var store = this.Store;
             if (message.Channel == 0 || !this.configuration().HistoryEnabled || store == null || this.StorageError != null) return;
             try {
-                await store.AppendAsync(source, message, HistoryStore.StorageId(source, message), live);
+                await store.AppendAsync(source, message, message.LocalStorageId, live);
                 var now = DateTime.UtcNow;
                 var last = Interlocked.Read(ref this.lastCleanupUtcTicks);
                 if (now.Ticks - last > TimeSpan.TicksPerDay && Interlocked.CompareExchange(ref this.lastCleanupUtcTicks, now.Ticks, last) == last) {

@@ -69,6 +69,7 @@ namespace XIVChat_Desktop {
             App.Session.Friends.Changed += RefreshFriendRows;
             App.Session.Friends.Presence.Changed += RefreshFriendRows;
             App.Notifier.EventsChanged += EventsChanged;
+            App.Cards.FavoritesChanged += FavoritesChanged;
             presenceTimer.Tick += PresenceTick;
             presenceTimer.Start();
             Root.SizeChanged += (_, _) => SidebarColumn.Width = new GridLength(Root.ActualWidth < 1000 ? 212 : 252);
@@ -99,6 +100,7 @@ namespace XIVChat_Desktop {
             NavConversationsText.Text = L("Workbench.Conversations"); NavChannelsText.Text = L("Workbench.Channels");
             NavFriendsText.Text = L("Workbench.Friends"); NavHistoryText.Text = L("Workbench.History");
             UpdateEventLocalizations();
+            UpdateCardLocalizations();
             GlobalSearch.PlaceholderText = L("Workbench.Search"); ListSearch.PlaceholderText = L("Workbench.Filter");
             SendButton.Content = L("Workbench.Send"); RestoreDraftButton.Content = L("Conversation.RestoreDraft");
             RefreshFriendsButton.Content = L("FriendList.Refresh");
@@ -130,6 +132,7 @@ namespace XIVChat_Desktop {
             if (!initialized) return;
             if (selectedOwner != App.Workbench.Source + "/" + App.Workbench.OwnerKey) {
                 SaveComposer(); selectedOwner = App.Workbench.Source + "/" + App.Workbench.OwnerKey;
+                if (section == "favorites") _ = LoadFavoritesAsync(false);
                 if (selectedConversation != null) UnselectConversation();
                 if (section is "conversations" or "friends") ShowEmpty();
                 else if (section == "channels" && selectedChannel != null) {
@@ -149,11 +152,14 @@ namespace XIVChat_Desktop {
         private void Navigate_Click(object sender, RoutedEventArgs e) { if (sender is Button { Tag: string target }) Navigate(target); }
         internal void Navigate(string target) {
             SaveComposer(); section = target;
+            favoritesVersion++; cardSourceOrigin = null;
+            FavoritesPanel.Visibility = Visibility.Collapsed;
             eventLoadVersion++;
             if (target != "history") { historyCancellation?.Cancel(); Busy.IsActive = false; }
             syncing = true; ListSearch.Text = ""; syncing = false;
             UpdateNavigation();
             EventsPanel.Visibility = Visibility.Collapsed;
+            if (target == "favorites") { ChatPanel.Visibility = HistoryPanel.Visibility = Visibility.Collapsed; FavoritesPanel.Visibility = Visibility.Visible; _ = LoadFavoritesAsync(false); return; }
             if (target == "events") { _ = ShowEventsAsync(); return; }
             if (target == "history") { ShowHistory(); return; }
             ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed;
@@ -173,12 +179,14 @@ namespace XIVChat_Desktop {
             } else { RefreshFriendRows(); if (selectedConversation == null) ShowEmpty(); }
         }
         private void UpdateNavigation() {
-            SectionTitle.Text = L("Workbench." + (section switch { "conversations" => "Conversations", "friends" => "Friends", "history" => "History", "events" => "Events", _ => "Channels" }));
-            foreach (var button in new[] { NavConversations, NavChannels, NavFriends, NavHistory, NavEvents })
+            if (section != "favorites") FavoritesPanel.Visibility = Visibility.Collapsed;
+            SectionTitle.Text = L("Workbench." + (section switch { "conversations" => "Conversations", "friends" => "Friends", "history" => "History", "events" => "Events", "favorites" => "Favorites", _ => "Channels" }));
+            foreach (var button in new[] { NavConversations, NavChannels, NavFriends, NavHistory, NavEvents, NavFavorites })
                 button.Background = new SolidColorBrush((string)button.Tag == section ? Windows.UI.Color.FromArgb(55, 74, 144, 226) : Microsoft.UI.Colors.Transparent);
             ChannelList.Visibility = V(section == "channels"); ConversationList.Visibility = V(section == "conversations"); FriendList.Visibility = V(section == "friends");
             HistoryFilters.Visibility = V(section == "history"); ListSearch.Visibility = V(section is "friends" or "conversations");
             EventFilters.Visibility = V(section == "events");
+            FavoriteFilters.Visibility = V(section == "favorites");
             AddViewButton.Visibility = V(section is "channels" or "conversations"); RefreshFriendsButton.Visibility = V(section == "friends");
             SidebarEmpty.Visibility = V(section == "conversations" && visibleConversations.Count == 0 || section == "friends" && visibleFriends.Count == 0 || section == "channels" && App.Config.Tabs.Count == 0);
             SidebarEmpty.Text = App.Workbench.OwnerKey == null && section != "channels" ? L("Workbench.ConnectFirst") : L(section == "friends" ? "FriendList.Empty" : "Conversation.Empty");
@@ -424,6 +432,7 @@ namespace XIVChat_Desktop {
         private void DisposeViews() {
             eventLoadVersion++;
             App.Notifier.EventsChanged -= EventsChanged;
+            App.Cards.FavoritesChanged -= FavoritesChanged; favoritesVersion++;
             presenceTimer.Stop(); presenceTimer.Tick -= PresenceTick;
             App.Session.Friends.Presence.Changed -= RefreshFriendRows;
             App.Config.Tabs.CollectionChanged -= TabsChanged; App.Config.Saved -= ConfigSaved; App.PropertyChanged -= AppChanged;

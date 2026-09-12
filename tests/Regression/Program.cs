@@ -8,6 +8,10 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Game card protocol rejects malformed payloads and bounds active requests", Phase5Tests.ProtocolAndQueue),
+    ("Equipment compares rings independently and respects job, level, materia and special gear", Phase5Tests.Comparison),
+    ("V5 migration, card caches, equipment snapshots and favorites preserve ownership", Phase5Tests.Storage),
+    ("Chinese text uses chs, caches offline, bounds responses and preserves game numbers", Phase5Tests.ChineseText),
     ("Item kinds preserve collectible, HQ and key-item identities", GameCardTests.Identity),
     ("Item HQ values join by parameter ID and appended wire data remains compatible", GameCardTests.AttributesAndWire),
     ("Notification policy suppresses reading, replay, DND and expired duties", NotificationTests.Policy),

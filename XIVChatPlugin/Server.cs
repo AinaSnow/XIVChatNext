@@ -42,6 +42,7 @@ namespace XIVChatPlugin {
 
         private readonly Plugin _plugin;
         private readonly LinkMetadataCache _metadata;
+        internal GameCardService GameCards { get; }
         internal (int Items, int Maps, long Hits, long Misses) CacheUsage => this._metadata.Usage;
 
         private readonly Stopwatch _sendWatch = new();
@@ -93,6 +94,9 @@ namespace XIVChatPlugin {
         internal Server(Plugin plugin) {
             this._plugin = plugin;
             this._metadata = new LinkMetadataCache(plugin.DataManager);
+            this.GameCards = new GameCardService(plugin, this._metadata, (id, reply) => {
+                if (this._clients.TryGetValue(id, out var client)) client.Send(reply);
+            }, reply => this.BroadcastMessage(reply, ClientPreference.GameCardsSupport));
             if (string.IsNullOrWhiteSpace(plugin.Config.ServiceId)) plugin.Config.ServiceId = Guid.NewGuid().ToString("N");
             plugin.Config.Save();
             if (this._plugin.Config.KeyPair == null) {
@@ -223,6 +227,7 @@ namespace XIVChatPlugin {
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             this.FriendPresence.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             var eventOwner = this.CurrentIdentity();
+            this.GameCards.Tick(eventOwner, this._ownerEpoch, this._clients.Values.Any(c => c.Ready && c.GetPreference(ClientPreference.GameCardsSupport, false)));
             var player = eventOwner == null ? null : this._plugin.ObjectTable.LocalPlayer;
             if (eventOwner != null) this._eventOwner = eventOwner;
             if (player != null && this._sendPlayerData) {
@@ -488,7 +493,7 @@ namespace XIVChatPlugin {
                     if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true,
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true, GameCards = true,
                         });
                     }
 
@@ -497,6 +502,14 @@ namespace XIVChatPlugin {
                         this._awaitingState[id] = 0;
                     }
 
+                    break;
+                case ClientOperation.GameCard:
+                    if (!client.GetPreference(ClientPreference.GameCardsSupport, false) || payload.Length > 2048) break;
+                    var cardRequest = ClientGameCard.Decode(payload);
+                    if (!cardRequest.Valid) break;
+                    if (!this.GameCards.Enqueue(new GameCardRequest(id, cardRequest, client.TokenSource.Token, DateTime.UtcNow)))
+                        client.Send(new ServerGameCard { RequestId = cardRequest.RequestId, Query = cardRequest.Query,
+                            Id = cardRequest.Id, ItemKind = cardRequest.ItemKind, Status = CardStatus.Busy });
                     break;
                 case ClientOperation.History:
                     if (client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
@@ -1024,6 +1037,7 @@ namespace XIVChatPlugin {
 
             this.FriendLists.Dispose();
             this.FriendPresence.Dispose();
+            this.GameCards.Dispose();
             this._toGame.Clear();
             this.PendingClients.Writer.TryComplete();
         }

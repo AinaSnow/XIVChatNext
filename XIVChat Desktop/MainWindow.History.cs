@@ -68,8 +68,9 @@ namespace XIVChat_Desktop {
             if (section == "history") _ = SearchHistoryAsync(false);
         }
         private void HistoryApply_Click(object sender, RoutedEventArgs e) => _ = SearchHistoryAsync(false);
-        private void HistoryMore_Click(object sender, RoutedEventArgs e) => _ = SearchHistoryAsync(true);
+        private void HistoryMore_Click(object sender, RoutedEventArgs e) { if (cardSourceOrigin != null) _ = LoadCardSourcesAsync(cardSourceOrigin, true); else _ = SearchHistoryAsync(true); }
         private async Task SearchHistoryAsync(bool more) {
+            cardSourceOrigin = null;
             historyCancellation?.Cancel(); historyCancellation?.Dispose(); historyCancellation = new();
             var token = historyCancellation.Token;
             if (App.Session.Store is not { } store) { HistorySummary.Text = L("History.Unavailable"); return; }

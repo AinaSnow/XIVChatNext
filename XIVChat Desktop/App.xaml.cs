@@ -16,6 +16,8 @@ namespace XIVChat_Desktop {
         private ChatSession? session;
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
         private WorkbenchSession? workbench;
+        private GameCardSession? cards;
+        public GameCardSession Cards => this.cards ??= new GameCardSession(this);
         public WorkbenchSession Workbench => this.workbench ??= new WorkbenchSession(this);
         private NotificationCenter? notifier;
         public NotificationCenter Notifier => this.notifier ??= new NotificationCenter(this);
@@ -40,6 +42,7 @@ namespace XIVChat_Desktop {
         public Connection? Connection {
             get => this.connection;
             set {
+                if (this.connection != null && !ReferenceEquals(this.connection, value)) this.cards?.Disconnect(this.connection);
                 this.connection = value;
                 this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(this.Connection)));
                 this.ConnectionStatusChanged();

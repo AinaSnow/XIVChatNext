@@ -30,6 +30,8 @@ namespace XIVChatCommon.Message.Server {
         [Key(8)] public long Sequence { get; set; }
         [Key(9)] public CharacterIdentity? Owner { get; set; }
         [Key(10)] public CharacterIdentity? TellPeer { get; set; }
+        [IgnoreMember] public string? LocalSource { get; set; }
+        [IgnoreMember] public string? LocalStorageId { get; set; }
 
         [IgnoreMember]
         public string ContentText => XivString.GetText(this.Content);

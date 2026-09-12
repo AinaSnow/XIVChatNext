@@ -19,7 +19,7 @@ namespace XIVChat_Desktop {
             });
         }
     }
-    internal sealed class DesktopCardsSmokeApp : App {
+    internal sealed partial class DesktopCardsSmokeApp : App {
         private readonly List<string> results = new();
         private void Check(bool condition, string label) { if (!condition) throw new Exception(label); this.results.Add("PASS " + label); }
         private static WebView2 Web(Window window, string name) => (WebView2)((FrameworkElement)window.Content).FindName(name);
@@ -28,14 +28,16 @@ namespace XIVChat_Desktop {
                 if (view.CoreWebView2 != null && await view.CoreWebView2.ExecuteScriptAsync(expression) == "true") return;
                 await Task.Delay(100);
             }
-            throw new Exception("WebView condition timed out: " + expression);
+            throw new Exception("WebView condition timed out: " + expression + " HTML=" + (view.CoreWebView2 == null ? "not initialized" : await view.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML")));
         }
         protected override async void OnLaunched(LaunchActivatedEventArgs args) {
             try {
                 typeof(App).GetProperty(nameof(Config))!.SetValue(this, new Configuration { OnlineAvatars = false });
+                ConfigureChineseFixture();
                 LocalizationHelper.Initialize(AppLanguage.English);
                 var item = new ItemWindow(); item.Activate();
                 var web = Web(item, "ItemWebView");
+                await App.EnsureWebView2Async(web);
                 var chunk = new TextChunk("Example") {
                     ItemId = 123, ItemKind = 1_000_000, ItemName = "Test <gear>", ItemDescription = "Line 1\n<em id='injected'>literal markup</em>",
                     ItemEquipLevel = 100, ItemLevel = 700, ItemCategory = "Armor", ItemMateriaSlots = 2,
@@ -47,7 +49,8 @@ namespace XIVChat_Desktop {
                     DataSource = new() { Language = "English", Version = "fixture-version", RetrievedAtUnixMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() },
                 };
                 item.UpdateItem(123, true, "Example", chunk);
-                await Wait(web, "document.body.innerText.includes('fixture-version')");
+                try { await Wait(web, "document.body.innerText.includes('fixture-version')"); }
+                catch (Exception ex) { throw new Exception(Control<TextBlock>(item, "CardStatusText").Text, ex); }
                 string text = await web.CoreWebView2.ExecuteScriptAsync("document.body.innerText");
                 Check(text.Contains("Defense +35") && text.Contains("Magic Defense +35") && !text.Contains("WRONG LEGACY"), "Structured HQ totals override legacy strings and preserve both defenses");
                 Check(await web.CoreWebView2.ExecuteScriptAsync("document.getElementById('injected') === null && document.body.innerText.includes('literal markup')") == "true", "Game descriptions render as text without HTML interpretation");
@@ -70,8 +73,9 @@ namespace XIVChat_Desktop {
                 await Wait(mapWeb, "document.body.innerText.includes('缺少完整地图数据')");
                 Check(await mapWeb.CoreWebView2.ExecuteScriptAsync("document.querySelector('.pin') === null && document.querySelector('a') === null") == "true", "Missing map ID does not guess a map or draw a marker");
                 map.UpdateLocation(123, 10, 20, "Old map", "test/01", null);
-                await Wait(mapWeb, "document.body.innerText.includes('Old map') && document.querySelector('a') !== null");
+                await Wait(mapWeb, "document.querySelector('a')?.href.includes('id=123') === true");
                 Check(await mapWeb.CoreWebView2.ExecuteScriptAsync("document.querySelector('.pin') === null") == "true", "Missing scale exposes an explicit external reference without assuming scale 100");
+                await TestWorkflow(item);
                 this.results.Add("All card checks completed");
                 File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "cards-smoke-results.txt"), this.results);
                 item.Close(); map.Close(); this.Exit();

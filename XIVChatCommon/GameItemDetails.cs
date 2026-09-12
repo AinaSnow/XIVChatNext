@@ -26,6 +26,11 @@ namespace XIVChatCommon {
         [Key(1)] public uint EquipSlotCategoryId { get; set; }
         [Key(2)] public string ClassJobs { get; set; } = "";
         [Key(3)] public bool CanBeHq { get; set; }
+        [Key(4)] public int[] EquipSlots { get; set; } = System.Array.Empty<int>();
+        [Key(5)] public uint[] AllowedJobs { get; set; } = System.Array.Empty<uint>();
+        [Key(6)] public bool SpecialEquipment { get; set; }
+        [Key(7)] public uint ClassJobCategoryId { get; set; }
+        [Key(8)] public uint ItemCategoryId { get; set; }
 
         // Join by parameter ID, never by translated labels or array position.
         public static List<ItemParameter> Merge(IEnumerable<ItemParameter> values, IEnumerable<ItemParameter> bonuses) {

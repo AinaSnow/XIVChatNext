@@ -32,7 +32,7 @@ public sealed partial class HistoryStore {
             using var r = cmd.ExecuteReader();
             while (r.Read()) {
                 token.ThrowIfCancellationRequested();
-                result.Add(new HistoryRow(r.GetInt64(0), r.GetString(1), r.GetString(2), MessagePackSerializer.Deserialize<ServerMessage>((byte[])r[3]), r.GetString(4), r.GetBoolean(5)));
+                result.Add(new HistoryRow(r.GetInt64(0), r.GetString(1), r.GetString(2), MessagePackSerializer.Deserialize<ServerMessage>((byte[])r[3]), r.GetString(4), r.GetBoolean(5), source));
             }
         }
         return result.OrderBy(r => r.Message.Timestamp).ThenBy(r => r.RowId).ToArray();
@@ -113,7 +113,7 @@ public sealed partial class HistoryStore {
             var state = new ConversationState(source, owner, reader.GetString(0), MessagePackSerializer.Deserialize<CharacterIdentity>((byte[])reader[1]),
                 reader.GetBoolean(2), reader.GetString(3), reader.GetString(4), reader.GetInt64(5), reader.GetInt64(6));
             HistoryRow? latest = reader.IsDBNull(7) ? null : new HistoryRow(reader.GetInt64(7), reader.GetString(8), owner,
-                MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[9]), reader.GetString(10), reader.GetBoolean(11));
+                MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[9]), reader.GetString(10), reader.GetBoolean(11), source);
             result.Add(new ConversationSnapshot(state, latest, reader.GetInt32(12)));
         }
         return result;
@@ -131,10 +131,10 @@ public sealed partial class HistoryStore {
 
     public Task<HistoryRow?> GetMessageAsync(string id) => Task.Run(() => {
         using var db = OpenReader();
-        using var cmd = Command(db, "SELECT row_id,id,owner_key,payload,note,bookmarked FROM messages WHERE id=$id", null, ("$id", id));
+        using var cmd = Command(db, "SELECT row_id,id,owner_key,payload,note,bookmarked,source FROM messages WHERE id=$id", null, ("$id", id));
         using var reader = cmd.ExecuteReader();
         return reader.Read() ? new HistoryRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
-            MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[3]), reader.GetString(4), reader.GetBoolean(5)) : null;
+            MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[3]), reader.GetString(4), reader.GetBoolean(5), reader.GetString(6)) : null;
     });
 
     public Task<AvatarMapping?> GetAvatarAsync(string key) => Task.Run(() => {

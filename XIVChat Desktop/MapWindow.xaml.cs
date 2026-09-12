@@ -6,36 +6,85 @@ using System.Globalization;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Threading;
+using Windows.ApplicationModel.DataTransfer;
+using XIVChatCommon;
+using XIVChatCommon.Message;
 
 namespace XIVChat_Desktop {
     public sealed partial class MapWindow : Window {
         private static MapWindow? _instance;
         private string? localizedPlaceName;
         private int renderVersion;
+        private CancellationTokenSource cancellation = new();
+        private CardOrigin? origin;
+        private TextChunk snapshot = new("");
+        private App App => (App)Application.Current;
+        private static string L(string key) => LocalizationHelper.GetString(key);
 
         public MapWindow() {
             this.InitializeComponent();
             Branding.ApplyWindowIcon(this);
             Localize.BindWindow(this, () => this.Title = string.IsNullOrEmpty(localizedPlaceName) ? LocalizationHelper.GetString("Map.Title") : $"XIVChat - {localizedPlaceName}");
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(950, 750));
+            Localize.BindWindow(this, () => { MapCopy.Content = L("Card.Copy"); MapFavorite.Content = L("Card.Favorite"); MapSources.Content = L("Card.MessageSources"); MapRefresh.Content = L("Card.Refresh"); });
             this.Closed += MapWindow_Closed;
         }
 
         private void MapWindow_Closed(object sender, WindowEventArgs args) {
             this.renderVersion++;
+            cancellation.Cancel(); cancellation.Dispose();
             _instance = null;
         }
 
-        public static void ShowMap(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null) {
+        public static void ShowMap(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null, CardOrigin? origin = null, GameDataSource? source = null) {
             if (_instance == null) {
                 _instance = new MapWindow();
             }
 
             _instance.Activate();
-            _instance.UpdateLocation(mapId, x, y, placeName, mapFilenameId, sizeFactor);
+            _instance.UpdateLocation(mapId, x, y, placeName, mapFilenameId, sizeFactor, origin, source);
         }
 
-        public async void UpdateLocation(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null) {
+        public async void UpdateLocation(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId = null, ushort? sizeFactor = null, CardOrigin? cardOrigin = null, GameDataSource? source = null) {
+            cancellation.Cancel(); cancellation.Dispose(); cancellation = new(); var token = cancellation.Token;
+            origin = cardOrigin ?? App.Cards.Origin(); renderVersion++;
+            snapshot = new TextChunk(placeName ?? "") { MapId = mapId, MapX = x, MapY = y, MapPlaceName = placeName, MapFilenameId = mapFilenameId, MapSizeFactor = sizeFactor, DataSource = source };
+            var target = snapshot; MapStatus.Text = L("Card.Loading");
+            RenderLocation(mapId, x, y, placeName, mapFilenameId, sizeFactor);
+            if (mapId is not > 0) { MapStatus.Text = L("Map.MissingMetadata"); return; }
+            try {
+                var loaded = await App.Cards.LoadAsync(origin, CardQuery.Map, mapId.Value, 0, 0, null, source, token);
+                if (token.IsCancellationRequested) return;
+                if (loaded.Page?.Map is { } map) {
+                    target.MapFilenameId = map.Filename; target.MapSizeFactor = map.SizeFactor; target.MapPlaceName = map.Name; target.DataSource = loaded.Page.Source;
+                }
+                MapStatus.Text = L(loaded.Cached ? "Card.Cached" : loaded.Page != null ? "Card.Ready" : "Card.DataUnavailable");
+                if (target.DataSource is { } provenance) MapStatus.Text += " · " + provenance.Language + " · " + provenance.Version;
+                string? displayName = target.MapPlaceName;
+                if (LocalizationHelper.LanguageCode.StartsWith("zh")) {
+                    var translated = await App.Cards.Chinese.MapAsync(mapId.Value, false, token);
+                    if (token.IsCancellationRequested) return;
+                    if (!string.IsNullOrEmpty(translated?.Name)) {
+                        displayName = translated.Name;
+                        MapStatus.Text += " · " + L("Card.ChineseSource") + " · " + translated.Version;
+                    }
+                }
+                RenderLocation(target.MapId, target.MapX, target.MapY, displayName, target.MapFilenameId, target.MapSizeFactor);
+            } catch (OperationCanceledException) { } catch (Exception ex) { if (!token.IsCancellationRequested) MapStatus.Text = ex.Message; }
+        }
+        private void Copy_Click(object sender, RoutedEventArgs e) {
+            var data = new DataPackage(); data.SetText(FormattableString.Invariant($"{localizedPlaceName} (#{snapshot.MapId}) X: {snapshot.MapX:0.0}, Y: {snapshot.MapY:0.0}")); Clipboard.SetContent(data); MapStatus.Text = L("Card.Copied");
+        }
+        private async void Favorite_Click(object sender, RoutedEventArgs e) {
+            var target = snapshot; var cardOrigin = origin;
+            if (cardOrigin == null || target.MapId is not > 0) { MapStatus.Text = L("Map.MissingMetadata"); return; }
+            try { var saved = await App.Cards.FavoriteAsync(cardOrigin, target, true, localizedPlaceName ?? L("Map.Title")); if (ReferenceEquals(snapshot, target)) { origin = cardOrigin with { FavoriteId = saved.Id }; MapStatus.Text = L("Card.Saved"); } }
+            catch (Exception ex) { MapStatus.Text = ex.Message; }
+        }
+        private async void Sources_Click(object sender, RoutedEventArgs e) { if (origin != null && App.Window != null) await App.Window.ShowCardSourcesAsync(origin); }
+        private void Refresh_Click(object sender, RoutedEventArgs e) => UpdateLocation(snapshot.MapId, snapshot.MapX, snapshot.MapY, snapshot.MapPlaceName, snapshot.MapFilenameId, snapshot.MapSizeFactor, origin, snapshot.DataSource);
+        private async void RenderLocation(uint? mapId, float? x, float? y, string? placeName, string? mapFilenameId, ushort? sizeFactor) {
             int request = ++this.renderVersion;
             localizedPlaceName = placeName;
             var currentMapFilenameId = mapFilenameId;

@@ -7,6 +7,16 @@
     mc:Ignorable="d"
    >
     <Grid>
-        <WebView2 x:Name="ItemWebView"/>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="12,10">
+            <Button x:Name="CardBack" Click="Back_Click" Visibility="Collapsed"/>
+            <Button x:Name="CardCopy" Click="Copy_Click"/>
+            <Button x:Name="CardFavorite" Click="Favorite_Click"/>
+            <Button x:Name="CardSources" Click="Sources_Click"/>
+            <Button x:Name="CardRefresh" Click="Refresh_Click"/>
+            <CheckBox x:Name="CardOriginal" Click="Original_Click" Margin="4,0"/>
+        </StackPanel>
+        <TextBlock x:Name="CardStatusText" Grid.Row="1" Margin="16,0,16,8" TextWrapping="Wrap" FontSize="12" Opacity="0.7"/>
+        <WebView2 x:Name="ItemWebView" Grid.Row="2"/>
     </Grid>
 </Window>

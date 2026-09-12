@@ -1,5 +1,33 @@
 # Regression checks
 
+## Phase 5 cards and favorites
+
+The regression runner now has 47 groups. Card coverage includes bounded requests and malformed
+payloads, HQ/ring/job/level comparisons, v5 migration, source/owner isolation, annotations that
+survive snapshot refresh, and deterministic Chinese API cache/offline/oversize/cancellation checks.
+
+The card UI suite uses a loopback encrypted server and a local HTTP fixture (no account or user
+configuration is loaded). It exercises WebView card actions, map metadata, pagination, late replies,
+favorites/source context, Chinese/original text, logout/role isolation and offline snapshots.
+
+```powershell
+$cardTargets = Join-Path (Get-Location) 'tests/DesktopCardsSmoke.targets'
+dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug "-p:CustomAfterMicrosoftCommonTargets=$cardTargets"
+& '.\XIVChat Desktop\bin\Debug\net9.0-windows10.0.26100.0\win-x64\XIVChat Desktop.exe'
+# Inspect cards-smoke-results.txt beside the executable; success ends with All card checks completed.
+# Restore the real entry point after testing:
+dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
+```
+
+Installed static-game-data checks require the local Dalamud SDK and an existing game installation:
+
+```powershell
+dotnet run --project tests/GameDataRegression/GameDataRegression.csproj -- 'C:/path/to/FINAL FANTASY XIV Online/game/sqpack'
+```
+
+This reads files only. It does not load the plugin into a game or validate real equipment changes.
+See [phase 5 implementation and limits](../docs/PHASE5_CARDS_2026-09-12.md).
+
 Run from the repository root on Windows with the project's .NET SDK installed.
 
 ## Protocol and configuration files

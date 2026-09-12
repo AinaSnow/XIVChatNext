@@ -13,7 +13,7 @@ internal static class NotificationTests {
         public TempDatabase() => System.IO.Directory.CreateDirectory(Directory);
         public void Dispose() => System.IO.Directory.Delete(Directory, true);
     }
-    internal const string DowngradeToV3 = "DROP INDEX events_source_owner_time; DROP INDEX events_time; ALTER TABLE events DROP COLUMN source; ALTER TABLE events DROP COLUMN is_read; PRAGMA user_version=3;";
+    internal const string DowngradeToV3 = "DROP TABLE card_cache; DROP TABLE card_equipment; DROP TABLE card_favorites; DROP INDEX events_source_owner_time; DROP INDEX events_time; ALTER TABLE events DROP COLUMN source; ALTER TABLE events DROP COLUMN is_read; PRAGMA user_version=3;";
     static readonly DateTime Now = new(2026, 9, 10, 12, 0, 0, DateTimeKind.Utc);
     static CharacterIdentity Owner(ulong id = 1) => new() { ContentId = id, Name = "Owner Name", HomeWorldId = 1, HomeWorld = "Home" };
     static void Check(bool ok, string why) { if (!ok) throw new Exception(why); }
@@ -136,6 +136,6 @@ internal static class NotificationTests {
             await store.PruneAsync(0, Now.AddDays(100)); Check((await store.GetEventsAsync(new("a"))).Count == 2, "Forever retention deleted events");
             await store.PruneAsync(90, Now.AddDays(100)); Check((await store.GetEventsAsync(new())).Count == 0 && await store.GetUnreadEventCountAsync(null, null) == 0, "Retention kept old events or unread count");
         }
-        Check(Directory.GetFiles(temp.Directory, "*.before-v4-*.bak").Length == 1, "Pre-v4 backup missing");
+        Check(Directory.GetFiles(temp.Directory, "*.before-v5-*.bak").Length == 1, "Pre-v5 backup missing");
     }
 }

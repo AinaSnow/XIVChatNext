@@ -7,6 +7,12 @@
     mc:Ignorable="d"
    >
     <Grid>
-        <WebView2 x:Name="MapWebView"/>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="12,10" Spacing="8">
+            <Button x:Name="MapCopy" Click="Copy_Click"/><Button x:Name="MapFavorite" Click="Favorite_Click"/>
+            <Button x:Name="MapSources" Click="Sources_Click"/><Button x:Name="MapRefresh" Click="Refresh_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="MapStatus" Grid.Row="1" Margin="16,0,16,8" TextWrapping="Wrap" FontSize="12" Opacity="0.7"/>
+        <WebView2 x:Name="MapWebView" Grid.Row="2"/>
     </Grid>
 </Window>

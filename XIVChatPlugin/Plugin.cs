@@ -32,6 +32,7 @@ namespace XIVChatPlugin {
         internal IObjectTable ObjectTable { get; }
 
         internal IPlayerState PlayerState { get; }
+        internal IGameInventory GameInventory { get; }
 
         internal IGameInteropProvider GameInteropProvider { get; }
 
@@ -59,7 +60,7 @@ namespace XIVChatPlugin {
         public Plugin(IDalamudPluginInterface pluginInterface, IPluginLog log, IChatGui chatGui,
             IClientState clientState, ICommandManager commandManager, IDataManager dataManager,
             IFramework framework, IObjectTable objectTable, IPlayerState playerState,
-            IGameInteropProvider gameInteropProvider, ISigScanner sigScanner) {
+            IGameInteropProvider gameInteropProvider, ISigScanner sigScanner, IGameInventory gameInventory) {
             // Assign dependencies before configuration, hooks, or the listener are initialized.
             this.Interface = pluginInterface;
             Log = log;
@@ -70,6 +71,7 @@ namespace XIVChatPlugin {
             this.Framework = framework;
             this.ObjectTable = objectTable;
             this.PlayerState = playerState;
+            this.GameInventory = gameInventory;
             this.GameInteropProvider = gameInteropProvider;
             this.SigScanner = sigScanner;
             this.Events = new InternalEvents();
@@ -184,6 +186,7 @@ namespace XIVChatPlugin {
             this.ClientState.Logout += this.Server.OnLogOut;
             this.ClientState.TerritoryChanged += this.Server.OnTerritoryChange;
             this.ClientState.CfPop += this.Server.OnDutyReady;
+            this.GameInventory.InventoryChanged += this.Server.GameCards.InventoryChanged;
         }
 
         private void StopServer() {
@@ -193,6 +196,7 @@ namespace XIVChatPlugin {
             this.ClientState.Logout -= this.Server.OnLogOut;
             this.ClientState.TerritoryChanged -= this.Server.OnTerritoryChange;
             this.ClientState.CfPop -= this.Server.OnDutyReady;
+            this.GameInventory.InventoryChanged -= this.Server.GameCards.InventoryChanged;
             this.Server.Dispose();
         }
 

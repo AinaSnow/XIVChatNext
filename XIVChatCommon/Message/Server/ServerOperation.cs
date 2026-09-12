@@ -15,5 +15,6 @@
         CommandResult = 13,
         FriendPresence = 14,
         GameEvent = 15,
+        GameCard = 16,
     }
 }

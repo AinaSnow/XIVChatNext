@@ -64,7 +64,7 @@ internal static class Phase3Tests {
                 try { await db.GetContextAsync("a2", token: cancelled.Token); throw new Exception("Cancellation ignored"); } catch (OperationCanceledException) { }
             }
             await using (var db = await HistoryStore.OpenAsync(path)) Check((await db.GetConversationsAsync("a", "cid:1")).Single(c => c.State.Pinned).State.Draft == "我的草稿", "Reopen lost draft");
-            Check(Directory.GetFiles(dir, "*.before-v4-*.bak").Length == 1, "Migration backup missing");
+            Check(Directory.GetFiles(dir, "*.before-v5-*.bak").Length == 1, "Migration backup missing");
         } finally { Directory.Delete(dir, true); }
     }
     private static string Entry(string id, string world = "PeerWorld") => $"<a class=\"entry__link\" href=\"/lodestone/character/{id}/\"><p class=\"entry__name\">Peer Name</p><p class=\"entry__world\">{world} [Light]</p></a>";

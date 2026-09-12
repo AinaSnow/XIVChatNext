@@ -617,4 +617,84 @@
   <data name="Item.GameDataSource" xml:space="preserve"><value>Game files · captured</value></data>
   <data name="Map.MissingMetadata" xml:space="preserve"><value>This record is missing map data required to place a reliable marker.</value></data>
   <data name="Map.ExternalMap" xml:space="preserve"><value>Look up on Waking Sands map (external reference)</value></data>
+  <data name="Workbench.Favorites" xml:space="preserve"><value>Favorites</value></data>
+  <data name="Card.Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Card.Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Card.Favorite" xml:space="preserve"><value>Favorite</value></data>
+  <data name="Card.MessageSources" xml:space="preserve"><value>Source messages</value></data>
+  <data name="Card.Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Card.Original" xml:space="preserve"><value>Game language</value></data>
+  <data name="Card.Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Card.DataUnavailable" xml:space="preserve"><value>Data unavailable. Connect to an updated plugin, or use a saved snapshot.</value></data>
+  <data name="Card.Cached" xml:space="preserve"><value>Saved snapshot · offline data</value></data>
+  <data name="Card.Ready" xml:space="preserve"><value>Game data loaded</value></data>
+  <data name="Card.Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="Card.Saved" xml:space="preserve"><value>Saved to this character’s favorites</value></data>
+  <data name="Card.Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Card.Remove" xml:space="preserve"><value>Remove favorite</value></data>
+  <data name="Card.More" xml:space="preserve"><value>Load more</value></data>
+  <data name="Card.NoFavorites" xml:space="preserve"><value>No saved item or map cards for this character.</value></data>
+  <data name="Card.NoMessageSources" xml:space="preserve"><value>No source message is saved for this card.</value></data>
+  <data name="Card.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Card.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Card.ChineseSource" xml:space="preserve"><value>Chinese text · FFCafe XIVAPI (chs)</value></data>
+  <data name="Card.Recipes" xml:space="preserve"><value>Crafting recipes</value></data>
+  <data name="Card.NoRecipes" xml:space="preserve"><value>No crafting recipe in these game files.</value></data>
+  <data name="Card.Yield" xml:space="preserve"><value>Yield</value></data>
+  <data name="Card.RequiresUnlock" xml:space="preserve"><value>May require a quest, recipe book, specialization, achievement or shop unlock. Check in game.</value></data>
+  <data name="Card.Truncated" xml:space="preserve"><value>More than 2,048 relationships; showing the first 2,048.</value></data>
+  <data name="Card.Acquisition" xml:space="preserve"><value>Acquisition</value></data>
+  <data name="Card.SourceScope" xml:space="preserve"><value>Confirmed gil shops and gathering locations. Other sources and unlock state are not exhaustive.</value></data>
+  <data name="Card.NoSources" xml:space="preserve"><value>No confirmed shop or gathering source in these game files.</value></data>
+  <data name="Card.GilShop" xml:space="preserve"><value>Gil shop</value></data>
+  <data name="Card.Gathering" xml:space="preserve"><value>Gathering</value></data>
+  <data name="Card.NpcUnknown" xml:space="preserve"><value>Shop NPC not confirmed</value></data>
+  <data name="Card.ListPrice" xml:space="preserve"><value>Listed price</value></data>
+  <data name="Card.Unknown" xml:space="preserve"><value>Unknown</value></data>
+  <data name="Card.OpenMap" xml:space="preserve"><value>Open map</value></data>
+  <data name="Card.PositionUnknown" xml:space="preserve"><value>Exact coordinates are not confirmed.</value></data>
+  <data name="Card.Timed" xml:space="preserve"><value>May be timed, ephemeral or hidden. Availability is not live.</value></data>
+  <data name="Card.Comparison" xml:space="preserve"><value>Compare equipped gear</value></data>
+  <data name="Card.NoEquipment" xml:space="preserve"><value>No equipped-item snapshot for this character. Connect while logged in to capture one.</value></data>
+  <data name="Card.EquipmentLive" xml:space="preserve"><value>Current equipped-item snapshot</value></data>
+  <data name="Card.EquipmentCached" xml:space="preserve"><value>Last saved equipment · not live</value></data>
+  <data name="Card.CompareSlot" xml:space="preserve"><value>Compare slot</value></data>
+  <data name="Card.SyncNote" xml:space="preserve"><value>Level sync is active. Values below are unsynced base values.</value></data>
+  <data name="Card.Candidate" xml:space="preserve"><value>This item</value></data>
+  <data name="Card.Equipped" xml:space="preserve"><value>Equipped</value></data>
+  <data name="Card.Difference" xml:space="preserve"><value>Base difference</value></data>
+  <data name="Card.ActualMateria" xml:space="preserve"><value>Materia on equipped item</value></data>
+  <data name="Card.CustomStats" xml:space="preserve"><value>Custom stats cannot be resolved reliably.</value></data>
+  <data name="Card.NoMateria" xml:space="preserve"><value>No materia recorded.</value></data>
+  <data name="Card.MateriaNote" xml:space="preserve"><value>Materia is listed separately and excluded from base differences. Meld caps, set bonuses, food and synchronization are not calculated.</value></data>
+  <data name="Card.Compare.NoSnapshot" xml:space="preserve"><value>No equipment snapshot.</value></data>
+  <data name="Card.Compare.MissingDetails" xml:space="preserve"><value>Insufficient structured stats for a difference.</value></data>
+  <data name="Card.Compare.WrongSlot" xml:space="preserve"><value>Different equipment slots; values are shown side by side.</value></data>
+  <data name="Card.Compare.WrongJob" xml:space="preserve"><value>This item does not match the snapshot’s job restrictions.</value></data>
+  <data name="Card.Compare.LevelTooLow" xml:space="preserve"><value>The snapshot’s level is below this item’s requirement.</value></data>
+  <data name="Card.Compare.Weapon" xml:space="preserve"><value>Weapons are shown side by side; damage and off-hand interactions are not scored.</value></data>
+  <data name="Card.Compare.SpecialEquipment" xml:space="preserve"><value>Special or multi-slot equipment is shown side by side.</value></data>
+  <data name="Card.Slot.0" xml:space="preserve"><value>Main hand</value></data>
+  <data name="Card.Slot.1" xml:space="preserve"><value>Off hand</value></data>
+  <data name="Card.Slot.2" xml:space="preserve"><value>Head</value></data>
+  <data name="Card.Slot.3" xml:space="preserve"><value>Body</value></data>
+  <data name="Card.Slot.4" xml:space="preserve"><value>Hands</value></data>
+  <data name="Card.Slot.5" xml:space="preserve"><value>Waist</value></data>
+  <data name="Card.Slot.6" xml:space="preserve"><value>Legs</value></data>
+  <data name="Card.Slot.7" xml:space="preserve"><value>Feet</value></data>
+  <data name="Card.Slot.8" xml:space="preserve"><value>Ears</value></data>
+  <data name="Card.Slot.9" xml:space="preserve"><value>Neck</value></data>
+  <data name="Card.Slot.10" xml:space="preserve"><value>Wrists</value></data>
+  <data name="Card.Slot.11" xml:space="preserve"><value>Right ring</value></data>
+  <data name="Card.Slot.12" xml:space="preserve"><value>Left ring</value></data>
+  <data name="Card.Slot.13" xml:space="preserve"><value>Soul crystal</value></data>
+  <data name="Card.CurrentOwner" xml:space="preserve"><value>Current character</value></data>
+  <data name="Card.AllOwners" xml:space="preserve"><value>All characters and servers</value></data>
+  <data name="Card.SavedCards" xml:space="preserve"><value>Saved cards</value></data>
+  <data name="Card.Recent" xml:space="preserve"><value>Recent appearances</value></data>
+  <data name="Card.Search" xml:space="preserve"><value>Name or note</value></data>
+  <data name="Card.Group" xml:space="preserve"><value>Group</value></data>
+  <data name="Card.Tags" xml:space="preserve"><value>Tags</value></data>
+  <data name="Card.Edit" xml:space="preserve"><value>Edit details</value></data>
+  <data name="Card.RecentScope" xml:space="preserve"><value>Cards extracted from recent messages; load more to scan older messages.</value></data>
 </root>

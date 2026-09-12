@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+    <DalamudLibPath>$(APPDATA)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Dalamud"><HintPath>$(DalamudLibPath)Dalamud.dll</HintPath></Reference>
+    <Reference Include="Lumina"><HintPath>$(DalamudLibPath)Lumina.dll</HintPath></Reference>
+    <Reference Include="Lumina.Excel"><HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath></Reference>
+    <ProjectReference Include="../../XIVChatCommon/XIVChatCommon.csproj"/>
+    <Compile Include="../../XIVChatPlugin/GameCardCatalog.cs" Link="GameCardCatalog.cs"/>
+    <Compile Include="../../XIVChatPlugin/GameSheetSource.cs" Link="GameSheetSource.cs"/>
+    <Compile Include="../../XIVChatPlugin/LinkMetadataCache.cs" Link="LinkMetadataCache.cs"/>
+    <Compile Include="../../XIVChatPlugin/BoundedCache.cs" Link="BoundedCache.cs"/>
+  </ItemGroup>
+</Project>
