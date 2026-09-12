@@ -104,7 +104,10 @@ namespace XIVChatPlugin {
                 Parameters = GameItemDetails.Merge(values, bonuses), EquipSlotCategoryId = row.EquipSlotCategory.RowId,
                 ClassJobs = row.ClassJobCategory.ValueNullable?.Name.ExtractText() ?? "", CanBeHq = row.CanBeHq,
                 ClassJobCategoryId = row.ClassJobCategory.RowId, ItemCategoryId = row.ItemUICategory.RowId,
-                SpecialEquipment = row.ItemSpecialBonus.RowId != 0 || row.EquipRestriction.RowId != 0 || row.Rarity == 7,
+                // Row 1 is the ordinary empty bonus / unrestricted race-and-gender entry.
+                // Treating any nonzero link as special suppresses comparisons for normal gear.
+                SpecialEquipment = row.ItemSpecialBonus.RowId > 1 || row.EquipRestriction.RowId > 1 || row.Rarity == 7 ||
+                    values.Any(p => p.Id is 55 or 56), // Level/job-dependent primary and secondary attribute correction.
             };
             if (row.EquipSlotCategory.ValueNullable is { } slot) {
                 var flags = new[] { slot.MainHand, slot.OffHand, slot.Head, slot.Body, slot.Gloves, slot.Waist,
@@ -115,7 +118,12 @@ namespace XIVChatPlugin {
                 // Category column identifiers use English abbreviations, independently of displayed sheet language.
                 details.AllowedJobs = this.data.GameData.Excel.GetSheet<ClassJob>(Lumina.Data.Language.English).Where(job => {
                     var abbreviation = job.Abbreviation.ExtractText();
-                    return typeof(ClassJobCategory).GetProperty(abbreviation)?.GetValue(jobCategory) is true;
+                    var column = typeof(ClassJobCategory).GetProperty(abbreviation);
+                    // The installed API 14 sheet schema still names the BST (job 43) flag Unknown0.
+                    // Prefer the named field when a newer schema exposes it; do not infer other jobs.
+                    if (column == null && job.RowId == 43 && abbreviation == "BST")
+                        column = typeof(ClassJobCategory).GetProperty("Unknown0");
+                    return column?.GetValue(jobCategory) is true;
                 }).Select(job => job.RowId).Take(64).ToArray();
             }
             var stats = details.Parameters.Where(p => p.Value(kind == ItemKind.Hq) != 0)

@@ -2,6 +2,18 @@
 
 ## Phase 5 cards and favorites
 
+Live equipment follow-up (2026-09-12): the installed-game suite now has 16 checks,
+including ordinary default restriction rows, BST's unnamed category flag, real HQ deltas,
+and special scaling equipment. See [live results](../docs/PHASE5_LIVE_INTEGRATION_2026-09-12.md).
+To inspect the latest equipment received and persisted by the normal desktop client:
+
+```powershell
+dotnet run --project tests/EquipmentSnapshotInspect/EquipmentSnapshotInspect.csproj
+# Optional argument: a different history.sqlite3 path. The database is opened read-only.
+```
+
+The persisted snapshot is always non-live; verify the current UI and connection separately.
+
 The regression runner now has 47 groups. Card coverage includes bounded requests and malformed
 payloads, HQ/ring/job/level comparisons, v5 migration, source/owner isolation, annotations that
 survive snapshot refresh, and deterministic Chinese API cache/offline/oversize/cancellation checks.

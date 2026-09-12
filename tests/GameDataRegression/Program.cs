@@ -22,6 +22,21 @@ using var catalog = new GameCardCatalog(manager, metadata);
 void Check(bool value, string label) { if (!value) throw new Exception(label); Console.WriteLine("PASS " + label); }
 ClientGameCard Request(CardQuery query, uint id, uint kind = 0) => new() { RequestId = Guid.NewGuid().ToString("N"), Query = query, Id = id, ItemKind = kind };
 var items = manager.GetExcelSheet<Item>();
+var helmetRow = items.GetRow(2753);
+var helmet = metadata.ItemChunk(2753, ItemKind.Normal)!;
+Console.WriteLine($"INFO Steel Sallet: restriction={helmetRow.EquipRestriction.RowId}, bonus={helmetRow.ItemSpecialBonus.RowId}, rarity={helmetRow.Rarity}, slots={string.Join(',', helmet.ItemDetails!.EquipSlots)}");
+Check(GearComparer.Compare(helmet, new EquipmentSnapshot { ClassJobId = 43, Level = 50 },
+    new CardEquippedItem { Slot = 2, Item = helmet }).Reason == GearComparisonReason.Comparable,
+    "Ordinary Steel Sallet compares against itself for the live Beastmaster character");
+var helmetHq = metadata.ItemChunk(2753, ItemKind.Hq)!;
+var helmetComparison = GearComparer.Compare(helmetHq, new EquipmentSnapshot { ClassJobId = 43, Level = 50 },
+    new CardEquippedItem { Slot = 2, Item = helmet });
+Check(helmetComparison.Reason == GearComparisonReason.Comparable && helmetComparison.Parameters.Single(p => p.Id == 21).Delta == 6 &&
+    helmetComparison.Parameters.Single(p => p.Id == 22).Delta == 1, "Real HQ helmet comparison includes defense and direct-hit deltas");
+Check(metadata.ItemChunk(41081, ItemKind.Normal)!.ItemDetails!.SpecialEquipment,
+    "Azeyma's Earrings with special scaling remain excluded from ordinary comparison");
+Check(metadata.ItemChunk(50738, ItemKind.Normal)!.ItemDetails!.AllowedJobs.SequenceEqual(new uint[] { 43 }),
+    "Beastmaster-specific weapon resolves only BST from the installed unnamed category flag");
 var weapon = items.First(i => i.CanBeHq && i.DamagePhys > 0 && i.BaseParamSpecial.Any(p => p.RowId == 12));
 var card = catalog.Read(Request(CardQuery.Item, weapon.RowId, (uint)ItemKind.Hq));
 var index = Enumerable.Range(0, weapon.BaseParamSpecial.Count).First(i => weapon.BaseParamSpecial[i].RowId == 12);
