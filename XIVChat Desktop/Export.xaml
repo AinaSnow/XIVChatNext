@@ -1,132 +1,24 @@
 <Window x:Class="XIVChat_Desktop.Export"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:local="using:XIVChat_Desktop"
-        xmlns:cc="using:XIVChat_Desktop.Controls"
-        mc:Ignorable="d"
-        x:Name="Main"
-        d:DataContext="{d:DesignInstance local:Export}">
-    <Grid Margin="8" DataContext="{x:Bind}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <ItemsControl Grid.Row="0"
-                      Grid.Column="0"
-                      Padding="4"
-                      ItemsSource="{x:Bind ExportTab, Mode=OneWay}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel VerticalAlignment="Bottom" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <cc:MessageTextBlock
-                        ProcessMarkdown="{Binding ExportTab.ProcessMarkdown, ElementName=Main, Mode=OneWay}"
-                        Message="{Binding}"
-                        ShowTimestamps="{Binding ShowTimestamps, ElementName=Main, Mode=OneWay}" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <Grid Grid.Row="0"
-              Grid.Column="1"
-              Margin="8, 0, 0, 0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <ScrollViewer Grid.Row="0"
-                          Margin="8,0,0, 8">
-                <StackPanel Margin="0,0,24,0">
-                    <CheckBox local:Localize.Content="ManageTab.ProcessMarkdown"
-                              Checked="Markdown_Checked"
-                              Unchecked="Markdown_Unchecked"
-                              IsChecked="{x:Bind ExportTab.ProcessMarkdown, Mode=TwoWay}" />
-
-                    <CheckBox local:Localize.Content="Export.ShowTimestamps"
-                              IsChecked="{x:Bind ShowTimestamps, Mode=TwoWay}" />
-
-                    <DatePicker x:Name="AfterDatePicker"
-                                local:Localize.Header="Export.From"
-                                DateChanged="AfterDatePicker_OnDateChanged" />
-                    <TimePicker x:Name="AfterTimePicker"
-                                TimeChanged="AfterTimePicker_OnTimeChanged" />
-                    <Button Margin="0,4,0,8"
-                            local:Localize.Content="Export.Clear"
-                            Click="AfterClear_Click" />
-
-                    <DatePicker x:Name="BeforeDatePicker"
-                                local:Localize.Header="Export.To"
-                                DateChanged="BeforeDatePicker_OnDateChanged" />
-                    <TimePicker x:Name="BeforeTimePicker"
-                                TimeChanged="BeforeTimePicker_OnTimeChanged" />
-                    <Button Margin="0,4,0,8"
-                            local:Localize.Content="Export.Clear"
-                            Click="BeforeClear_Click" />
-
-                    <Button Margin="0,8,0,8"
-                            local:Localize.Content="Export.FilterMessages">
-                        <Button.Flyout>
-                            <Flyout>
-                                <Grid Height="300">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <ListBox MinWidth="100"
-                                             ScrollViewer.VerticalScrollBarVisibility="Visible"
-                                             x:Name="SendersFilterSource"
-                                             ItemsSource="{x:Bind Senders, Mode=OneWay}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,16,0"
-                                                           Text="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                    <StackPanel Grid.Column="1"
-                                                VerticalAlignment="Center"
-                                                Margin="8,0,8,0">
-                                        <Button Click="RightArrow_Click"
-                                                Content="→" />
-                                        <Button Click="LeftArrow_Click"
-                                                Margin="0,4,0,0"
-                                                Content="←" />
-                                    </StackPanel>
-                                    <ListBox Grid.Column="2"
-                                             MinWidth="100"
-                                             ScrollViewer.VerticalScrollBarVisibility="Visible"
-                                             x:Name="SenderFiltersDest"
-                                             ItemsSource="{x:Bind SenderFilters, Mode=OneWay}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Margin="0,0,16,0"
-                                                           Text="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Grid>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <TabView x:Name="Tabs" />
-                </StackPanel>
-            </ScrollViewer>
-
-            <Button Grid.Row="1"
-                    local:Localize.Content="Dialog.Save"
-                    Click="Save_Click"
-                    HorizontalAlignment="Right" />
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid x:Name="Root" Padding="20" RowSpacing="12" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Spacing="6"><TextBlock x:Name="Scope" TextWrapping="Wrap" FontSize="17"/><TextBlock x:Name="Explanation" TextWrapping="Wrap" FontSize="12" Opacity="0.75"/></StackPanel>
+        <TextBox x:Name="Keyword" Grid.Row="1"/>
+        <Grid Grid.Row="2" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <StackPanel Spacing="6"><CalendarDatePicker x:Name="FromDate"/><TimePicker x:Name="FromTime" ClockIdentifier="24HourClock"/></StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6"><CalendarDatePicker x:Name="UntilDate"/><TimePicker x:Name="UntilTime" ClockIdentifier="24HourClock"/></StackPanel>
+        </Grid>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12"><CheckBox x:Name="Timestamps" IsChecked="True"/><Button x:Name="PreviewButton" Click="Preview_Click"/><Button x:Name="ClearDates" Click="ClearDates_Click"/></StackPanel>
+        <ListView x:Name="PreviewList" Grid.Row="4" SelectionMode="None" HorizontalContentAlignment="Stretch">
+            <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" IsTextSelectionEnabled="True"/></DataTemplate></ListView.ItemTemplate>
+        </ListView>
+        <Grid Grid.Row="5" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock x:Name="Status" TextWrapping="Wrap" VerticalAlignment="Center"/><Button x:Name="CancelButton" Grid.Column="1" Click="Cancel_Click"/><Button x:Name="SaveButton" Grid.Column="2" Click="Save_Click"/>
         </Grid>
     </Grid>
 </Window>

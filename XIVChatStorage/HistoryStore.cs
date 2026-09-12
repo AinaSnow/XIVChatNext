@@ -9,7 +9,7 @@ namespace XIVChatStorage;
 public sealed record HistoryQuery(string? OwnerKey = null, string? Text = null, ushort? Channel = null,
     string? Person = null, DateTime? FromUtc = null, DateTime? UntilUtc = null,
     long BeforeRow = long.MaxValue, int Limit = 100, DateTime? BeforeTimestampUtc = null, string? Source = null,
-    string? PeerKey = null, bool BookmarksOnly = false);
+    string? PeerKey = null, bool BookmarksOnly = false, string? FavoriteId = null, string? RecordId = null);
 public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMessage Message, string Note, bool Bookmarked, string Source = "") {
     public ServerMessage Message { get; init; } = Attach(Message, Id, Source);
     private static ServerMessage Attach(ServerMessage message, string id, string source) {
@@ -172,10 +172,32 @@ public sealed partial class HistoryStore : IAsyncDisposable {
     });
 
     public Task<IReadOnlyList<HistoryRow>> SearchAsync(HistoryQuery query, CancellationToken token = default) => Task.Run<IReadOnlyList<HistoryRow>>(() => {
+        var rows = new List<HistoryRow>();
+        ReadHistory(query, rows.Add, token, false); return rows;
+    }, token);
+
+    /// <summary>Streams a consistent SQLite snapshot in chronological order with bounded managed memory.</summary>
+    public Task<long> ExportAsync(HistoryQuery query, TextWriter writer, bool rtf, bool timestamps,
+        Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default) => Task.Run(() => {
+        long count = 0;
+        if (rtf) writer.Write("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Segoe UI;}}\\uc1\\f0 ");
+        ReadHistory(query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null }, row => {
+            if (filter != null && !filter(row.Message)) return;
+            var line = HistoryExport.Line(row.Message, timestamps);
+            writer.Write(rtf ? HistoryExport.EscapeRtf(line) + "\\par\n" : line + Environment.NewLine);
+            if (++count % 500 == 0) progress?.Report(count);
+        }, token, true);
+        if (rtf) writer.Write("}");
+        writer.Flush(); progress?.Report(count); return count;
+    }, token);
+
+    private long ReadHistory(HistoryQuery query, Action<HistoryRow> consume, CancellationToken token, bool export) {
         token.ThrowIfCancellationRequested();
         using var db = this.OpenReader();
         var conditions = new List<string>();
+        using var tx = db.BeginTransaction(deferred: true);
         using var cmd = db.CreateCommand();
+        cmd.Transaction = tx;
         cmd.Parameters.AddWithValue("$before", query.BeforeRow);
         cmd.Parameters.AddWithValue("$limit", Math.Clamp(query.Limit, 1, 500));
         if (query.BeforeTimestampUtc is { } beforeTime) {
@@ -190,6 +212,8 @@ public sealed partial class HistoryStore : IAsyncDisposable {
         Filter("m.owner_key=$owner", "$owner", query.OwnerKey);
         Filter("m.source=$source", "$source", query.Source);
         Filter("m.peer_key=$peer", "$peer", query.PeerKey);
+        Filter("m.id=$record", "$record", query.RecordId);
+        Filter("EXISTS (SELECT 1 FROM favorite_sources fs JOIN card_favorites cf ON cf.id=fs.favorite_id WHERE fs.message_id=m.id AND cf.id=$favorite AND cf.source=m.source AND cf.owner_key=m.owner_key)", "$favorite", query.FavoriteId);
         if (query.BookmarksOnly) conditions.Add("m.bookmarked=1");
         Filter("m.channel=$channel", "$channel", query.Channel);
         Filter("instr(m.person,$person)>0", "$person", query.Person);
@@ -203,26 +227,27 @@ public sealed partial class HistoryStore : IAsyncDisposable {
             } else Filter("(instr(lower(m.search_text),lower($text))>0 OR instr(lower(m.note),lower($text))>0)", "$text", query.Text);
         }
         cmd.CommandText = "SELECT m.row_id,m.id,m.owner_key,m.payload,m.note,m.bookmarked,m.source FROM messages m WHERE "
-            + string.Join(" AND ", conditions) + " ORDER BY m.timestamp DESC,m.row_id DESC LIMIT $limit";
+            + string.Join(" AND ", conditions) + (export ? " ORDER BY m.timestamp ASC,m.row_id ASC" : " ORDER BY m.timestamp DESC,m.row_id DESC LIMIT $limit");
         // SqliteCommand.Cancel is a no-op. Interrupt native execution and cover the pre-execution race with a progress callback.
         SQLitePCL.raw.sqlite3_progress_handler(db.Handle, 1000, _ => token.IsCancellationRequested ? 1 : 0, null);
         using var registration = token.Register(() => SQLitePCL.raw.sqlite3_interrupt(db.Handle));
         try {
             token.ThrowIfCancellationRequested();
             using var reader = cmd.ExecuteReader();
-            var rows = new List<HistoryRow>();
+            long count = 0;
             while (reader.Read()) {
                 token.ThrowIfCancellationRequested();
-                rows.Add(new HistoryRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
+                consume(new HistoryRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
                     MessagePackSerializer.Deserialize<ServerMessage>((byte[])reader[3]), reader.GetString(4), reader.GetBoolean(5), reader.GetString(6)));
+                count++;
             }
-            return rows;
+            return count;
         } catch (SqliteException) when (token.IsCancellationRequested) {
             throw new OperationCanceledException(token);
         } finally {
             SQLitePCL.raw.sqlite3_progress_handler(db.Handle, 0, null, null);
         }
-    }, token);
+    }
 
     public Task AnnotateAsync(string id, string note, bool bookmarked) => this.Enqueue((db, tx) => {
         using var command = Command(db, "UPDATE messages SET note=$note,bookmarked=$bookmark WHERE id=$id", tx,

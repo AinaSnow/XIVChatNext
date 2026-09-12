@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'XIVChat Desktop'">
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <StartupObject>XIVChat_Desktop.DesktopWorkspaceSmokeProgram</StartupObject>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'XIVChat Desktop'">
+    <Compile Include="$(MSBuildThisFileDirectory)DesktopWorkspaceSmoke.cs" />
+  </ItemGroup>
+</Project>

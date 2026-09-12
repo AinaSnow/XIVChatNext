@@ -8,6 +8,10 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Window layouts validate identities, bounded state and monitor geometry", Phase7Tests.LayoutValidation),
+    ("Window layouts roundtrip and preserve data on rejected/corrupt writes", Phase7Tests.LayoutStorage),
+    ("Full-history export shares filters and holds a consistent concurrent snapshot", Phase7Tests.ExportFiltersAndSnapshot),
+    ("RTF escapes controls, CJK, emoji and optional timestamps", Phase7Tests.RtfEncoding),
     ("Screenshot wire keeps old fields and rejects oversized or malformed requests", ScreenshotTests.Protocol),
     ("Screenshot assembly rejects conflicting, incomplete and stale chunks", ScreenshotTests.Assembly),
     ("Screenshot encoding and bulk queues retain strict byte budgets", ScreenshotTests.Budgets),

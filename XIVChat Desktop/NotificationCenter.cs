@@ -42,7 +42,7 @@ namespace XIVChat_Desktop {
         public void Activate(NotificationTarget target) => app.Dispatch(() => {
             if (disposed || !target.Valid) return;
             if (app.Window == null) { pendingTarget = target; return; }
-            _ = app.Window.OpenNotificationTargetAsync(target);
+            _ = app.Workspace.OpenNotificationAsync(target);
         });
 
         public void WindowReady() {
@@ -65,7 +65,7 @@ namespace XIVChat_Desktop {
             var title = peer?.Name ?? message.GetSenderPlayer()?.Name ?? L("Notify.KeywordTitle");
             var candidate = new NotificationCandidate(message.MessageId ?? Guid.NewGuid().ToString("N"), tell ? NotificationKind.Tell : NotificationKind.Keyword,
                 target, title, Limit(message.ContentText, 500), message.Timestamp, ConnectionId: connection.Id, OwnerEpoch: app.Session.Player?.OwnerEpoch);
-            policy.Enqueue(candidate, options, DateTime.UtcNow, DateTime.Now, app.Window?.IsReadingNotification(target) == true);
+            policy.Enqueue(candidate, options, DateTime.UtcNow, DateTime.Now, app.Workspace.IsReading(target));
         }
 
         public async Task ReceiveEventAsync(string source, ServerGameEvent entry, Connection? connection, bool notify = true) {
@@ -137,7 +137,7 @@ namespace XIVChat_Desktop {
         private void Tick(object? sender, object args) {
             if (disposed) return;
             foreach (var delivery in policy.Drain(app.Config.NotificationOptions, DateTime.UtcNow, DateTime.Now,
-                target => app.Window?.IsReadingNotification(target) == true, Applicable)) {
+                target => app.Workspace.IsReading(target), Applicable)) {
                 try {
                     if (Sink?.Show(delivery) != true && PlatformError == null) {
                         PlatformError = L("Notify.SystemUnavailable"); StatusChanged?.Invoke();

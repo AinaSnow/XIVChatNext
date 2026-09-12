@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -8,6 +9,9 @@ using Windows.UI;
 namespace XIVChat_Desktop {
     public static class ThemeHelper {
         private static readonly HashSet<Window> ActiveWindows = new HashSet<Window>();
+
+        public static Microsoft.UI.Xaml.Controls.Grid CreateSurface() => (Microsoft.UI.Xaml.Controls.Grid)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<Grid xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Background='{ThemeResource ApplicationPageBackgroundThemeBrush}'/>");
 
         public static void InitializeWindow(Window window) {
             Branding.ApplyWindowIcon(window);
@@ -30,6 +34,12 @@ namespace XIVChat_Desktop {
             } catch { }
 
             ApplyCurrentThemeToWindow(window);
+        }
+
+        internal static void CloseAuxiliaryWindows(Window main) {
+            Window[] snapshot;
+            lock (ActiveWindows) snapshot = ActiveWindows.Where(w => !ReferenceEquals(w, main)).ToArray();
+            foreach (var window in snapshot) window.Close();
         }
 
         public static void ApplyTheme(Theme theme) {

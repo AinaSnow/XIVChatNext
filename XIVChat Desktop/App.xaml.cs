@@ -16,6 +16,8 @@ namespace XIVChat_Desktop {
         private ChatSession? session;
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
         private WorkbenchSession? workbench;
+        private WorkspaceWindows? workspace;
+        public WorkspaceWindows Workspace => workspace ??= new WorkspaceWindows(this);
         private GameCardSession? cards;
         private ScreenshotSession? screenshots;
         public ScreenshotSession Screenshots => this.screenshots ??= new ScreenshotSession(this);
@@ -145,6 +147,7 @@ namespace XIVChat_Desktop {
                 ApplyTheme(this.Config.Theme);
                 ApplyAlwaysOnTop(this.Config.AlwaysOnTop);
                 wnd.Activate();
+                await this.Workspace.RestoreAsync();
                 this.Notifier.WindowReady();
 
                 if (this.configLoadException != null || this.configRecoveredFromBackup) {
@@ -215,11 +218,13 @@ namespace XIVChat_Desktop {
         }
 
         public async Task StopSessionAsync() {
+            await Export.CancelAllAsync();
             ScreenshotWindow.CloseActive();
             this.screenshots?.Close();
             this.Disconnect();
             if (this.connectionTask != null) await this.connectionTask;
             if (this.workbench != null) await this.workbench.FlushAsync();
+            if (this.workspace != null) await this.workspace.SaveAsync();
             if (this.notifier != null) { await this.notifier.FlushAsync(); this.notifier.Dispose(); }
             this.avatars?.Dispose();
             if (this.Session.Store != null) {

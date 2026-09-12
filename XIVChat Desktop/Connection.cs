@@ -35,6 +35,7 @@ namespace XIVChat_Desktop {
         public string Source => this.source;
         public string Endpoint => this.host + ":" + this.port;
         public PlayerData? LastPlayer { get; private set; }
+        public bool SupportsGuardedCommands => this.capabilities?.GuardedCommands == true;
         public bool SupportsDirectedTell => this.capabilities?.DirectedTell == true;
         public bool SupportsGameEvents => this.capabilities?.GameEvents == true;
         public event Action<ServerCommandResult>? CommandResult;
@@ -71,19 +72,22 @@ namespace XIVChat_Desktop {
             app.Config.Notifications.CollectionChanged += this.CollectionsChanged;
         }
 
-        public bool SendMessage(string message) {
-            if (!this.Available || this.cancel.IsCancellationRequested || string.IsNullOrWhiteSpace(message)) return false;
+        public bool SendMessage(string message) => SendMessageWithId(message) != null;
+
+        public string? SendMessageWithId(string message) {
+            if (!this.Available || this.cancel.IsCancellationRequested || string.IsNullOrWhiteSpace(message)) return null;
             if (System.Text.Encoding.UTF8.GetByteCount(message) > 8 * 1024) {
-                this.ReportCommandFailure(CommandFailure.InvalidRequest); return false;
+                this.ReportCommandFailure(CommandFailure.InvalidRequest); return null;
             }
             var player = this.commandPlayer;
             if (this.capabilities?.GuardedCommands == true && (player?.Identity?.Key == null || this.channelRevision == null)) {
-                this.ReportCommandFailure(CommandFailure.NotLoggedIn); return false;
+                this.ReportCommandFailure(CommandFailure.NotLoggedIn); return null;
             }
+            var requestId = Guid.NewGuid().ToString("N");
             return this.QueuePacket(new ClientMessage(message) {
-                RequestId = Guid.NewGuid().ToString("N"), ExpectedOwnerKey = player?.Identity?.Key,
+                RequestId = requestId, ExpectedOwnerKey = player?.Identity?.Key,
                 ExpectedOwnerEpoch = player?.OwnerEpoch, ExpectedChannelRevision = this.channelRevision,
-            }.Encode());
+            }.Encode()) ? requestId : null;
         }
 
         public void ChangeChannel(InputChannel channel) {

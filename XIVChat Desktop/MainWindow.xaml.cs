@@ -77,12 +77,11 @@ namespace XIVChat_Desktop {
             AppWindow.Closing += async (_, args) => {
                 if (allowClose) return;
                 args.Cancel = true;
-                if (stopping) return;
-                stopping = true; SaveComposer(); historyCancellation?.Cancel(); conversationLoad?.Cancel();
-                try { await App.StopSessionAsync(); } finally { allowClose = true; Close(); }
+                await App.Workspace.CloseMainAsync();
             };
             Closed += (_, _) => DisposeViews();
             initialized = true;
+            InitializePopoutDrag();
             Localize.BindWindow(this, UpdateLocalizations); ObserveConnection();
             ChannelList.SelectedIndex = App.Config.Tabs.Count > 0 ? 0 : -1;
             Navigate("channels");
@@ -97,6 +96,10 @@ namespace XIVChat_Desktop {
             Title = "XIVChat Next";
             MenuConnect.Text = L("Menu.Connect"); MenuDisconnect.Text = L("Menu.Disconnect"); MenuMap.Text = L("Workbench.Map");
             MenuScreenshot.Text = L("Screenshot.Title");
+            MenuLayout.Text = L("Windows.Layouts");
+            ToolTipService.SetToolTip(PopoutButton, L("Windows.Popout"));
+            ToolTipService.SetToolTip(PopoutDragHandle, L("Windows.DragOut"));
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PopoutButton, L("Windows.Popout"));
             ToolTipService.SetToolTip(ScreenshotButton, L("Screenshot.Title"));
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ScreenshotButton, L("Screenshot.Title"));
             MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
@@ -355,9 +358,11 @@ namespace XIVChat_Desktop {
         private void ShowEmpty() {
             ChatHost.Content = new TextBlock { Text = L(section == "friends" ? "FriendList.Select" : "Conversation.Select"), TextWrapping = TextWrapping.Wrap, Opacity = .6, Margin = new Thickness(24), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             ChatTitle.Text = L("Workbench." + (section == "friends" ? "Friends" : "Conversations")); ChatSubtitle.Text = ""; ComposerPanel.Visibility = Visibility.Collapsed;
+            PopoutButton.IsEnabled = false;
             UpdateChatActions(false); EditChannelButton.Visibility = Visibility.Collapsed;
         }
         private void UpdateChatActions(bool conversation) {
+            PopoutButton.IsEnabled = section is "channels" or "conversations" or "friends";
             PeerAvatar.Visibility = V(conversation); PinConversationButton.Visibility = V(conversation); ConversationNoteButton.Visibility = V(conversation);
             AvatarButton.Visibility = V(conversation); LoadOlderButton.Visibility = V(conversation); EditChannelButton.Visibility = V(!conversation); BackHistoryButton.Visibility = Visibility.Collapsed;
         }
@@ -419,8 +424,8 @@ namespace XIVChat_Desktop {
         private void Disconnect_Click(object sender, RoutedEventArgs e) => App.Disconnect();
         private void Configuration_Click(object sender, RoutedEventArgs e) => new ConfigWindow(App.Config).Activate();
         private void EditChannel_Click(object sender, RoutedEventArgs e) { if (selectedChannel != null) new ManageTab(selectedChannel).Activate(); }
-        private void Export_Click(object sender, RoutedEventArgs e) => new Export().Activate();
-        private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+        private void Export_Click(object sender, RoutedEventArgs e) => OpenExport();
+        private async void Exit_Click(object sender, RoutedEventArgs e) => await App.Workspace.ShutdownAsync();
         private void Map_Click(object sender, RoutedEventArgs e) => MapWindow.ShowMap(CurrentPlayerData?.mapId, CurrentPlayerData?.mapX, CurrentPlayerData?.mapY, LocationText.Text, CurrentPlayerData?.mapFilenameId, CurrentPlayerData?.mapSizeFactor);
         private void LocationBtn_Click(object sender, RoutedEventArgs e) => Map_Click(sender, e);
         private void LoadOlder_Click(object sender, RoutedEventArgs e) => _ = LoadConversationAsync(true);

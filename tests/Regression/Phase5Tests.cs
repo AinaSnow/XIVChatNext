@@ -78,6 +78,12 @@ internal static class Phase5Tests {
             Check(snapshot.IsLive && (await store.GetEquipmentAsync("source", "cid:1"))?.IsLive == false && await store.GetEquipmentAsync("other", "cid:1") == null, "Persisted equipment claimed live or crossed server");
             var favorite = new CardFavorite { Id = "favorite", Source = "source", OwnerKey = "cid:1", Name = "Test item", Snapshot = Item(), SavedAt = 100 };
             await store.SaveCardFavoriteAsync(favorite, "origin");
+            using var exportedSource = new StringWriter();
+            Check(await store.ExportAsync(new(Source: "source", OwnerKey: "cid:1", FavoriteId: "favorite"), exportedSource, false, true) == 1,
+                "Favorite source export lost its scoped message");
+            using var wrongOwnerExport = new StringWriter();
+            Check(await store.ExportAsync(new(Source: "source", OwnerKey: "cid:2", FavoriteId: "favorite"), wrongOwnerExport, false, true) == 0,
+                "Favorite source export crossed owners");
             await store.UpdateCardFavoriteMetadataAsync(favorite.Id, favorite.Source, favorite.OwnerKey, "装备", "坦克 毕业", "保留私人备注");
             await store.SaveCardFavoriteAsync(favorite, "origin");
             Check((await store.GetCardFavoritesAsync(null, null, search: "私人", group: "装备", tag: "坦克")).Single().Note == "保留私人备注", "Refreshing a favorite lost metadata or cross-owner search failed");

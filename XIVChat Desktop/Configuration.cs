@@ -261,6 +261,18 @@ namespace XIVChat_Desktop {
             }
         }
 
+        private double fontSizeOverride;
+        public double FontSizeOverride {
+            get => fontSizeOverride;
+            set { fontSizeOverride = value; OnPropertyChanged(nameof(FontSizeOverride)); }
+        }
+
+        private bool showTimestamps = true;
+        public bool ShowTimestamps {
+            get => showTimestamps;
+            set { showTimestamps = value; OnPropertyChanged(nameof(ShowTimestamps)); }
+        }
+
         [JsonIgnore]
         public List<ServerMessage> Messages { get; } = new List<ServerMessage>();
 

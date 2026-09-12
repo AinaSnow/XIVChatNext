@@ -172,6 +172,7 @@ namespace XIVChat_Desktop {
                     HistoryOwnerPicker.SelectedItem = historyOwners.FirstOrDefault(o => o.Owner?.Source == target.Source && o.Owner?.OwnerKey == target.OwnerKey);
                     historySyncing = false;
                     historyCancellation?.Cancel(); historyResults.Clear();
+                    activeHistoryQuery = new HistoryQuery(Source: target.Source, OwnerKey: target.OwnerKey, RecordId: message.Id);
                     var result = new HistoryResult(message, ""); historyResults.Add(result); HistoryList.ItemsSource = historyResults;
                     HistoryList.SelectedItem = result; await OpenHistoryContextAsync(); return;
                 }

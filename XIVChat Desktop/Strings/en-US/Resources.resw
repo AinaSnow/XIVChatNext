@@ -726,4 +726,37 @@
   <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>Connect to a logged-in game to capture a screenshot.</value></data>
   <data name="Screenshot.Saved" xml:space="preserve"><value>Image saved.</value></data>
   <data name="Screenshot.SaveFailed" xml:space="preserve"><value>The image could not be saved. Choose a writable location and try again.</value></data>
+  <data name="Windows.Popout" xml:space="preserve"><value>Open chat window</value></data>
+  <data name="Windows.DragOut" xml:space="preserve"><value>Drag this handle outside the main window to open a chat window; Esc cancels</value></data>
+  <data name="Windows.Layouts" xml:space="preserve"><value>Window layouts</value></data>
+  <data name="Windows.ReturnMain" xml:space="preserve"><value>Main window</value></data>
+  <data name="Windows.Topmost" xml:space="preserve"><value>Always on top</value></data>
+  <data name="Windows.Limit" xml:space="preserve"><value>The window or saved-layout limit has been reached. Close a window or use an existing layout name.</value></data>
+  <data name="Windows.SaveFailed" xml:space="preserve"><value>Could not read or save the layout. Existing data was preserved:</value></data>
+  <data name="Windows.DraftFull" xml:space="preserve"><value>The draft is full. Make room before restoring the failed text.</value></data>
+  <data name="Windows.ViewMissing" xml:space="preserve"><value>The original channel view was removed. Your draft is preserved; sending is disabled.</value></data>
+  <data name="Windows.StoredOnly" xml:space="preserve"><value>History uses local records; cleared or unsaved messages may be missing.</value></data>
+  <data name="Windows.PresetHelp" xml:space="preserve"><value>Presets arrange the main window and open chat windows. If none are open, the current chat is opened. Saved layouts retain windows, positions and display settings; applying one preserves current drafts.</value></data>
+  <data name="Windows.Social" xml:space="preserve"><value>Everyday social</value></data>
+  <data name="Windows.Duty" xml:space="preserve"><value>Duty chat</value></data>
+  <data name="Windows.Housing" xml:space="preserve"><value>Housing and shopping</value></data>
+  <data name="Windows.LayoutName" xml:space="preserve"><value>Layout name (saving the same name updates it)</value></data>
+  <data name="Windows.SaveLayout" xml:space="preserve"><value>Save current layout</value></data>
+  <data name="Windows.LoadLayout" xml:space="preserve"><value>Apply selected layout</value></data>
+  <data name="Windows.LayoutApplied" xml:space="preserve"><value>Layout applied.</value></data>
+  <data name="Windows.LayoutSaved" xml:space="preserve"><value>Layout saved.</value></data>
+  <data name="Windows.InvalidName" xml:space="preserve"><value>Enter a layout name. The name current is reserved for startup.</value></data>
+  <data name="Export.DatabaseOnly" xml:space="preserve"><value>Exports all matching records in the local database, beyond the preview limit. Unsaved, removed or missing messages are not included.</value></data>
+  <data name="Export.UntilExclusive" xml:space="preserve"><value>Until date (exclusive)</value></data>
+  <data name="Export.Preview" xml:space="preserve"><value>Refresh preview</value></data>
+  <data name="Export.ClearDates" xml:space="preserve"><value>Clear date limits</value></data>
+  <data name="Export.PreviewLimit" xml:space="preserve"><value>Preview: up to 100 matches among the latest 500 candidates. Saving exports all matches.</value></data>
+  <data name="Export.Progress" xml:space="preserve"><value>Exporting: {0} messages</value></data>
+  <data name="Export.Complete" xml:space="preserve"><value>Saved {0} messages.</value></data>
+  <data name="Export.Cancelled" xml:space="preserve"><value>Cancelled. Existing file contents were preserved.</value></data>
+  <data name="Export.Failed" xml:space="preserve"><value>Export failed:</value></data>
+  <data name="Windows.FontSize" xml:space="preserve"><value>Window font size</value></data>
+  <data name="Export.AllConnections" xml:space="preserve"><value>All connections</value></data>
+  <data name="Export.SavedConnection" xml:space="preserve"><value>Saved game connection</value></data>
+  <data name="Windows.AnchorUnavailable" xml:space="preserve"><value>The previous reading position is unavailable. Returned to the latest messages.</value></data>
 </root>

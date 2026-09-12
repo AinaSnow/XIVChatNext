@@ -16,16 +16,41 @@ namespace XIVChat_Desktop.Controls {
         private ScrollViewer? scrollViewer;
         private bool followLatest = true;
         private bool scrollPending;
+        private int scrollGeneration;
+        private ChatMessageRow? pendingAnchor;
         private bool updating;
         private bool disposed;
         private int unreadCount;
         public bool FollowingLatest => this.followLatest;
+        internal bool ScrollInProgress => scrollPending || pendingAnchor != null;
         public void ScrollToMessage(ServerMessage message) {
             var row = rows.FirstOrDefault(r => ReferenceEquals(r.Message, message) || message.MessageId != null && r.Message.MessageId == message.MessageId);
             if (row == null) return;
             followLatest = false;
-            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => { if (!disposed) { MessageList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading); UpdateLocalizations(); } });
+            pendingAnchor = row;
+            UpdateLocalizations();
+            var generation = ++scrollGeneration;
+            if (!DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => {
+                if (disposed || generation != scrollGeneration) return;
+                MessageList.ScrollIntoView(row, ScrollIntoViewAlignment.Leading);
+                MessageList.UpdateLayout();
+                pendingAnchor = null;
+            })) pendingAnchor = null;
         }
+        public string? CaptureScrollId() {
+            if (followLatest || rows.Count == 0) return null;
+            if (pendingAnchor != null) return pendingAnchor.Message.LocalStorageId;
+            var index = (MessageList.ItemsPanelRoot as ItemsStackPanel)?.FirstVisibleIndex ?? 0;
+            return rows[Math.Clamp(index, 0, rows.Count - 1)].Message.LocalStorageId;
+        }
+        public bool RestoreScroll(string? id, bool following) {
+            followLatest = following;
+            if (following) { scrollGeneration++; pendingAnchor = null; unreadCount = 0; UpdateLocalizations(); QueueScrollToLatest(); ReadingChanged?.Invoke(); return true; }
+            var row = rows.FirstOrDefault(r => r.Message.LocalStorageId == id);
+            if (row == null) { scrollGeneration++; pendingAnchor = null; followLatest = true; QueueScrollToLatest(); return false; }
+            ScrollToMessage(row.Message); return true;
+        }
+
         public event Action? ReadingChanged;
 
         public ChatMessageList(Tab tab) {
@@ -90,7 +115,7 @@ namespace XIVChat_Desktop.Controls {
         }
 
         private void OnViewChanging(object? sender, ScrollViewerViewChangingEventArgs e) {
-            if (this.updating || this.scrollPending || this.scrollViewer == null) return;
+            if (this.updating || this.ScrollInProgress || this.scrollViewer == null) return;
             if (e.NextView.VerticalOffset < this.scrollViewer.VerticalOffset - 0.5) {
                 this.followLatest = false;
                 this.UpdateLocalizations();
@@ -98,7 +123,7 @@ namespace XIVChat_Desktop.Controls {
         }
 
         private void OnViewChanged(object? sender, ScrollViewerViewChangedEventArgs e) {
-            if (this.updating || this.scrollPending || e.IsIntermediate || this.scrollViewer == null) return;
+            if (this.updating || this.ScrollInProgress || e.IsIntermediate || this.scrollViewer == null) return;
             if (this.scrollViewer.ScrollableHeight - this.scrollViewer.VerticalOffset <= 2) {
                 this.followLatest = true;
                 this.unreadCount = 0;
@@ -110,19 +135,23 @@ namespace XIVChat_Desktop.Controls {
         private void QueueScrollToLatest() {
             if (!this.followLatest || this.scrollPending || !this.IsLoaded || this.rows.Count == 0) return;
             this.scrollPending = true;
+            var generation = scrollGeneration;
             if (!this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => {
                 try {
-                    if (this.disposed || !this.IsLoaded || !this.followLatest || this.rows.Count == 0) return;
+                    if (this.disposed || generation != scrollGeneration || !this.IsLoaded || !this.followLatest || this.rows.Count == 0) return;
                     this.MessageList.ScrollIntoView(this.rows[this.rows.Count - 1], ScrollIntoViewAlignment.Default);
                     this.MessageList.UpdateLayout();
                     this.scrollViewer?.ChangeView(null, this.scrollViewer.ScrollableHeight, null, true);
                 } finally {
                     this.scrollPending = false;
+                    if (generation != scrollGeneration && !disposed && followLatest) QueueScrollToLatest();
                 }
             })) this.scrollPending = false;
         }
 
         private void LatestButton_Click(object sender, RoutedEventArgs e) {
+            scrollGeneration++;
+            pendingAnchor = null;
             this.followLatest = true;
             this.unreadCount = 0;
             this.UpdateLocalizations();

@@ -150,6 +150,31 @@ Results, English/Chinese rendered windows and the saved fixture appear beside th
 Build with `-t:Rebuild` without test targets afterward to restore the regular entry point.
 See [phase-six validation and live boundaries](../docs/PHASE6_SCREENSHOTS_2026-09-12.md).
 
+## Workspace, layouts and history export
+
+The regression runner now has 56 groups, including validated layout storage, view identity
+isolation, streaming TXT/Unicode RTF export, full query scopes and cancellation. Favorite-source
+exports retain the original connection/owner and export only the linked records.
+
+The workspace WinUI suite has 44 checks. It uses an encrypted loopback server and a unique
+fixture database beside the executable; it does not load/save user configuration or contact
+the game. Checks cover independent drafts and send-failure recovery across layout recreation,
+owner/login/channel guards, history anchors, shared read state, notification routing, hidden
+main-window lifetime, startup recovery, presets, named layouts, display bounds, and transactionally
+written exports. It also checks that closing the last chat window stops the connection and closes
+auxiliary windows.
+
+```powershell
+$workspaceTargets = Join-Path (Get-Location) 'tests/DesktopWorkspaceSmoke.targets'
+$workspaceOutput = Join-Path (Get-Location) 'artifacts/phase7/smoke/'
+dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug "-p:CustomAfterMicrosoftCommonTargets=$workspaceTargets" "-p:OutDir=$workspaceOutput"
+& (Join-Path $workspaceOutput 'XIVChat Desktop.exe')
+```
+
+Results are in `workspace-smoke-results.txt`; PNGs and exported fixture files are beside it.
+Rebuild with `-t:Rebuild` without test targets before launching the normal client.
+See [phase-seven results and remaining live checks](../docs/PHASE7_WORKSPACE_2026-09-12.md).
+
 ## Game integration
 
 The live single-character send/receive, SQLite persistence, offline replay and two reconnect checks

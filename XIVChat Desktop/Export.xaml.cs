@@ -1,310 +1,127 @@
 using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using XIVChatCommon.Message;
-using XIVChatCommon.Message.Server;
+using XIVChatStorage;
 
 namespace XIVChat_Desktop {
-    public partial class Export : Window, INotifyPropertyChanged {
-        public App App => (App)Application.Current;
-
-        public Tab ExportTab { get; }
-
-        public ExportFilter Filter => (ExportFilter)this.ExportTab.Filter;
-
-        public ObservableCollection<ServerMessage.SenderPlayer> Senders { get; } = new ObservableCollection<ServerMessage.SenderPlayer>();
-        public ObservableCollection<ServerMessage.SenderPlayer> SenderFilters => this.Filter.Senders;
-
-        private bool showTimestamps = true;
-
-        public bool ShowTimestamps {
-            get => this.showTimestamps;
-            set {
-                this.showTimestamps = value;
-                this.OnPropertyChanged(nameof(this.ShowTimestamps));
-            }
-        }
-
-        public Export() {
-            this.ExportTab = new Tab("Export") {
-                Filter = new ExportFilter {
-                    Types = Tab.GeneralFilter().Types,
-                },
+    public partial class Export : Window {
+        private static readonly HashSet<Export> active = new();
+        private readonly App app = (App)Application.Current;
+        private readonly HistoryQuery scope;
+        private readonly string scopeName;
+        private readonly Filter? filter;
+        private string? ownerLabel;
+        private CancellationTokenSource? operation;
+        private Task running = Task.CompletedTask;
+        private bool closed, busy;
+        private static string L(string key) => LocalizationHelper.GetString(key);
+        public Export() : this(new HistoryQuery(Source: ((App)Application.Current).Workbench.Source,
+            OwnerKey: ((App)Application.Current).Workbench.OwnerKey), L("Workbench.History")) { }
+        public Export(HistoryQuery query, string name, Filter? filter = null) {
+            scope = query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null };
+            scopeName = name; this.filter = filter;
+            InitializeComponent(); ThemeHelper.InitializeWindow(this);
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(820, 760));
+            Keyword.Text = query.Text ?? "";
+            FromDate.Date = query.FromUtc?.ToLocalTime(); FromTime.Time = query.FromUtc?.ToLocalTime().TimeOfDay ?? TimeSpan.Zero;
+            UntilDate.Date = query.UntilUtc?.ToLocalTime(); UntilTime.Time = query.UntilUtc?.ToLocalTime().TimeOfDay ?? TimeSpan.Zero;
+            Localize.BindWindow(this, LocalizeWindow);
+            active.Add(this);
+            Closed += async (_, _) => { closed = true; operation?.Cancel(); try { await running; } catch (Exception) { /* SaveAsync owns the displayed failure; closing only waits for cleanup. */ } finally { active.Remove(this); } };
+            Root.Loaded += async (_, _) => {
+                try {
+                    if (app.Session.Store is { } store && scope.OwnerKey != null) {
+                        var owner = (await store.GetOwnersAsync()).FirstOrDefault(o => o.OwnerKey == scope.OwnerKey && (scope.Source == null || o.Source == scope.Source));
+                        if (owner?.Identity is { } who) ownerLabel = who.Name + " @ " + who.HomeWorld;
+                        if (!closed) LocalizeWindow();
+                    }
+                } catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
+                await PreviewAsync();
             };
-
-            this.Repopulate();
-
-            this.InitializeComponent();
-            ThemeHelper.InitializeWindow(this);
-            Localize.BindWindow(this, () => this.Title = LocalizationHelper.GetString("Export.Title"));
-
-            this.SetUpFilters();
         }
-
-        private void SetUpFilters() {
-            foreach (var category in (FilterCategory[])Enum.GetValues(typeof(FilterCategory))) {
-                var tabContent = new StackPanel {
-                    Margin = new Thickness(8),
-                    Orientation = Orientation.Vertical,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                };
-
-                var buttonsPanel = new StackPanel {
-                    Margin = new Thickness(0, 0, 0, 4),
-                    Orientation = Orientation.Horizontal,
-                };
-
-                var selectButton = new Button {
-                };
-                Localize.SetContent(selectButton, "Export.SelectAll");
-                selectButton.Click += (sender, e) => SetAllChecked(true);
-
-                var deselectButton = new Button {
-                    Margin = new Thickness(4, 0, 0, 0),
-                };
-                Localize.SetContent(deselectButton, "Export.DeselectAll");
-                deselectButton.Click += (sender, e) => SetAllChecked(false);
-
-                var doingMultiple = false;
-
-                void SetAllChecked(bool isChecked) {
-                    doingMultiple = true;
-
-                    foreach (var child in tabContent.Children) {
-                        if (!(child is CheckBox)) {
-                            continue;
-                        }
-
-                        var check = (CheckBox)child;
-                        check.IsChecked = isChecked;
-                    }
-
-                    this.Repopulate();
-
-                    doingMultiple = false;
-                }
-
-                buttonsPanel.Children.Add(selectButton);
-                buttonsPanel.Children.Add(deselectButton);
-
-                tabContent.Children.Add(buttonsPanel);
-
-                foreach (var type in category.Types()) {
-                    var check = new CheckBox {
-                        IsChecked = this.ExportTab.Filter.Types.Contains(type),
-                    };
-
-                    Localize.SetContent(check, "Filter." + type);
-                    check.Checked += (sender, e) => {
-                        this.ExportTab.Filter.Types.Add(type);
-
-                        if (!doingMultiple) {
-                            this.Repopulate();
-                        }
-                    };
-                    check.Unchecked += (sender, e) => {
-                        this.ExportTab.Filter.Types.Remove(type);
-
-                        if (!doingMultiple) {
-                            this.Repopulate();
-                        }
-                    };
-
-                    tabContent.Children.Add(check);
-                }
-
-                var tabItem = new TabViewItem {
-                    Content = tabContent,
-                };
-
-                Localize.SetHeader(tabItem, "FilterCategory." + category);
-                this.Tabs.TabItems.Add(tabItem);
-            }
+        private void LocalizeWindow() {
+            Title = L("Export.Title"); Scope.Text = scopeName;
+            Explanation.Text = L("Export.DatabaseOnly") + "\n" +
+                (scope.OwnerKey == null ? L("History.AllOwners") : ownerLabel ?? L("History.Unassigned")) + " · " + (scope.Source == null ? L("Export.AllConnections") : app.Config.TrustedKeys.FirstOrDefault(k => Convert.ToHexString(k.Key) == scope.Source)?.Name ?? L("Export.SavedConnection")) +
+                (scope.Channel is { } channel ? " · " + channel : "") + (scope.Person is { Length: > 0 } person ? " · " + person : "") +
+                (scope.BookmarksOnly ? " · " + L("History.BookmarksOnly") : "");
+            Keyword.Header = L("Workbench.Search");
+            FromDate.PlaceholderText = L("Export.From"); UntilDate.PlaceholderText = L("Export.UntilExclusive");
+            Timestamps.Content = L("Export.ShowTimestamps"); PreviewButton.Content = L("Export.Preview");
+            ClearDates.Content = L("Export.ClearDates"); SaveButton.Content = L("Dialog.Save"); CancelButton.Content = L("Dialog.Cancel");
+            SaveButton.IsEnabled = app.Session.Store != null && !busy;
         }
-
-        private void Repopulate() {
-            this.ExportTab.RepopulateMessages(this.App.Window.Messages);
-            this.SetUpSenders();
+        internal HistoryQuery Query() {
+            var from = FromDate.Date?.Date.Add(FromTime.Time).ToUniversalTime();
+            var until = UntilDate.Date?.Date.Add(UntilTime.Time).ToUniversalTime();
+            if (from >= until) throw new InvalidOperationException(L("History.InvalidDates"));
+            return scope with { Text = Keyword.Text.Trim(), FromUtc = from, UntilUtc = until };
         }
-
-        private void SetUpSenders() {
-            var senders = this.App.Window.Messages
-                .Where(msg => ((ExportFilter)this.ExportTab.Filter).AllowedMinusSenders(msg))
-                .Select(msg => msg.GetSenderPlayer())
-                .Where(sender => sender != null)
-                .Distinct()
-                .ToList();
-
-            this.Senders.Clear();
-
-            foreach (var sender in senders) {
-                this.Senders.Add(sender!);
-            }
+        private void SetBusy(bool value) {
+            busy = value;
+            SaveButton.IsEnabled = !value && app.Session.Store != null;
+            PreviewButton.IsEnabled = ClearDates.IsEnabled = Keyword.IsEnabled = FromDate.IsEnabled = FromTime.IsEnabled = UntilDate.IsEnabled = UntilTime.IsEnabled = Timestamps.IsEnabled = !value;
         }
-
-        public class ExportFilter : Filter {
-            public ObservableCollection<ServerMessage.SenderPlayer> Senders { get; } = new ObservableCollection<ServerMessage.SenderPlayer>();
-
-            public DateTime? Before { get; set; }
-            public DateTime? After { get; set; }
-
-            public void AddSender(ServerMessage.SenderPlayer sender) {
-                if (this.Senders.Contains(sender)) {
-                    return;
-                }
-
-                this.Senders.Add(sender);
-            }
-
-            public bool AllowedMinusSenders(ServerMessage message) {
-                if (!base.Allowed(message)) {
-                    return false;
-                }
-
-                if (this.Before != null && message.Timestamp > this.Before) {
-                    return false;
-                }
-
-                if (this.After != null && message.Timestamp < this.After) {
-                    return false;
-                }
-
-                return true;
-            }
-
-            public override bool Allowed(ServerMessage message) {
-                if (!this.AllowedMinusSenders(message)) {
-                    return false;
-                }
-
-                // check sender if any senders are selected
-                var sender = message.GetSenderPlayer();
-                if (this.Senders.Count != 0 && sender != null && !this.Senders.Contains(sender)) {
-                    return false;
-                }
-
-                // our stuff
-                return true;
-            }
-
-            public event PropertyChangedEventHandler? PropertyChanged;
-
-            protected void OnPropertyChanged1([CallerMemberName] string? propertyName = null) {
-                this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
+        private async Task PreviewAsync() {
+            if (busy || closed) return;
+            if (app.Session.Store is not { } store) { Status.Text = L("History.Unavailable"); return; }
+            operation?.Cancel(); operation?.Dispose(); operation = new(); SetBusy(true);
+            try {
+                var rows = await store.SearchAsync(Query() with { Limit = 500 }, operation.Token);
+                if (closed) return;
+                PreviewList.ItemsSource = rows.Reverse().Where(r => filter?.Allowed(r.Message) != false).TakeLast(100)
+                    .Select(r => HistoryExport.Line(r.Message, Timestamps.IsChecked == true)).ToArray();
+                Status.Text = L("Export.PreviewLimit");
+            } catch (OperationCanceledException) { }
+            catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
+            finally { if (!closed) SetBusy(false); }
         }
-
-        private void Markdown_Checked(object sender, RoutedEventArgs e) => this.SetMarkdownProcessing(true);
-
-        private void Markdown_Unchecked(object sender, RoutedEventArgs e) => this.SetMarkdownProcessing(false);
-
-        private void SetMarkdownProcessing(bool on) {
-            this.ExportTab.ProcessMarkdown = on;
-        }
-
-        private void RightArrow_Click(object sender, RoutedEventArgs e) {
-            var idx = this.SendersFilterSource.SelectedIndex;
-            if (idx == -1) {
-                return;
-            }
-
-            var player = this.Senders[idx];
-
-            var filter = (ExportFilter)this.ExportTab.Filter;
-            filter.AddSender(player);
-
-            this.Repopulate();
-        }
-
-        private void LeftArrow_Click(object sender, RoutedEventArgs e) {
-            var idx = this.SenderFiltersDest.SelectedIndex;
-            if (idx == -1) {
-                return;
-            }
-
-            var filter = (ExportFilter)this.ExportTab.Filter;
-
-            var player = filter.Senders.ElementAt(idx);
-
-            filter.Senders.Remove(player);
-
-            this.Repopulate();
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) {
-            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
+        private async void Preview_Click(object sender, RoutedEventArgs e) => await PreviewAsync();
+        private void ClearDates_Click(object sender, RoutedEventArgs e) { FromDate.Date = null; UntilDate.Date = null; }
+        private void Cancel_Click(object sender, RoutedEventArgs e) { if (busy) operation?.Cancel(); else Close(); }
         private async void Save_Click(object sender, RoutedEventArgs e) {
-            // ask the user where to save
-            var savePicker = new FileSavePicker();
-            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-            savePicker.FileTypeChoices.Add("Text Files", new[] { ".txt" });
-            savePicker.FileTypeChoices.Add("Rich Text Files", new[] { ".rtf" });
-            savePicker.SuggestedFileName = "XIVChat Export";
-
-            var file = await savePicker.PickSaveFileAsync();
-            if (file == null) {
-                return;
-            }
-
-            // build export text
-            var text = new System.Text.StringBuilder();
-            foreach (var message in this.ExportTab.Messages) {
-                foreach (var chunk in message.Chunks) {
-                    if (chunk is TextChunk textChunk) {
-                        text.Append(textChunk.Content);
-                    }
-                }
-                text.AppendLine();
-            }
-
-            await FileIO.WriteTextAsync(file, text.ToString());
-
-            // show completion box
-            // TODO: Show success dialog
+            if (busy || app.Session.Store == null) return;
+            operation?.Dispose(); operation = new();
+            await SaveAsync(operation.Token);
         }
-
-        private void AfterDatePicker_OnDateChanged(object sender, DatePickerValueChangedEventArgs e) {
-            this.Filter.After = e.NewDate.DateTime;
-            this.Repopulate();
+        private async Task SaveAsync(CancellationToken token) {
+            SetBusy(true);
+            try {
+                var query = Query(); var store = app.Session.Store!; var timestamps = Timestamps.IsChecked == true;
+                var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary, SuggestedFileName = "XIVChat Export" };
+                picker.FileTypeChoices.Add("Text", new[] { ".txt" }); picker.FileTypeChoices.Add("Rich Text", new[] { ".rtf" });
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+                var file = await picker.PickSaveFileAsync();
+                token.ThrowIfCancellationRequested(); if (file == null) return;
+                var progress = new Progress<long>(count => { if (!closed) Status.Text = string.Format(L("Export.Progress"), count); });
+                var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token);
+                running = write; var count = await write;
+                if (!closed) Status.Text = string.Format(L("Export.Complete"), count);
+            } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
+            catch (Exception ex) { if (!closed) Status.Text = L("Export.Failed") + " " + ex.Message; }
+            finally { if (!closed) SetBusy(false); }
         }
-
-        private void AfterTimePicker_OnTimeChanged(object sender, TimePickerValueChangedEventArgs e) {
-            // TODO: Update time
+        internal static async Task<long> WriteFileAsync(HistoryStore store, StorageFile file, HistoryQuery query, bool timestamps,
+            Filter? filter = null, IProgress<long>? progress = null, CancellationToken token = default) {
+            token.ThrowIfCancellationRequested();
+            using var transaction = await file.OpenTransactedWriteAsync();
+            using var stream = transaction.Stream.AsStreamForWrite(); stream.Position = 0;
+            using var writer = new StreamWriter(stream, new UTF8Encoding(false), 65536, leaveOpen: true);
+            var count = await store.ExportAsync(query, writer, file.FileType.Equals(".rtf", StringComparison.OrdinalIgnoreCase), timestamps,
+                filter == null ? null : filter.Allowed, progress, token);
+            await writer.FlushAsync(token); token.ThrowIfCancellationRequested();
+            stream.SetLength(stream.Position); await transaction.CommitAsync(); return count;
         }
-
-        private void BeforeDatePicker_OnDateChanged(object sender, DatePickerValueChangedEventArgs e) {
-            this.Filter.Before = e.NewDate.DateTime;
-            this.Repopulate();
-        }
-
-        private void BeforeTimePicker_OnTimeChanged(object sender, TimePickerValueChangedEventArgs e) {
-            // TODO: Update time
-        }
-
-        private void BeforeClear_Click(object sender, RoutedEventArgs e) {
-            this.BeforeDatePicker.SelectedDate = null;
-            this.Filter.Before = null;
-            this.Repopulate();
-        }
-
-        private void AfterClear_Click(object sender, RoutedEventArgs e) {
-            this.AfterDatePicker.SelectedDate = null;
-            this.Filter.After = null;
-            this.Repopulate();
+        public static async Task CancelAllAsync() {
+            var windows = active.ToArray(); foreach (var window in windows) window.operation?.Cancel();
+            await Task.WhenAll(windows.Select(async w => { try { await w.running; } catch (Exception) { /* The export window has already reported this failure. */ } }));
         }
     }
 }

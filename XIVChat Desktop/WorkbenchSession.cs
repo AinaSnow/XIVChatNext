@@ -55,7 +55,7 @@ namespace XIVChat_Desktop {
     public sealed class WorkbenchSession {
         private readonly App app;
         private readonly Dictionary<string, ConversationModel> byPeer = new();
-        private readonly Dictionary<string, (Connection Connection, ConversationModel Conversation, string Text)> pending = new();
+        private readonly Dictionary<string, (Connection Connection, ConversationModel? Conversation, string Text, Action<string, string?, bool>? Reply)> pending = new();
         private readonly Dictionary<ConversationModel, CancellationTokenSource> draftSaves = new();
         private readonly HashSet<Task> writes = new();
         private readonly HashSet<ConversationModel> failedWrites = new();
@@ -188,26 +188,36 @@ namespace XIVChat_Desktop {
                 if (row != null) await store.MarkConversationReadAsync(model.State.Source, model.State.OwnerKey, model.Key, row.Message.Timestamp, row.RowId);
             } catch (Exception ex) { Error = ex.Message; Changed?.Invoke(); }
         }
-        public bool Send(ConversationModel model, string text) {
+        public bool Send(ConversationModel model, string text, Action<string, string?, bool>? reply = null) {
             var conn = app.Connection;
             var player = app.Session.Player;
             if (conn == null || model.State.Source != app.Session.Source || model.State.OwnerKey != player?.Identity?.Key ||
                 player.OwnerEpoch == null || pending.Count >= 128) return false;
             var id = conn.SendTell(TellTarget.From(model.Peer), text, model.State.OwnerKey, player.OwnerEpoch);
             if (id == null) return false;
-            pending[id] = (conn, model, text);
-            model.Draft = ""; Save(model);
-            model.SetStatus(LocalizationHelper.GetString("Conversation.Queued"));
+            pending[id] = (conn, model, text, reply);
+            if (reply == null) { model.Draft = ""; Save(model); model.SetStatus(LocalizationHelper.GetString("Conversation.Queued")); }
+            else reply(LocalizationHelper.GetString("Conversation.Queued"), null, false);
             _ = ExpireSendAsync(id);
             return true;
         }
+        public bool SendChannel(string source, string owner, string text, Action<string, string?, bool> reply) {
+            var conn = app.Connection;
+            if (conn == null || source != app.Session.Source || owner != (app.Session.Player?.Identity?.Key ?? "unassigned:" + source) || pending.Count >= 128) return false;
+            var id = conn.SendMessageWithId(text);
+            if (id == null) return false;
+            if (!conn.SupportsGuardedCommands) { reply(LocalizationHelper.GetString("Conversation.Unknown"), null, true); return true; }
+            pending[id] = (conn, null, text, reply);
+            reply(LocalizationHelper.GetString("Conversation.Queued"), null, false);
+            _ = ExpireSendAsync(id); return true;
+        }
         private async Task ExpireSendAsync(string id) {
             await Task.Delay(TimeSpan.FromSeconds(30));
-            if (pending.Remove(id, out var item)) Fail(item.Conversation, item.Text, LocalizationHelper.GetString("Conversation.Unknown"));
+            if (pending.Remove(id, out var item)) Fail(item.Conversation, item.Text, LocalizationHelper.GetString("Conversation.Unknown"), item.Reply);
         }
         private void ConnectionChanged() {
             if (subscribed != null) subscribed.CommandResult -= OnCommandResult;
-            foreach (var item in pending.Values) Fail(item.Conversation, item.Text, LocalizationHelper.GetString("Command.Disconnected"));
+            foreach (var item in pending.Values) Fail(item.Conversation, item.Text, LocalizationHelper.GetString("Command.Disconnected"), item.Reply);
             pending.Clear(); subscribed = app.Connection;
             if (subscribed != null) subscribed.CommandResult += OnCommandResult;
             Changed?.Invoke();
@@ -218,13 +228,16 @@ namespace XIVChat_Desktop {
                 pending.Remove(result.RequestId);
                 var reason = LocalizationHelper.GetString("Command." + result.Failure);
                 if (result.SubmittedParts > 0) reason = string.Format(LocalizationHelper.GetString("Conversation.Partial"), result.SubmittedParts) + " " + reason;
-                Fail(item.Conversation, item.Text, reason);
+                Fail(item.Conversation, item.Text, reason, item.Reply);
             } else {
-                item.Conversation.SetStatus(LocalizationHelper.GetString(result.Stage == CommandStage.Submitted ? "Conversation.Submitted" : "Conversation.Queued"));
+                var status = LocalizationHelper.GetString(result.Stage == CommandStage.Submitted ? "Conversation.Submitted" : "Conversation.Queued");
+                if (item.Reply != null) item.Reply(status, null, result.Stage == CommandStage.Submitted); else item.Conversation?.SetStatus(status);
                 if (result.Stage == CommandStage.Submitted) pending.Remove(result.RequestId);
             }
         }
-        private void Fail(ConversationModel model, string text, string reason) {
+        private void Fail(ConversationModel? model, string text, string reason, Action<string, string?, bool>? reply = null) {
+            if (reply != null) { reply(reason, text, true); return; }
+            if (model == null) return;
             if (string.IsNullOrEmpty(model.Draft)) { model.Draft = text; Save(model); model.SetStatus(reason); }
             else model.SetStatus(reason, text);
         }

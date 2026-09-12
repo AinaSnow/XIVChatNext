@@ -30,6 +30,8 @@
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <local:MessageTextBlock Message="{Binding Message}"
+                                            FontSizeOverride="{Binding Tab.FontSizeOverride, Mode=OneWay}"
+                                            ShowTimestamps="{Binding Tab.ShowTimestamps, Mode=OneWay}"
                                             ProcessMarkdown="{Binding Tab.ProcessMarkdown, Mode=OneWay}" />
                 </DataTemplate>
             </ListView.ItemTemplate>

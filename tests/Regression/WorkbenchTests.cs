@@ -208,6 +208,14 @@ internal static class WorkbenchTests {
         var next = await store.SearchAsync(new(Text: "工匠皮靴", OwnerKey: "cid:1", BeforeRow: last.RowId,
             BeforeTimestampUtc: last.Message.Timestamp, Limit: 100));
         Check(next.Count == 100 && !next.Select(row => row.Id).Intersect(phrase.Select(row => row.Id)).Any(), "Large history pagination overlaps");
+        using var cancelled = new CancellationTokenSource();
+        var exported = 0;
+        using var counter = new Phase7Tests.CallbackWriter(() => { exported++; });
+        Check(await store.ExportAsync(new(), counter, false, false) == 100_000 && exported == 100_000, "Full export truncated 100,000 rows");
+        exported = 0;
+        using var interrupting = new Phase7Tests.CallbackWriter(() => { if (++exported == 500) cancelled.Cancel(); });
+        try { await store.ExportAsync(new(), interrupting, false, false, token: cancelled.Token); throw new Exception("Export ignored cancellation"); }
+        catch (OperationCanceledException) { Check(exported == 500, "Export kept writing after cancellation"); }
         Console.WriteLine($"INFO 100,000 rows: write={written.TotalSeconds:F2}s; three filtered queries={timer.Elapsed.TotalMilliseconds:F0}ms");
     }
 

@@ -726,4 +726,37 @@
   <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>请连接已登录角色的游戏，再截取画面。</value></data>
   <data name="Screenshot.Saved" xml:space="preserve"><value>图片已保存。</value></data>
   <data name="Screenshot.SaveFailed" xml:space="preserve"><value>无法保存图片，请选择可写入的位置后重试。</value></data>
+  <data name="Windows.Popout" xml:space="preserve"><value>弹出聊天小窗</value></data>
+  <data name="Windows.DragOut" xml:space="preserve"><value>按住此处拖到主窗口外，松开后弹出；Esc 取消</value></data>
+  <data name="Windows.Layouts" xml:space="preserve"><value>窗口布局</value></data>
+  <data name="Windows.ReturnMain" xml:space="preserve"><value>返回主窗口</value></data>
+  <data name="Windows.Topmost" xml:space="preserve"><value>始终置顶</value></data>
+  <data name="Windows.Limit" xml:space="preserve"><value>已达到窗口或布局保存上限，请先关闭部分窗口或使用已有布局名称。</value></data>
+  <data name="Windows.SaveFailed" xml:space="preserve"><value>布局读取或保存失败；原有数据已保留：</value></data>
+  <data name="Windows.DraftFull" xml:space="preserve"><value>草稿已满，请先整理内容再恢复。</value></data>
+  <data name="Windows.ViewMissing" xml:space="preserve"><value>原频道视图已删除；保留草稿，暂不可发送。</value></data>
+  <data name="Windows.StoredOnly" xml:space="preserve"><value>历史来自本地记录；已清理或未保存的消息可能不在其中。</value></data>
+  <data name="Windows.PresetHelp" xml:space="preserve"><value>预设会排列主窗口和当前小窗；未打开小窗时，弹出当前聊天。自定义布局保留窗口、位置和显示设置，应用布局不会覆盖当前草稿。</value></data>
+  <data name="Windows.Social" xml:space="preserve"><value>日常社交</value></data>
+  <data name="Windows.Duty" xml:space="preserve"><value>副本交流</value></data>
+  <data name="Windows.Housing" xml:space="preserve"><value>装修采购</value></data>
+  <data name="Windows.LayoutName" xml:space="preserve"><value>自定义布局名称（同名保存会更新）</value></data>
+  <data name="Windows.SaveLayout" xml:space="preserve"><value>保存当前布局</value></data>
+  <data name="Windows.LoadLayout" xml:space="preserve"><value>应用选中布局</value></data>
+  <data name="Windows.LayoutApplied" xml:space="preserve"><value>已应用布局。</value></data>
+  <data name="Windows.LayoutSaved" xml:space="preserve"><value>布局已保存。</value></data>
+  <data name="Windows.InvalidName" xml:space="preserve"><value>请输入布局名称；current 为启动布局保留名称。</value></data>
+  <data name="Export.DatabaseOnly" xml:space="preserve"><value>导出本地数据库中符合条件的全部记录，不受预览条数限制。未保存、已清理或同步缺失的消息不包含在内。</value></data>
+  <data name="Export.UntilExclusive" xml:space="preserve"><value>截止日期（不含所选时刻）</value></data>
+  <data name="Export.Preview" xml:space="preserve"><value>刷新预览</value></data>
+  <data name="Export.ClearDates" xml:space="preserve"><value>清除日期限制</value></data>
+  <data name="Export.PreviewLimit" xml:space="preserve"><value>预览仅显示最近 500 条候选中的最多 100 条；保存会导出全部匹配记录。</value></data>
+  <data name="Export.Progress" xml:space="preserve"><value>正在导出：{0} 条</value></data>
+  <data name="Export.Complete" xml:space="preserve"><value>已保存 {0} 条记录。</value></data>
+  <data name="Export.Cancelled" xml:space="preserve"><value>已取消，原文件内容未更改。</value></data>
+  <data name="Export.Failed" xml:space="preserve"><value>导出失败：</value></data>
+  <data name="Windows.FontSize" xml:space="preserve"><value>小窗字号</value></data>
+  <data name="Export.AllConnections" xml:space="preserve"><value>全部连接</value></data>
+  <data name="Export.SavedConnection" xml:space="preserve"><value>已保存的游戏连接</value></data>
+  <data name="Windows.AnchorUnavailable" xml:space="preserve"><value>原阅读位置不在当前记录中，已返回最新。</value></data>
 </root>

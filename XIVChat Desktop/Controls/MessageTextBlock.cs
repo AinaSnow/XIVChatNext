@@ -19,6 +19,14 @@ namespace XIVChat_Desktop.Controls {
             this.Loaded += (_, _) => Render();
         }
 
+        public static readonly DependencyProperty FontSizeOverrideProperty = DependencyProperty.Register(
+            nameof(FontSizeOverride), typeof(double), typeof(MessageTextBlock), new PropertyMetadata(0d, (d, e) => {
+                var block = (MessageTextBlock)d;
+                if ((double)e.NewValue is >= 8 and <= 48) block.FontSize = (double)e.NewValue;
+                else block.SetBinding(FontSizeProperty, new Binding { Path = new PropertyPath("Config.FontSize"), Source = (App)Application.Current });
+            }));
+        public double FontSizeOverride { get => (double)GetValue(FontSizeOverrideProperty); set => SetValue(FontSizeOverrideProperty, value); }
+
         public static readonly DependencyProperty MessageProperty = DependencyProperty.Register(
             "Message",
             typeof(ServerMessage),
