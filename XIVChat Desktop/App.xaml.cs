@@ -17,6 +17,8 @@ namespace XIVChat_Desktop {
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
         private WorkbenchSession? workbench;
         private GameCardSession? cards;
+        private ScreenshotSession? screenshots;
+        public ScreenshotSession Screenshots => this.screenshots ??= new ScreenshotSession(this);
         public GameCardSession Cards => this.cards ??= new GameCardSession(this);
         public WorkbenchSession Workbench => this.workbench ??= new WorkbenchSession(this);
         private NotificationCenter? notifier;
@@ -44,6 +46,7 @@ namespace XIVChat_Desktop {
             set {
                 if (this.connection != null && !ReferenceEquals(this.connection, value)) this.cards?.Disconnect(this.connection);
                 this.connection = value;
+                this.screenshots?.UpdateContext();
                 this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(this.Connection)));
                 this.ConnectionStatusChanged();
             }
@@ -212,6 +215,8 @@ namespace XIVChat_Desktop {
         }
 
         public async Task StopSessionAsync() {
+            ScreenshotWindow.CloseActive();
+            this.screenshots?.Close();
             this.Disconnect();
             if (this.connectionTask != null) await this.connectionTask;
             if (this.workbench != null) await this.workbench.FlushAsync();

@@ -14,6 +14,7 @@ namespace XIVChatCommon.Message.Server {
         [Key(8)] public bool FriendPresence { get; set; }
         [Key(9)] public bool GameEvents { get; set; }
         [Key(10)] public bool GameCards { get; set; }
+        [Key(11)] public bool Screenshots { get; set; }
         [IgnoreMember] protected override byte Code => (byte)ServerOperation.Capabilities;
         protected override byte[] PayloadEncode() => MessagePackSerializer.Serialize(this);
         public static ServerCapabilities Decode(byte[] bytes) => MessagePackSerializer.Deserialize<ServerCapabilities>(bytes);

@@ -130,6 +130,26 @@ or load/save user configuration. Results and a rendered card image are written b
 Always rebuild the desktop with `-t:Rebuild` without the test target afterward to restore the normal entry point.
 See [data-source findings](../docs/GAME_CARD_SOURCES_2026-09-12.md) for source choices and remaining live checks.
 
+## Remote screenshot checks
+
+The regression runner has 52 groups, including screenshot wire compatibility, malformed metadata,
+bounded JPEG assembly, duplicate/conflicting chunks, size limits, one capture across clients,
+owner/login cancellation and backpressure. The screenshot WinUI suite has 31 checks using
+an encrypted loopback TCP fixture and a real Windows-encoded JPEG. It does not read/save user
+configuration or connect to the game. It covers native preview, zoom, exact saved bytes,
+language changes, old plugins, cancellation, role/login changes, EOF and application shutdown.
+
+```powershell
+$screenshotTargets = Join-Path (Get-Location) 'tests/DesktopScreenshotsSmoke.targets'
+$screenshotOutput = Join-Path (Get-Location) 'artifacts/phase6/smoke/'
+dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug "-p:CustomAfterMicrosoftCommonTargets=$screenshotTargets" "-p:OutDir=$screenshotOutput"
+& (Join-Path $screenshotOutput 'XIVChat Desktop.exe')
+```
+
+Results, English/Chinese rendered windows and the saved fixture appear beside that executable.
+Build with `-t:Rebuild` without test targets afterward to restore the regular entry point.
+See [phase-six validation and live boundaries](../docs/PHASE6_SCREENSHOTS_2026-09-12.md).
+
 ## Game integration
 
 The live single-character send/receive, SQLite persistence, offline replay and two reconnect checks

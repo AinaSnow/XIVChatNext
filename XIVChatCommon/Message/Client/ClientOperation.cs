@@ -12,5 +12,6 @@ namespace XIVChatCommon.Message.Client {
         History = 10,
         FriendPresence = 11,
         GameCard = 12,
+        Screenshot = 13,
     }
 }

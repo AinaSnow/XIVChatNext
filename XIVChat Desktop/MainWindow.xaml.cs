@@ -96,6 +96,9 @@ namespace XIVChat_Desktop {
             if (!initialized) return;
             Title = "XIVChat Next";
             MenuConnect.Text = L("Menu.Connect"); MenuDisconnect.Text = L("Menu.Disconnect"); MenuMap.Text = L("Workbench.Map");
+            MenuScreenshot.Text = L("Screenshot.Title");
+            ToolTipService.SetToolTip(ScreenshotButton, L("Screenshot.Title"));
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ScreenshotButton, L("Screenshot.Title"));
             MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
             NavConversationsText.Text = L("Workbench.Conversations"); NavChannelsText.Text = L("Workbench.Channels");
             NavFriendsText.Text = L("Workbench.Friends"); NavHistoryText.Text = L("Workbench.History");
@@ -358,6 +361,7 @@ namespace XIVChat_Desktop {
             PeerAvatar.Visibility = V(conversation); PinConversationButton.Visibility = V(conversation); ConversationNoteButton.Visibility = V(conversation);
             AvatarButton.Visibility = V(conversation); LoadOlderButton.Visibility = V(conversation); EditChannelButton.Visibility = V(!conversation); BackHistoryButton.Visibility = Visibility.Collapsed;
         }
+        private void Screenshot_Click(object sender, RoutedEventArgs e) => ScreenshotWindow.ShowScreenshot();
         private void UpdateReady() {
             if (!initialized) return;
             var connection = App.Connection; var model = selectedConversation; var player = App.Session.Player;

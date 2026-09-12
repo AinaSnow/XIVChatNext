@@ -8,6 +8,11 @@ using XIVChatPlugin;
 using XIVChat_Desktop;
 
 var tests = new (string Name, Func<Task> Run)[] {
+    ("Screenshot wire keeps old fields and rejects oversized or malformed requests", ScreenshotTests.Protocol),
+    ("Screenshot assembly rejects conflicting, incomplete and stale chunks", ScreenshotTests.Assembly),
+    ("Screenshot encoding and bulk queues retain strict byte budgets", ScreenshotTests.Budgets),
+    ("Screenshot capture limits concurrency and fences cancellation, logout and roles", ScreenshotTests.Coordinator),
+    ("Screenshot transfer yields under backpressure and releases failed captures", ScreenshotTests.Backpressure),
     ("Game card protocol rejects malformed payloads and bounds active requests", Phase5Tests.ProtocolAndQueue),
     ("Equipment compares rings independently and respects job, level, materia and special gear", Phase5Tests.Comparison),
     ("V5 migration, card caches, equipment snapshots and favorites preserve ownership", Phase5Tests.Storage),

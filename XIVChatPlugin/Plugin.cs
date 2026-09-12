@@ -33,6 +33,8 @@ namespace XIVChatPlugin {
 
         internal IPlayerState PlayerState { get; }
         internal IGameInventory GameInventory { get; }
+        internal ITextureProvider TextureProvider { get; }
+        internal ITextureReadbackProvider TextureReadback { get; }
 
         internal IGameInteropProvider GameInteropProvider { get; }
 
@@ -60,7 +62,8 @@ namespace XIVChatPlugin {
         public Plugin(IDalamudPluginInterface pluginInterface, IPluginLog log, IChatGui chatGui,
             IClientState clientState, ICommandManager commandManager, IDataManager dataManager,
             IFramework framework, IObjectTable objectTable, IPlayerState playerState,
-            IGameInteropProvider gameInteropProvider, ISigScanner sigScanner, IGameInventory gameInventory) {
+            IGameInteropProvider gameInteropProvider, ISigScanner sigScanner, IGameInventory gameInventory,
+            ITextureProvider textureProvider, ITextureReadbackProvider textureReadback) {
             // Assign dependencies before configuration, hooks, or the listener are initialized.
             this.Interface = pluginInterface;
             Log = log;
@@ -72,6 +75,8 @@ namespace XIVChatPlugin {
             this.ObjectTable = objectTable;
             this.PlayerState = playerState;
             this.GameInventory = gameInventory;
+            this.TextureProvider = textureProvider;
+            this.TextureReadback = textureReadback;
             this.GameInteropProvider = gameInteropProvider;
             this.SigScanner = sigScanner;
             this.Events = new InternalEvents();

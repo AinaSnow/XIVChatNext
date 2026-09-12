@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../XIVChatPlugin/ScreenshotCoordinator.cs" Link="ScreenshotCoordinator.cs" />
     <Compile Include="../../XIVChat Desktop/ChineseGameText.cs" Link="ChineseGameText.cs" />
     <Compile Include="../../XIVChatPlugin/GameCardRequestQueue.cs" Link="GameCardRequestQueue.cs" />
     <Compile Include="../../XIVChat Desktop/NotificationPolicy.cs" Link="NotificationPolicy.cs" />

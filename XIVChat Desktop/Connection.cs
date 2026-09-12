@@ -120,6 +120,7 @@ namespace XIVChat_Desktop {
                 { ClientPreference.GuardedCommandsSupport, true },
                 { ClientPreference.GameEventsSupport, true },
                 { ClientPreference.GameCardsSupport, true },
+                { ClientPreference.ScreenshotSupport, true },
             },
             Channels = ChannelSubscription.Union(this.app.Config.HistoryEnabled,
                 this.app.Config.Tabs.SelectMany(t => t.Filter.Types).Distinct().SelectMany(t => t.Types()).Select(t => (ushort)t)
@@ -339,6 +340,8 @@ namespace XIVChat_Desktop {
 
                     this.Available = availability.available;
                     if (!availability.available) this.commandPlayer = null;
+                    this.InvalidateScreenshot();
+                    this.DispatchIfCurrent(() => this.app.Screenshots.UpdateContext());
                     this.DispatchIfCurrent(() => this.app.Cards.UpdateContext(this));
                     if (!availability.available) this.DispatchIfCurrent(() =>
                         this.app.Session.Friends.SetContext(this.source, null, null, this.capabilities?.FriendSnapshots == true));
@@ -379,6 +382,8 @@ namespace XIVChat_Desktop {
                     this.DispatchIfCurrent(this.UpdateFriendsContext);
                     this.DispatchIfCurrent(() => this.app.Cards.UpdateContext(this));
                     this.OnPropertyChanged(nameof(this.SupportsGameEvents));
+                    this.OnPropertyChanged(nameof(this.SupportsScreenshots));
+                    this.DispatchIfCurrent(() => this.app.Screenshots.UpdateContext());
                     if (newServerSession && this.capabilities.CursorBacklog) {
                         HistoryCursor? cursor = null;
                         try {
@@ -408,6 +413,10 @@ namespace XIVChat_Desktop {
                     if (this.capabilities?.FriendPresence != true || rawMessage.Length > 1024) break;
                     var presence = ServerFriendPresence.Decode(payload);
                     this.DispatchIfCurrent(() => this.app.Session.Friends.Presence.Add(presence, DateTime.UtcNow));
+                    break;
+                case ServerOperation.Screenshot:
+                    if (this.SupportsScreenshots && rawMessage.Length <= ScreenshotProtocol.MaxPacketBytes)
+                        this.ReceiveScreenshot(ServerScreenshot.Decode(payload));
                     break;
                 case ServerOperation.GameCard:
                     if (this.capabilities?.GameCards == true && rawMessage.Length <= CardProtocol.MaxPacketBytes)
@@ -510,6 +519,7 @@ namespace XIVChat_Desktop {
 
         private void SetPlayerData(PlayerData? playerData) {
             this.commandPlayer = playerData;
+            this.InvalidateScreenshot();
             if (playerData != null) this.LastPlayer = playerData;
             var visibility = playerData == null ? Visibility.Collapsed : Visibility.Visible;
 
@@ -517,6 +527,7 @@ namespace XIVChat_Desktop {
                 if (!ReferenceEquals(this.app.Connection, this)) return;
                 var previousOwner = this.app.Session.Player?.Identity?.Key;
                 this.app.Session.SetPlayer(playerData);
+                this.app.Screenshots.UpdateContext();
                 this.app.Cards.UpdateContext(this);
                 this.UpdateFriendsContext();
                 if (playerData?.Identity?.Key is { } owner && owner != previousOwner) _ = this.app.RestorePlayerHistoryAsync(playerData);

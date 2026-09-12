@@ -32,6 +32,8 @@ namespace XIVChatPlugin {
         internal string? DisconnectReason { get; private set; }
 
         internal bool Send(Encodable message) => this.SendEncoded(message.Encode());
+        internal bool TrySendScreenshot(byte[] bytes) => !this.TokenSource.IsCancellationRequested &&
+            bytes.Length <= ScreenshotProtocol.MaxPacketBytes && this.Queue.TryWriteWithin(bytes, 4, 2 * ScreenshotProtocol.MaxPacketBytes);
         internal bool SendEncoded(byte[] bytes) {
             if (this.TokenSource.IsCancellationRequested) return false;
             if (bytes.Length + SecretMessage.MacSize <= 128_000 && this.Queue.TryWrite(bytes)) return true;

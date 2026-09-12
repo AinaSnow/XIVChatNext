@@ -24,9 +24,12 @@ namespace XIVChatCommon {
         public (int Count, long Bytes) Usage { get { lock (this.gate) return (this.count, this.bytes); } }
 
         // Ownership is shared: callers must never mutate a buffer after it has been queued.
-        public bool TryWrite(byte[] packet) {
+        public bool TryWrite(byte[] packet) => this.TryWriteWithin(packet, this.maxCount, this.maxBytes);
+
+        // Bulk producers use a smaller shared-queue ceiling, leaving capacity for interactive traffic.
+        public bool TryWriteWithin(byte[] packet, int countLimit, long byteLimit) {
             lock (this.gate) {
-                if (this.closed || this.count >= this.maxCount || packet.LongLength > this.maxBytes - this.bytes) return false;
+                if (this.closed || this.count >= Math.Min(countLimit, this.maxCount) || packet.LongLength > Math.Min(byteLimit, this.maxBytes) - this.bytes) return false;
                 this.count++; this.bytes += packet.Length;
                 return this.channel.Writer.TryWrite(packet);
             }

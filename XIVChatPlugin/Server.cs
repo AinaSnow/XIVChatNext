@@ -43,6 +43,8 @@ namespace XIVChatPlugin {
         private readonly Plugin _plugin;
         private readonly LinkMetadataCache _metadata;
         internal GameCardService GameCards { get; }
+        private ScreenshotCapture ScreenshotCapture { get; }
+        private ScreenshotCoordinator Screenshots { get; }
         internal (int Items, int Maps, long Hits, long Misses) CacheUsage => this._metadata.Usage;
 
         private readonly Stopwatch _sendWatch = new();
@@ -94,6 +96,9 @@ namespace XIVChatPlugin {
         internal Server(Plugin plugin) {
             this._plugin = plugin;
             this._metadata = new LinkMetadataCache(plugin.DataManager);
+            this.ScreenshotCapture = new ScreenshotCapture(plugin);
+            this.Screenshots = new ScreenshotCoordinator(this.ScreenshotCapture.CaptureAsync,
+                ex => Plugin.Log.Warning(ex, "Could not capture game screenshot"));
             this.GameCards = new GameCardService(plugin, this._metadata, (id, reply) => {
                 if (this._clients.TryGetValue(id, out var client)) client.Send(reply);
             }, reply => this.BroadcastMessage(reply, ClientPreference.GameCardsSupport));
@@ -227,6 +232,7 @@ namespace XIVChatPlugin {
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             this.FriendPresence.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             var eventOwner = this.CurrentIdentity();
+            this.Screenshots.SetContext(eventOwner?.Key, this._ownerEpoch);
             this.GameCards.Tick(eventOwner, this._ownerEpoch, this._clients.Values.Any(c => c.Ready && c.GetPreference(ClientPreference.GameCardsSupport, false)));
             var player = eventOwner == null ? null : this._plugin.ObjectTable.LocalPlayer;
             if (eventOwner != null) this._eventOwner = eventOwner;
@@ -493,7 +499,7 @@ namespace XIVChatPlugin {
                     if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
                         client.Send(new ServerCapabilities {
                             ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true, GameCards = true,
+                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true, GameCards = true, Screenshots = true,
                         });
                     }
 
@@ -502,6 +508,12 @@ namespace XIVChatPlugin {
                         this._awaitingState[id] = 0;
                     }
 
+                    break;
+                case ClientOperation.Screenshot:
+                    if (!client.GetPreference(ClientPreference.ScreenshotSupport, false) || payload.Length > 1024) break;
+                    var screenshot = ClientScreenshot.Decode(payload);
+                    if (screenshot.Valid) _ = this.Screenshots.RequestAsync(id, screenshot, client.TokenSource.Token,
+                        (packet, bulk) => bulk ? client.TrySendScreenshot(packet.Encode()) : client.Send(packet));
                     break;
                 case ClientOperation.GameCard:
                     if (!client.GetPreference(ClientPreference.GameCardsSupport, false) || payload.Length > 2048) break;
@@ -982,6 +994,7 @@ namespace XIVChatPlugin {
         internal void OnLogIn() {
             this._loggedOut = false;
             this._ownerEpoch = Guid.NewGuid().ToString("N");
+            this.Screenshots.SetContext(null, this._ownerEpoch);
             this._loginEventAt = DateTime.UtcNow;
             this.RefreshGameContext();
             this._nextHousingCheck = 0;
@@ -1000,6 +1013,7 @@ namespace XIVChatPlugin {
             this._sendPlayerData = false;
             this._ownerEpoch = Guid.NewGuid().ToString("N");
             Volatile.Write(ref this._gameContext, new GameCommandContext(null, this._ownerEpoch, this._channelRevision));
+            this.Screenshots.SetContext(null, this._ownerEpoch);
             foreach (var command in this._toGame.Clear()) this.RejectCommand(command.ClientId, command.RequestId, CommandFailure.NotLoggedIn, command.PartIndex);
             this._nextHousingCheck = 0;
             this.FriendLists.Tick(null, this._ownerEpoch, DateTime.UtcNow);
@@ -1038,6 +1052,8 @@ namespace XIVChatPlugin {
             this.FriendLists.Dispose();
             this.FriendPresence.Dispose();
             this.GameCards.Dispose();
+            this.Screenshots.Dispose();
+            this.ScreenshotCapture.Dispose();
             this._toGame.Clear();
             this.PendingClients.Writer.TryComplete();
         }

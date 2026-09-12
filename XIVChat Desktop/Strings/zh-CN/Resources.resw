@@ -697,4 +697,33 @@
   <data name="Card.Tags" xml:space="preserve"><value>标签</value></data>
   <data name="Card.Edit" xml:space="preserve"><value>编辑资料</value></data>
   <data name="Card.RecentScope" xml:space="preserve"><value>从最近消息提取的卡片；加载更多以查看更早的消息。</value></data>
+  <data name="Screenshot.Title" xml:space="preserve"><value>游戏截图</value></data>
+  <data name="Screenshot.Quality" xml:space="preserve"><value>截图清晰度</value></data>
+  <data name="Screenshot.Standard" xml:space="preserve"><value>标准 · 最长边 1920 像素</value></data>
+  <data name="Screenshot.Detailed" xml:space="preserve"><value>清晰 · 最长边 2560 像素</value></data>
+  <data name="Screenshot.Capture" xml:space="preserve"><value>截取画面</value></data>
+  <data name="Screenshot.Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Screenshot.Save" xml:space="preserve"><value>保存图片</value></data>
+  <data name="Screenshot.Fit" xml:space="preserve"><value>适应窗口</value></data>
+  <data name="Screenshot.ZoomIn" xml:space="preserve"><value>放大</value></data>
+  <data name="Screenshot.ZoomOut" xml:space="preserve"><value>缩小</value></data>
+  <data name="Screenshot.Ready" xml:space="preserve"><value>可以截取当前游戏画面。</value></data>
+  <data name="Screenshot.Empty" xml:space="preserve"><value>通过已连接的插件截取游戏画面。</value></data>
+  <data name="Screenshot.Hint" xml:space="preserve"><value>画面包含游戏及 Dalamud 界面。图片暂存在预览中，可手动保存；关闭窗口后清除。</value></data>
+  <data name="Screenshot.Capturing" xml:space="preserve"><value>正在等待游戏画面并生成图片…</value></data>
+  <data name="Screenshot.Receiving" xml:space="preserve"><value>正在接收图片 · {0}%</value></data>
+  <data name="Screenshot.Complete" xml:space="preserve"><value>截图已完成。</value></data>
+  <data name="Screenshot.Previous" xml:space="preserve"><value>此前连接或角色的截图</value></data>
+  <data name="Screenshot.Details" xml:space="preserve"><value>{0} · {1} × {2} · JPEG · {3} KB</value></data>
+  <data name="Screenshot.Busy" xml:space="preserve"><value>已有截图正在处理，请稍后再试。</value></data>
+  <data name="Screenshot.NotLoggedIn" xml:space="preserve"><value>请先登录游戏角色，再截取画面。</value></data>
+  <data name="Screenshot.Stale" xml:space="preserve"><value>连接或角色已变化，请重新截取。</value></data>
+  <data name="Screenshot.Unavailable" xml:space="preserve"><value>无法截取或读取图片，请在游戏正常显示画面时重试。</value></data>
+  <data name="Screenshot.TimedOut" xml:space="preserve"><value>截图超时，请恢复游戏窗口后重试。</value></data>
+  <data name="Screenshot.Cancelled" xml:space="preserve"><value>已取消截图。</value></data>
+  <data name="Screenshot.TooLarge" xml:space="preserve"><value>图片超过大小限制，请改用标准清晰度重试。</value></data>
+  <data name="Screenshot.UpgradeRequired" xml:space="preserve"><value>当前插件不支持截图，请更新游戏内插件后使用。</value></data>
+  <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>请连接已登录角色的游戏，再截取画面。</value></data>
+  <data name="Screenshot.Saved" xml:space="preserve"><value>图片已保存。</value></data>
+  <data name="Screenshot.SaveFailed" xml:space="preserve"><value>无法保存图片，请选择可写入的位置后重试。</value></data>
 </root>

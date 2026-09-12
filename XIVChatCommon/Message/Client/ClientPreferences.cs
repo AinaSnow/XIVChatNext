@@ -42,6 +42,8 @@ namespace XIVChatCommon.Message.Client {
         GameEventsSupport = 5,
         [Preference(typeof(bool))]
         GameCardsSupport = 6,
+        [Preference(typeof(bool))]
+        ScreenshotSupport = 7,
     }
 
     public static class ClientPreferencesExtension {

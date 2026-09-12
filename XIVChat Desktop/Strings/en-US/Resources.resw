@@ -697,4 +697,33 @@
   <data name="Card.Tags" xml:space="preserve"><value>Tags</value></data>
   <data name="Card.Edit" xml:space="preserve"><value>Edit details</value></data>
   <data name="Card.RecentScope" xml:space="preserve"><value>Cards extracted from recent messages; load more to scan older messages.</value></data>
+  <data name="Screenshot.Title" xml:space="preserve"><value>Game screenshot</value></data>
+  <data name="Screenshot.Quality" xml:space="preserve"><value>Screenshot quality</value></data>
+  <data name="Screenshot.Standard" xml:space="preserve"><value>Standard · up to 1920 px</value></data>
+  <data name="Screenshot.Detailed" xml:space="preserve"><value>Detailed · up to 2560 px</value></data>
+  <data name="Screenshot.Capture" xml:space="preserve"><value>Capture</value></data>
+  <data name="Screenshot.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Screenshot.Save" xml:space="preserve"><value>Save image</value></data>
+  <data name="Screenshot.Fit" xml:space="preserve"><value>Fit</value></data>
+  <data name="Screenshot.ZoomIn" xml:space="preserve"><value>Zoom in</value></data>
+  <data name="Screenshot.ZoomOut" xml:space="preserve"><value>Zoom out</value></data>
+  <data name="Screenshot.Ready" xml:space="preserve"><value>Ready to capture the current game view.</value></data>
+  <data name="Screenshot.Empty" xml:space="preserve"><value>Capture the game view from your connected plugin.</value></data>
+  <data name="Screenshot.Hint" xml:space="preserve"><value>Includes the game and Dalamud UI. Images stay in this preview until you save them or close the window.</value></data>
+  <data name="Screenshot.Capturing" xml:space="preserve"><value>Waiting for a game frame and encoding the image…</value></data>
+  <data name="Screenshot.Receiving" xml:space="preserve"><value>Receiving image · {0}%</value></data>
+  <data name="Screenshot.Complete" xml:space="preserve"><value>Screenshot ready.</value></data>
+  <data name="Screenshot.Previous" xml:space="preserve"><value>Previous connection or character</value></data>
+  <data name="Screenshot.Details" xml:space="preserve"><value>{0} · {1} × {2} · JPEG · {3} KB</value></data>
+  <data name="Screenshot.Busy" xml:space="preserve"><value>A screenshot is already in progress. Try again shortly.</value></data>
+  <data name="Screenshot.NotLoggedIn" xml:space="preserve"><value>Log in to the game before capturing.</value></data>
+  <data name="Screenshot.Stale" xml:space="preserve"><value>The connection or character changed. Capture again.</value></data>
+  <data name="Screenshot.Unavailable" xml:space="preserve"><value>The screenshot could not be captured or read. Try again with the game rendering.</value></data>
+  <data name="Screenshot.TimedOut" xml:space="preserve"><value>Screenshot timed out. Restore the game window and try again.</value></data>
+  <data name="Screenshot.Cancelled" xml:space="preserve"><value>Screenshot cancelled.</value></data>
+  <data name="Screenshot.TooLarge" xml:space="preserve"><value>The image exceeded the size limit. Try Standard quality.</value></data>
+  <data name="Screenshot.UpgradeRequired" xml:space="preserve"><value>This plugin does not support screenshots. Update the game plugin to use this feature.</value></data>
+  <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>Connect to a logged-in game to capture a screenshot.</value></data>
+  <data name="Screenshot.Saved" xml:space="preserve"><value>Image saved.</value></data>
+  <data name="Screenshot.SaveFailed" xml:space="preserve"><value>The image could not be saved. Choose a writable location and try again.</value></data>
 </root>
