@@ -38,6 +38,6 @@
             <UnwantedFiles Include="$(OutDir)*.pdb" Condition="'$(Configuration)' == 'Release'" />
         </ItemGroup>
         <Delete Files="@(UnwantedRuntimeFiles);@(UnwantedFiles)" />
-        <RemoveDir Directories="$(OutDir)XIVChat" />
+        <RemoveDir Directories="$(OutDir)XIVChat;$(OutDir)$(AssemblyName)" />
     </Target>
 </Project>

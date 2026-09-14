@@ -54,6 +54,8 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="66"/><ColumnDefinition x:Name="SidebarColumn" Width="252"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
                 <Grid Margin="3,12,3,8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <ScrollViewer x:Name="NavigationRailScroll" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollMode="Enabled" HorizontalScrollMode="Disabled" IsTabStop="False">
                     <StackPanel Spacing="7">
                         <Button x:Name="NavConversations" Tag="conversations" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE8BD;" FontSize="20"/><TextBlock x:Name="NavConversationsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
                         <Button x:Name="NavChannels" Tag="channels" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE8F2;" FontSize="20"/><TextBlock x:Name="NavChannelsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
@@ -62,6 +64,7 @@
                         <Button x:Name="NavHistory" Tag="history" Style="{StaticResource RailButton}" Click="Navigate_Click"><StackPanel Spacing="5"><FontIcon Glyph="&#xE81C;" FontSize="20"/><TextBlock x:Name="NavHistoryText" FontSize="11" HorizontalAlignment="Center"/></StackPanel></Button>
                         <Button x:Name="NavEvents" Tag="events" Style="{StaticResource RailButton}" Click="Navigate_Click"><Grid><StackPanel Spacing="5"><FontIcon Glyph="&#xE787;" FontSize="20"/><TextBlock x:Name="NavEventsText" FontSize="11" HorizontalAlignment="Center"/></StackPanel><TextBlock x:Name="EventsBadge" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/></Grid></Button>
                     </StackPanel>
+                    </ScrollViewer>
                     <Button x:Name="SettingsButton" Grid.Row="1" Style="{StaticResource RailButton}" Click="Configuration_Click"><FontIcon Glyph="&#xE713;" FontSize="20"/></Button>
                 </Grid>
             </Border>

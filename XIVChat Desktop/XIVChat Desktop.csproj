@@ -14,8 +14,9 @@
         <EnableDefaultPageItems>true</EnableDefaultPageItems>
         <UseWinUI>true</UseWinUI>
         <DefaultLanguage>en-US</DefaultLanguage>
+        <SatelliteResourceLanguages>en;en-US;en-GB;ja;ja-JP;de;de-DE;zh-Hans;zh-CN;zh-Hant;zh-TW;fr;fr-FR</SatelliteResourceLanguages>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-        <WindowsAppSdkBootstrapInitialize>true</WindowsAppSdkBootstrapInitialize>
+        <!-- Let the SDK select bootstrap only for framework-dependent builds. -->
         <WindowsAppSDKBootstrapAutoInitializeOptions_Default>true</WindowsAppSDKBootstrapAutoInitializeOptions_Default>
         <AppxPackage>false</AppxPackage>
         <WindowsPackageType>None</WindowsPackageType>

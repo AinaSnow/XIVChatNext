@@ -36,6 +36,8 @@
 
 Relay 可在 Linux 独立构建或通过 Docker 构建，不需要游戏文件、Dalamud 或 WinUI。Windows 两端继续使用各自现有工具链。目录、依赖和测试入口见 [开发指南](docs/development/BUILD.md)。
 
+生成客户端与插件分发包可运行 `./pack.ps1`。桌面包保留英、日、德、中、法运行库资源；插件使用 SDK 标准 ZIP，避免嵌套。启动与分发验收见 [本次收尾记录](docs/verification/WRAPUP_2026-09-14.md)。
+
 ## 旧正式版安装方式
 
 ### 1. 安装游戏端插件

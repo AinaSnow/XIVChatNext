@@ -1,5 +1,17 @@
 # Regression checks
 
+## Distribution wrap-up (2026-09-14)
+
+The desktop smoke suite has 90 assertions plus its completion marker. It now checks that
+the navigation rail scrolls in a 1240 × 540 window, Events remains fully reachable, and
+the pinned Settings button is not overlapped. Test configuration saves are redirected to
+the isolated output directory. The 2026-09-14 run passed all 90 assertions.
+
+`pack.ps1` validates both application translations and rejects a plugin ZIP containing
+nested packages or missing root-level entry files. The final self-contained desktop ZIP
+was also launched with the normal entry point and restored local history and the saved
+chat window after removing the forced framework bootstrap setting.
+
 ## Phase 5 cards and favorites
 
 Live equipment follow-up (2026-09-12): the installed-game suite now has 16 checks,

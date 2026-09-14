@@ -16,6 +16,8 @@
 
 ## 验收
 
+- [分发精简、启动与介绍页收尾](verification/WRAPUP_2026-09-14.md)
+- [公网中继与真实游戏初步联调](verification/RELAY_LIVE_2026-09-14.md)
 - [引导、快捷连接和中继实施记录](verification/RELAY_SETUP_2026-09-14.md)
 - [中继网页管理后台验证](verification/RELAY_ADMIN_2026-09-14.md)
 - 历史阶段记录仍保留原文件名与路径，便于已有引用继续使用。它们记录各阶段当时的状态；后续修正与最新实测以日期更晚的记录为准。

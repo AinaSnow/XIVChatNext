@@ -69,4 +69,17 @@ dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild
 
 插件正常构建会通过 Dalamud 打包器生成插件包；桌面端和中继分别使用各自项目的 `dotnet publish`。本地 ZIP、构建日志及临时测试数据放入 `artifacts/`。
 
+统一生成桌面端与插件分发包：
+
+```powershell
+./pack.ps1
+# 或只生成其中一端；同名目录已存在时拒绝覆盖
+./pack.ps1 -Component desktop -Label preview-desktop
+./pack.ps1 -Component plugin -Label preview-plugin
+```
+
+桌面包包含 .NET 和 Windows App SDK 运行库，保留英、日、德、中、法的语言资源；应用自身仍提供中英文界面。脚本同时清理不受 `SatelliteResourceLanguages` 控制的 WinUI 原生 MUI 目录，保留中性回退资源。Windows App SDK 的引导初始化使用 SDK 默认选择：依赖框架的开发构建启用，携带运行库的分发构建不强制启用，避免两套运行库初始化冲突。
+
+插件直接分发 Dalamud SDK 生成的 `XIVChatNext/latest.zip`，校验主 DLL 和清单位于压缩包根目录且无嵌套 ZIP；不要再压缩整个 `bin/Release`。输出还包含 `SHA256SUMS.txt`。
+
 正式发布前单独更新对应组件版本与更新说明，验证干净机器依赖、升级与回滚，再发布对应包或镜像。本轮没有推送正式插件源、公共镜像或 GitHub Release。不要以旧桌面包 `1.3.5` 或旧插件源作为本分支新功能的验证对象。

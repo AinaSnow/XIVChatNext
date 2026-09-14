@@ -41,7 +41,7 @@ namespace XIVChat_Desktop {
             try {
                 var first = new Tab("General") { Filter = Tab.GeneralFilter() };
                 var second = new Tab("Also general") { Filter = Tab.GeneralFilter() };
-                var config = new Configuration { OnlineAvatars = false, LocalBacklogMessages = 10_000, BacklogMessages = 0, Tabs = new ObservableCollection<Tab> { first, second } };
+                var config = new Configuration { FilePathOverride = Path.Combine(AppContext.BaseDirectory, "smoke-config.json"), OnlineAvatars = false, LocalBacklogMessages = 10_000, BacklogMessages = 0, Tabs = new ObservableCollection<Tab> { first, second } };
                 typeof(App).GetProperty(nameof(Config))!.SetValue(this, config);
                 this.Notifier.Sink = notificationSink;
                 var legacy = Newtonsoft.Json.Linq.JObject.Parse(Newtonsoft.Json.JsonConvert.SerializeObject(config));
@@ -63,6 +63,25 @@ namespace XIVChat_Desktop {
                 typeof(App).GetProperty(nameof(Window))!.SetValue(this, window);
                 window.Activate();
                 await Task.Delay(300);
+
+                var normalSize = window.AppWindow.Size;
+                window.AppWindow.Resize(new Windows.Graphics.SizeInt32(1240, 540));
+                await Task.Delay(250);
+                var rail = Find<ScrollViewer>((DependencyObject)window.Content, v => v.Name == "NavigationRailScroll");
+                var eventsButton = Find<Button>((DependencyObject)window.Content, b => b.Name == "NavEvents");
+                var settingsButton = Find<Button>((DependencyObject)window.Content, b => b.Name == "SettingsButton");
+                Check(rail.ScrollableHeight > 0, "Short windows keep the navigation rail scrollable");
+                rail.ChangeView(null, rail.ScrollableHeight, null, true);
+                await Task.Delay(150);
+                var eventsTop = eventsButton.TransformToVisual(rail).TransformPoint(new Windows.Foundation.Point()).Y;
+                Check(eventsTop >= -1 && eventsTop + eventsButton.ActualHeight <= rail.ActualHeight + 1,
+                    "Events navigation is fully reachable in a 540-pixel window");
+                var railBottom = rail.TransformToVisual((UIElement)window.Content).TransformPoint(new Windows.Foundation.Point(0, rail.ActualHeight)).Y;
+                var settingsTop = settingsButton.TransformToVisual((UIElement)window.Content).TransformPoint(new Windows.Foundation.Point()).Y;
+                Check(railBottom <= settingsTop + 1, "Scrolled navigation does not overlap the pinned settings button");
+                window.AppWindow.Resize(normalSize);
+                rail.ChangeView(null, 0, null, true);
+                await Task.Delay(150);
 
                 var editServer = new ManageServer(null);
                 var editView = new ManageTab(first);
