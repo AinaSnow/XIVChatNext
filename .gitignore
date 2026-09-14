@@ -71,6 +71,15 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Local development support is archived outside the product repository.
+tests/
+docs/verification/
+docs/design/
+docs/*PLAN*.md
+docs/*20??-??-??.md
+assets/branding/candidates/
+assets/branding/legacy/
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 

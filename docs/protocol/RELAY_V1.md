@@ -1,5 +1,53 @@
 # Relay v1
 
+## English
+
+The control protocol uses bounded JSON in binary WebSocket frames. Application traffic retains the MessagePack/XIVChat protocol. The service references the minimal control contracts; Windows endpoints use the separate transport library.
+
+### Authentication and routes
+
+| Endpoint | Identity / purpose |
+| --- | --- |
+| `GET /healthz` | Anonymous liveness check returning status and protocol version |
+| `WS /v1/host` | Game registration credential; submits protocol version and endpoint certificate fingerprint, then waits for `registered` |
+| `POST /v1/invitations` | Online game credential; issues a ten-minute, single-use invitation |
+| `POST /v1/pair` | Redeems an invitation for a separate client credential |
+| `WS /v1/client` | Client credential; its authentication record determines the target game device |
+| `WS /v1/host-data/{id}` | Game credential plus single-use `X-Relay-Ticket`; joins a separate data session |
+
+Endpoint credentials use Authorization Bearer headers; invitations use request bodies. Service addresses reject embedded credentials, queries and fragments. Devices are registered through password-protected web administration or the local CLI.
+
+Web administration uses `/admin/` and `/admin/api/`. Its sessions are separate from endpoint credentials. The deployment password is checked using a randomly salted PBKDF2-SHA256 verifier (100,000 iterations), held only in memory. Session and CSRF tokens have 256 random bits. Only session-token hashes are retained, for at most eight hours; logout or restart invalidates sessions. Cookies use HttpOnly, SameSite=Strict and Path=/admin, plus Secure for HTTPS. Mutations require the configured Origin, JSON and the session CSRF header; all administration API requests validate Host. Login is limited to five attempts per instance per minute and 64 administration sessions. Responses disable caching; CSP blocks third-party scripts and frames.
+
+The dashboard shows devices, clients, connection status and session ownership, without credential hashes, routing tickets or chat content. New device credentials appear only in the creation response. Dashboard and plugin invitations share the same storage and `xivchat-relay:` encoding. Clients must still independently verify the plugin fingerprint.
+
+Each client connection receives a random session ID and a 256-bit ticket. Data sessions bind the game identity, control connection instance and client identity. A different game cannot join with a leaked ticket. Each client credential allows one active session. Endpoints start their TLS handshake after receiving `ready`; stale session completion cannot replace a new session.
+
+Invitations, registration credentials and client credentials use 256-bit random values; SQLite stores SHA-256 hashes. Immediate transactions prevent duplicate invitation redemption and enforce version, expiry, revocation and capacity checks. Each game device keeps one valid invitation.
+
+### Encryption
+
+Production transport uses HTTPS/WSS with normal server-certificate verification. Inside the transparent stream, the Windows plugin and client establish SslStream TLS 1.2/1.3, pinning the game endpoint certificate's SHA-256 fingerprint and checking its validity. The endpoint creates an ECDSA P-256 self-signed certificate locally; its private key never goes to the relay.
+
+Platform TLS provides freshness, authenticated encryption and replay protection. Existing Sodium key exchange and device trust still run inside TLS. Relay registration or routing permission does not replace endpoint identity verification. Compare the complete pairing fingerprint with the plugin through an independent trusted channel.
+
+Windows stores credentials and the endpoint certificate using current-user DPAPI. The relay observes connection metadata and traffic volume but cannot obtain chat plaintext from these sessions. It does not persist application traffic or queue offline messages.
+
+### Resource limits and shutdown
+
+Each game has one control connection; each client has its own pair of data WebSockets. Forwarding awaits writes without an unbounded background queue. Control frames are limited to 16 KiB and data frames to 64 KiB, with fragmentation and assembly-time limits. Endpoints split large writes into immediately sent 16 KiB frames.
+
+Control setup, routing readiness, TLS handshakes, HTTP response bodies, partial frames and writes have time limits. WebSocket heartbeats detect loss. The plugin reconnects with exponential backoff and jitter; clients retry after an established session ends unexpectedly. Explicit disconnect cancels the connection and pending retries.
+
+The service checks active credential revocation every two seconds. Shutdown, request cancellation and control disconnection propagate to associated streams. Revoked clients and malformed data close only the affected session.
+
+### Compatibility
+
+Relay v1 is separate from the retired public service and its authorization-code/shared-queue protocol. Direct connections remain available, with application capability negotiation. Older clients or plugins without relay support cannot use this relay; direct-mode compatibility does not imply relay compatibility.
+
+## 简体中文
+
+
 控制协议为有界 JSON，WebSocket 控制帧使用 Binary 类型。应用层继续使用原 MessagePack/XIVChat 协议。服务仅引用最小控制契约；Windows 端点引用独立 Transport 库。
 
 ## 认证与路由

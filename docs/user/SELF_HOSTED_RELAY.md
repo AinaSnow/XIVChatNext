@@ -1,95 +1,42 @@
-# 自部署中继
+# Self-hosted relay / 自建中继
 
-中继让插件和桌面端主动连接同一台服务器，适用于无法直接访问游戏电脑的网络。游戏电脑不需要公网入站端口；中继服务器必须能被两端访问。它只转发 XIVChat 数据，不代理游戏本身，也不保存离线聊天或截图。
+## English
 
-当前提供源码构建与 Docker 部署配置，尚未发布公共镜像。新中继协议不兼容旧公共中继，旧认证码不能直接使用。
+The plugin and desktop both connect to your HTTPS server when the game PC is not directly reachable. The relay forwards application traffic; it does not proxy the game, keep a character logged in, or store offline chats/screenshots.
 
-中继自带中英文网页后台。首次部署完成后，设备添加、重命名、邀请生成、连接查看和撤销授权都在浏览器完成，不需要日常输入管理命令。
+### Deploy
 
-## 部署服务
+Use the [Ubuntu + 1Panel offline image guide](RELAY_VPS_OFFLINE_IMAGE.md) for the release's prebuilt Linux amd64 image. For source builds and 1Panel HTTPS setup, see [VPS HTTPS](RELAY_VPS_HTTPS.md).
 
-第一次部署到自己的 VPS，可按 [VPS 部署与公网 HTTPS](RELAY_VPS_HTTPS.md) 从域名解析、部署包上传到网页登录逐步操作。
+On a server without an existing reverse proxy, the repository's default `deploy/relay/compose.yaml` includes Caddy. In that directory, copy `.env.example` to `.env`, set a real `RELAY_DOMAIN` and independent `RELAY_ADMIN_PASSWORD` (at least 16 characters), then run `docker compose up -d --build`. Caddy needs inbound 80/443; do not publish game port 14777 or backend 8080. Do not combine this default configuration with the 1Panel-only configuration.
 
-准备 Docker 与 Compose，以及指向服务器的域名。示例使用 Caddy 获取 HTTPS 证书，服务器需允许域名验证及 HTTPS 所需的 80/443 入站连接。游戏插件端口 `14777` 无需映射到公网。
+Open `https://your-domain/admin/` and sign in with the administrator password. Use the HTTPS root address as the service URL, without a subpath, query, username or password. Plain HTTP is allowed only for local development on loopback.
 
-在完整仓库的 `deploy/relay` 目录中：
+### Register the game and pair the desktop
 
-```sh
-cp .env.example .env
-# 编辑 .env：填写 RELAY_DOMAIN，以及独立且至少 16 位的 RELAY_ADMIN_PASSWORD
-docker compose up -d --build
-docker compose ps
-docker compose exec relay dotnet XIVChat.Relay.dll health
-```
+1. In **Game devices**, add a named device and save the registration credential shown only once.
+2. Enter the service URL/credential in the plugin, save and enable Relay. Wait for the device to show online.
+3. Generate an invitation in the web admin or plugin. A new invitation invalidates the previous unused invitation.
+4. In the desktop, choose Self-hosted relay and paste the invitation. Compare the complete endpoint fingerprint with the plugin through an independent trusted channel, then save.
+5. Complete the existing chat-device trust confirmation on both ends.
 
-服务镜像单独构建，只包含 .NET 10 服务和最小协议库，不依赖 Windows 或游戏文件。Compose 的服务端以普通用户运行，根文件系统只读，数据库写入 `relay-data` 持久卷；8080 仅在容器网络中开放，由 Caddy 提供外部 HTTPS。
+Registration, invitations and desktop credentials are separate from the admin password. Each desktop has its own credential. Credentials are protected for the current Windows user; moving PCs/users or losing configuration may require new pairing.
 
-`.env` 的填写示意如下。密码必须自行设置，示例不提供通用默认密码。建议使用密码管理器生成独立长密码；在 Compose `.env` 中用单引号包围密码，可避免 `$` 被解释为变量。不要提交或公开这个文件。
+**A normal restart does not require another invitation.** The ten-minute invitation lifetime applies only to its first, one-time exchange. Saved credentials and trust remain valid until revoked. Configuration save failure, revoked/lost credentials or a replaced endpoint certificate can require re-pairing.
 
-```dotenv
-RELAY_DOMAIN=relay.example.com
-RELAY_ADMIN_PASSWORD='在这里填写你自己的管理密码'
-```
+After a successful session, the Logo can connect to the last successful target. Interrupted successful relay sessions retry with backoff; explicit Disconnect cancels retries.
 
-启动后打开 **`https://自己的域名/admin/`**，输入管理密码登录。根地址也会转到后台。首次登录会显示空总览，按“添加游戏设备”开始；界面右侧或侧栏底部可以切换语言。
+### Administration and operation
 
-服务地址填写 `https://自己的域名`，不附加路径、查询参数或用户名密码。只有本机开发测试允许 `http://127.0.0.1:端口`；跨网络不能使用明文 HTTP。
+The English/Chinese web admin lists devices, clients and live sessions. Rename devices, create invitations, revoke a client or revoke a whole game device. Original credentials cannot be displayed again. Revocation normally closes affected sessions within the two-second checking interval; it cannot be undone.
 
-## 注册游戏插件
+Admin sessions last at most eight hours and end on logout or server restart. Restarting the server does not erase device/client authorization. To change the password, update the deployment environment and recreate the relay container. With Compose, provide the original domain and chosen password again when recreating it.
 
-1. 后台打开“游戏设备”，点击“添加游戏设备”，填写便于识别的名称。
-2. 创建成功后，复制服务地址与**只显示一次**的注册凭据。关闭弹窗前先保存凭据；后台不能再次查看原文。
-3. 打开游戏插件的中继设置，填写服务地址与该凭据，保存并启用中继。
-4. 回到后台，等待设备状态变为“在线”，再生成邀请。列表每 15 秒刷新一次，也可手动刷新。
+Defaults are intended for small private deployments: 64 online game hosts, 32 clients/sessions per host, 256 total sessions, and 4 MiB/s per session/direction with an 8 MiB burst. Large screenshots share their session with chat. Request/rate limits can apply per instance behind a shared proxy.
 
-每个游戏设备使用独立注册凭据。设备名称可在后台修改；遗失注册凭据时，请撤销旧设备、创建新设备并重新配对。没有匿名设备注册入口。
+### Backup, upgrade and troubleshooting
 
-插件保存凭据和端点证书时使用当前 Windows 用户的系统加密保护。服务端仅持久保存凭据摘要。更换 Windows 用户或电脑时，不要依赖直接复制旧配置里的受保护字段恢复授权，应签发新凭据并重新配对。
-
-## 配对桌面客户端
-
-1. 后台“游戏设备”中，在在线设备上点击“生成邀请”，确认后复制邀请。也可继续使用插件内的“生成一次性邀请（10 分钟）”。两种方式生成的新邀请都会使上一份未使用邀请失效。
-2. 客户端初始引导选择“自建中继”，或在连接管理中新增中继连接。
-3. 填写连接名称，粘贴邀请，点击查看地址和指纹。
-4. 与游戏插件显示的完整指纹逐字核对，再勾选确认并保存。不要只依赖中继提供的文字声明判断身份。
-5. 选择该连接。首次聊天连接仍保留原有设备密钥信任流程，需要在两端确认。
-
-配对邀请只能兑换一次。客户端取得自己的独立凭据，并使用 Windows 系统保护后保存。配对成功但本地保存失败时，可留在窗口中重试保存；关闭窗口后若未保存成功，需要重新生成邀请配对。
-
-**正常重开游戏或桌面客户端，不需要重新生成邀请。** 游戏设备注册、已配对客户端凭据和两端确认过的设备信任都会保存。邀请的 10 分钟有效期只限制首次兑换，不是已连接设备的授权期限；已保存的授权持续有效，直到被撤销。下次启动时，插件按已保存的设置上线，桌面端使用已有连接即可。换电脑、清空配置、凭据丢失、端点证书更换或授权被撤销时才需要重新注册或配对。如果同一设备每次正常重启都要求重新配对，应检查配置是否保存成功，而不是反复签发邀请。
-
-Logo 会记住最近成功连接的直连或中继目标。已成功的中继连接意外中断后会退避重试，点击断开或取消可停止重试。第一次失败的连接不会覆盖旧快捷目标，也不会自动开始无限重试。
-
-## 查看与撤销授权
-
-- **总览**：查看在线游戏设备数、有效客户端授权数，以及当前客户端到游戏设备的连接。
-- **游戏设备**：搜索设备、重命名、生成邀请，或撤销整个游戏设备。离线设备不能生成邀请。
-- **客户端授权**：查看客户端所属设备和连接状态，单独撤销客户端。勾选“显示已撤销”可查看历史授权记录。
-
-撤销前会显示确认弹窗，说明目标与影响范围。撤销客户端只关闭对应客户端的连接；撤销游戏设备会使它及关联客户端失去访问权限。活动连接通常在两秒检查周期内关闭，页面会在下次刷新时更新。列表不会再次显示原始凭据。错误地撤销后，应创建新注册/邀请，不能恢复原来的已撤销凭据。
-
-## 管理密码与后台登录
-
-管理密码只供后台使用，不要填入游戏插件或桌面客户端。后台采用 HttpOnly 会话 Cookie、严格同站策略、请求来源与 CSRF 校验，登录尝试每实例每分钟最多 5 次。后台会话最长 8 小时，退出后立即失效；服务重启会使全部后台会话失效，设备/客户端授权不受影响。
-
-忘记密码或需要更换密码时，在 `.env` 中修改 `RELAY_ADMIN_PASSWORD`，再执行一次 `docker compose up -d --force-recreate relay`。这一步只在更换部署配置时需要。
-
-不使用 Compose 时，服务读取 `Relay__AdminPassword` 和 `Relay__PublicUrl` 环境变量。管理密码未设置时，后台管理接口关闭，已有中继协议和本地管理命令仍可使用；非空密码少于 16 位或没有有效服务地址时，服务会输出配置错误并退出。`Relay__PublicUrl` 必须是用户实际访问的 HTTPS 根地址，反向代理必须保留原始 Host；示例 Caddy 已满足。不要把后端 8080 直接开放到公网。
-
-原有本地管理命令仍保留，供自动化或紧急维护使用，但日常管理使用网页即可。
-
-## 容量与运行边界
-
-- 私有、小规模部署：最多 64 个在线游戏端、每游戏端 32 个已授权客户端/活动会话，全实例默认 256 个活动会话。
-- 默认每会话每方向 4 MiB/s，突发预算 8 MiB。超限断开该会话，不无限缓冲。
-- 控制消息最多 16 KiB，数据帧最多 64 KiB；分片组装和写入均有限时。
-- 服务使用每来源 IP 每分钟 120 次 HTTP 请求的限制。示例反向代理下，后端看到的是代理地址，因此该限额由实例共享，适合首版私有用途。
-- 截图和聊天仍共享同一客户端会话，端点已有截图节流；不能保证慢网络中的大图对聊天完全没有影响。
-- 中继看得到连接地址、时间、设备标识和流量大小。应用内容在插件和客户端间建立额外 TLS 会话，并保留原聊天加密；中继不持有端点私钥。
-
-## 备份、升级与回退
-
-保留 `relay-data` 及 Caddy 的两个持久卷。停止中继写入后再备份数据库；不要仅复制正在写入的 SQLite 主文件而漏掉 WAL。
+Retain the data volume and the existing image. Stop relay writes before copying SQLite; do not copy only a live main database while omitting its WAL. A sample Compose backup is:
 
 ```sh
 mkdir -p backups
@@ -98,21 +45,56 @@ docker compose cp relay:/data/relay.sqlite3 ./backups/relay.sqlite3
 docker compose start relay
 ```
 
-数据库包含设备、客户端及撤销记录，备份应限制访问。升级前保留当前镜像标签/摘要和完整数据卷快照，用新源码构建并重新创建 `relay` 服务；数据卷会继续复用。发现问题时恢复旧镜像；若以后版本变更数据库结构，同时恢复升级前的数据卷。不要执行带 `-v` 的清理命令删除持久卷。
+Keep configuration/volumes for upgrades and restore a matching pre-upgrade data snapshot for rollback when schemas change. Never remove the volume as part of routine upgrades.
 
-## 排查连接
-
-| 现象 | 检查 |
+| Symptom | Check |
 | --- | --- |
-| 服务健康检查失败 | 容器启动是否完成、数据卷是否可写、日志中的启动错误 |
-| 后台提示尚未启用 | 管理密码是否已设置；修改 `.env` 后是否重新创建中继容器 |
-| 后台提示地址不正确 | 是否使用配置中的完整 HTTPS 地址访问；反向代理是否保留 Host |
-| 后台无法登录/429 | 密码是否正确；等待一分钟后重试；检查是否有其他管理端频繁尝试 |
-| 插件未上线/409 | 地址和 HTTPS 是否可达、插件是否启用、注册凭据和证书指纹是否对应 |
-| 401 | 注册或客户端凭据错误、已经撤销 |
-| 邀请兑换失败/400 | 过期、已使用、被新邀请替换、版本不兼容或客户端数量达到上限 |
-| 429 | 当前客户端已有会话，或连接/请求限额达到上限 |
-| 指纹/证书验证失败 | 停止连接并与插件重新核对；更换端点证书需新注册和重新配对 |
-| 已连接但不能发送 | 游戏角色尚未登录，或两端设备信任仍未完成 |
+| Wrong admin address | Configured HTTPS domain and forwarded original Host |
+| Login failure / 429 | Password and login rate limit; wait a minute before retrying |
+| Plugin offline / 409 | HTTPS reachability, registration credential and endpoint certificate |
+| 401 | Lost, incorrect or revoked credential |
+| Invitation rejected | Expired, used, replaced, incompatible or client limit reached |
+| Connected but cannot send | Character login and trust confirmation on both ends |
+| Fingerprint mismatch | Stop and independently compare with the plugin; do not bypass it |
 
-本轮已验证 Windows 和远程 Linux 容器的协议闭环、持久化与隔离。公网域名证书签发、不同运营商网络、真实游戏完整功能及长时间弱网负载仍需按 [验收记录](../verification/RELAY_SETUP_2026-09-14.md) 完成，不能把临时 SSH 测试通道当成公网部署验收。
+The relay sees addresses, timing, device identifiers and traffic sizes. Application data uses an additional endpoint TLS session and the existing chat encryption; the relay does not hold endpoint private keys or persist application traffic.
+
+## 简体中文
+
+游戏插件和桌面端都主动连接你的 HTTPS 中继，适合无法直连游戏电脑的环境。中继只转发应用数据，不代理游戏、不保持角色在线、不保存离线聊天或截图。
+
+### 部署
+
+发布包中的预编译 Linux amd64 镜像见 [1Panel 离线部署](RELAY_VPS_OFFLINE_IMAGE.md#简体中文)，源码与反代配置见 [VPS HTTPS](RELAY_VPS_HTTPS.md#简体中文)。
+
+没有现有反代的服务器可用 `deploy/relay/compose.yaml`，自带 Caddy。复制 `.env.example` 为 `.env`，填写真实 `RELAY_DOMAIN` 和至少 16 字符的独立 `RELAY_ADMIN_PASSWORD`，运行 `docker compose up -d --build`。Caddy 使用 80/443，无需公网开放 14777、8080；不要与 1Panel 配置合并。
+
+打开 `https://你的域名/admin/` 登录。两端服务地址填写 HTTPS 根地址，不带子路径、查询或用户名密码；仅本机开发允许回环 HTTP。
+
+### 注册与配对
+
+1. 后台“游戏设备”添加设备，保存只显示一次的注册凭据。
+2. 插件填写服务地址与凭据，保存并启用中继，等待在线。
+3. 后台或插件生成邀请，新邀请会使上一份未使用邀请失效。
+4. 客户端选择自建中继、粘贴邀请，与插件通过独立可信方式核对完整指纹并保存。
+5. 在两端完成首次聊天设备信任。
+
+管理密码、游戏注册凭据、邀请和客户端凭据各有用途，不能混用。每个客户端有独立凭据，由当前 Windows 用户保护；换电脑/用户或丢失配置可能需要重新配对。
+
+**正常重启不需要重新邀请。** 十分钟只限制邀请的首次兑换，已保存凭据和信任持续有效，直到被撤销。保存失败、凭据丢失/撤销或端点证书更换等情况才需要重新配对。Logo 连接最近成功目标；成功中继会话意外中断后退避重试，主动断开可取消。
+
+### 后台与运行
+
+中英文后台可查看设备、客户端和会话，重命名、生成邀请、撤销单客户端或整个游戏设备，不能再次显示原始凭据。撤销通常在两秒检查周期内关闭受影响连接，且不可恢复。
+
+后台会话最多八小时，退出或服务重启失效，但设备授权保留。改密码需更新环境并重新创建容器；Compose 重建时需再次提供域名和自行保存的密码。
+
+默认面向小规模私有部署：64 个在线游戏端、每端 32 个客户端/会话、全实例 256 会话，每会话每方向 4 MiB/s、突发 8 MiB。截图与聊天共用会话；共享反代下部分请求限制按实例共享。
+
+### 备份、升级与排查
+
+保留数据卷和旧镜像，停止中继写入后再复制 SQLite；不要只复制正在写入的主库而漏掉 WAL。上方命令给出了 Compose 备份示例。升级保留配置与数据卷，数据库结构变化时回退需匹配升级前快照，常规升级不要删除卷。
+
+地址错误检查 HTTPS 域名与原始 Host；登录失败检查密码和频率；设备离线检查 HTTPS、凭据与证书；401 表示凭据无效或撤销；邀请失败检查过期、使用、替换或数量限制；已连接不能发送检查角色和两端信任。指纹不符时停止并独立核对，不要绕过。
+
+中继可见地址、时间、设备标识和流量大小。应用数据另经端点 TLS 与原聊天加密，中继不持有端点私钥、不持久保存应用流量。

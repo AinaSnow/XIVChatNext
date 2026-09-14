@@ -1,53 +1,95 @@
 # XIVChat Next
 
-<p align="center">
-  <img src="assets/branding/logo-c1.png" width="100" alt="XIVChat Next Logo" />
-</p>
+<p align="center"><img src="assets/branding/logo-c1.png" width="100" alt="XIVChat Next messenger bird" /></p>
 
-基于原版 [XIVChat](https://xiv.chat/) 的桌面聊天工作台，包含 Dalamud 游戏插件、Windows 桌面客户端和可自部署的中继服务。
+**English** · [简体中文](#简体中文)
 
-## 当前开发版
+A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
-工作台分支已实现本地历史与搜索、好友和固定悄悄话、事件与通知、物品／地图卡片、截图、多窗口，以及首次启动引导和 Logo 快捷连接。插件和客户端均可选择直连或自建中继。
+[Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
-本仓库当前是开发验证版本。下面的旧版安装源及此前桌面正式包，不代表已经包含这些工作台改动；本轮没有发布公共镜像或更新正式插件源。各项实测范围见 [开发与验收文档](docs/README.md)。
+## Download
 
-## 开始使用开发版
+| Component | Version | Download |
+| --- | --- | --- |
+| Windows x64 desktop client | **1.3.6** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/XIVChatNext-Desktop-v1.3.6-win-x64.zip) |
+| Dalamud plugin | **1.7.15** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip) |
+| Optional self-hosted relay | Included with this release | [Release assets](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
-1. 在游戏中加载本分支对应的插件。
-2. 启动桌面客户端，按四步引导选择语言、连接位置与端口、通知偏好，最后保存。旧用户保持原设置，可从设置页重新运行引导。
-3. 同机直连使用 `127.0.0.1`；默认端口为 `14777`，两端端口必须一致。另一台电脑填写游戏电脑的 IP 或主机名。
-4. 首次连接核对两端显示的设备指纹并确认信任。连接成功后，点击首页 Logo 即可连接最近一次成功使用的目标；失败尝试不会覆盖它。
+The desktop ZIP includes .NET and Windows App SDK dependencies. Runtime language resources are limited to English, Japanese, German, Chinese and French; the application UI supports **English and Simplified Chinese**. Web-based cards use Microsoft Edge WebView2 Runtime.
 
-不能直接访问游戏电脑时，可按 [自部署中继指南](docs/user/SELF_HOSTED_RELAY.md) 部署服务。自带中英文网页后台，可添加游戏设备、复制凭据、生成邀请、查看连接与撤销授权；日常管理无需命令行。游戏和插件仍需运行。
+## Start chatting
 
-## 分别构建各组件
+1. In Dalamud settings, add this custom plugin repository:
 
-在仓库根目录运行：
+   ```text
+   https://raw.githubusercontent.com/AinaSnow/FFXIV-Dalamud-Plugins/main/pluginmaster.json
+   ```
+
+2. Install **XIVChatNext Server**, log in to a character and enable your connection in the plugin settings. New plugin configurations default to English; Chinese and System are available.
+3. Extract the desktop ZIP and run **XIVChat Desktop.exe**. Follow the first-run guide to choose language, connection and notifications.
+4. On the same computer, connect to **127.0.0.1:14777**, unless the plugin port was changed. On a reachable network, use the game PC's address.
+5. Compare device fingerprints and confirm trust on both ends. Afterwards, clicking the Logo connects to the most recently successful target.
+
+Without direct access to the game PC, use your own HTTPS relay. It includes an English/Chinese web administration page for devices, invitations, sessions and revocation. **Normal restarts do not need new invitations** once credentials and trust have been saved.
+
+## Features
+
+- Channels, fixed-target tells, pinned conversations and unread counts.
+- Game-synced friends, available presence and optional Lodestone avatars.
+- Character-scoped local history, search, favorites, notes and export.
+- Item/map cards and available equipment comparisons.
+- Game screenshots with preview, save and copy.
+- Chat popouts, saved layouts and event notifications.
+- Direct connections or an optional self-hosted relay.
+
+**Keep the game running and your character logged in for live chat, friends and screenshots.** Local history remains accessible offline. Presence/game data depend on the installed game and Dalamud version. Upgrade the client and plugin together. New self-hosted relay credentials are not compatible with legacy public-relay codes.
+
+## Build and documentation
 
 ```powershell
+./build.ps1 -Component desktop -Configuration Release
+./build.ps1 -Component plugin -Configuration Release
 ./build.ps1 -Component relay -Configuration Release
-./build.ps1 -Component desktop
-./build.ps1 -Component plugin
-./build.ps1 -Component relay-tests
-./build.ps1 -Component relay-admin-tests
-./build.ps1 -Component regression
+./pack.ps1 -Label release-1.7.15
 ```
 
-Relay 可在 Linux 独立构建或通过 Docker 构建，不需要游戏文件、Dalamud 或 WinUI。Windows 两端继续使用各自现有工具链。目录、依赖和测试入口见 [开发指南](docs/development/BUILD.md)。
+[Build guide](docs/development/BUILD.md) · [Documentation](docs/README.md) · [Changelog](CHANGELOG.md)
 
-生成客户端与插件分发包可运行 `./pack.ps1`。桌面包保留英、日、德、中、法运行库资源；插件使用 SDK 标准 ZIP，避免嵌套。启动与分发验收见 [本次收尾记录](docs/verification/WRAPUP_2026-09-14.md)。
+Product source, deployment files and maintained documentation live here. Local tests, process notes and retired artwork are archived outside the product tree and are not included in release packages.
 
-## 旧正式版安装方式
+An independent community project based on XIVChat, originally created by Anna. Not affiliated with Square Enix. FINAL FANTASY XIV is a trademark of Square Enix.
 
-### 1. 安装游戏端插件
-在《最终幻想14》卫月框架 (Dalamud / XIVLauncher) 中，打开 **设置 -> 实验性功能 -> 自定义插件仓库**，添加以下链接：
-```text
-https://raw.githubusercontent.com/AinaSnow/XIVChatNext/refs/heads/main/repo.json
-```
-保存后，在插件安装器中搜索 **`XIVChatNext Server`** 并安装即可。
+---
 
-### 2. 连接桌面客户端
-旧桌面包名为 `XIVChat-Desktop-v1.3.5-win-x64.zip`；已有本地副本保留在忽略的 `artifacts/legacy-releases/`，不再作为根目录源码跟踪。解压后运行 **`XIVChat Desktop.exe`**：
-- 新增服务器，填入游戏内提示的连接地址与端口。
-- 首次连接时核对两端显示的指纹，再确认设备信任。
+## 简体中文
+
+XIVChat Next 是基于 [XIVChat](https://xiv.chat/) 的 **FFXIV Windows 桌面聊天工作台**。游戏运行时，将会话、好友、可搜索历史和游戏截图放在手边。
+
+[介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
+
+### 下载与安装
+
+- **客户端 1.3.6**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/XIVChatNext-Desktop-v1.3.6-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
+- **插件 1.7.15**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip)。
+- **可选中继**：从 [本次发布](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) 取得 Ubuntu x86_64 + 1Panel 离线部署包。
+
+客户端包含 .NET 和 Windows App SDK，保留英、日、德、中、法运行库资源，**应用界面为中英文**。网页卡片需要 Microsoft Edge WebView2 Runtime。插件新配置默认英文，可切换中文或跟随系统，已有选择保留。
+
+### 首次连接
+
+1. 登录角色并加载插件，启用需要的连接方式。
+2. 打开客户端，完成语言、连接与通知引导。
+3. 同机默认 `127.0.0.1:14777`，局域网用游戏电脑地址，两端端口须一致。
+4. 核对两端指纹并确认信任。之后点击 Logo 连接最近成功目标。
+5. 无法直连时，使用自建 HTTPS 中继，通过中英文网页后台添加设备、生成邀请和管理授权。保存凭据与信任后，正常重启不需重新邀请。
+
+### 功能与说明
+
+支持频道与固定悄悄话、置顶与未读、好友状态及可选头像、按角色隔离的本地历史/搜索/收藏/备注/导出、物品和地图卡片、可用装备对比、截图预览/保存/复制、小窗与布局、事件通知及可选中继。
+
+实时功能需要**游戏运行、角色在线、插件加载**，已保存历史可离线查看。游戏与 Dalamud 更新可能影响好友状态和数据，请配套升级两端；新中继不兼容旧公共中继认证码。
+
+使用上方命令构建，详见 [构建说明](docs/development/BUILD.md#简体中文)、[文档](docs/README.md#简体中文) 和 [更新说明](CHANGELOG.md#简体中文)。仓库保留产品源码、部署文件和维护中的说明，测试、过程记录和旧素材在仓库外本地归档，不进入发布包。
+
+本项目基于 Anna 创建的 XIVChat，与 Square Enix 无关联。FINAL FANTASY XIV 是 Square Enix 的商标。

@@ -17,7 +17,7 @@ namespace XIVChatPlugin {
         public ushort BacklogCount { get; set; } = 100;
         public int BacklogMaxMiB { get; set; } = 32;
         // Auto, Chinese, English. Plugin UI language is independent of game data language.
-        public int UiLanguage { get; set; }
+        public int UiLanguage { get; set; } = 2;
 
         public bool SendBattle { get; set; } = true;
 

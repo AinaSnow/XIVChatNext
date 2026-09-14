@@ -1,9 +1,9 @@
-﻿author: Anna
-name: XIVChat Server
+author: AinaSnow
+name: XIVChat Next
 punchline: Use chat away from the game.
 description: |-
-  XIVChat is a suite of software allowing you to use FFXIV's chat from
-  different devices. This is the server component required to do so.
+  XIVChat Next connects FFXIV chat to the Windows desktop client, with
+  direct connections and an optional self-hosted relay.
 
-  For information about clients to use with this server, see the website.
-repo_url: https://xiv.chat/
+  XIVChat Next 将 FFXIV 聊天连接到 Windows 桌面客户端，支持直连与可选的自建中继。
+repo_url: https://github.com/AinaSnow/XIVChatNext

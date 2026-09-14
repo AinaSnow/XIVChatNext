@@ -1,25 +1,21 @@
-# 文档导航
+# Documentation / 文档
 
-## 使用
+## English
 
-- [直接上传 Docker 镜像部署（Ubuntu + 1Panel）](user/RELAY_VPS_OFFLINE_IMAGE.md)
-- [VPS 部署与公网 HTTPS](user/RELAY_VPS_HTTPS.md)
-- [自部署中继、插件注册与客户端配对](user/SELF_HOSTED_RELAY.md)
-- [首次启动引导与快捷连接设计](ONBOARDING_QUICK_CONNECT_PLAN_2026-09-14.md)
+- [Client guide](user/CLIENT_GUIDE.md): install, connect and chat.
+- [Self-hosted relay](user/SELF_HOSTED_RELAY.md): pairing and administration.
+- [1Panel offline image](user/RELAY_VPS_OFFLINE_IMAGE.md): deploy without server-side builds.
+- [1Panel HTTPS](user/RELAY_VPS_HTTPS.md): source deployment and reverse proxy.
+- [Build guide](development/BUILD.md): prerequisites and packaging.
+- [Relay protocol](protocol/RELAY_V1.md): authentication and transport.
+- [Changelog](../CHANGELOG.md): changes and upgrade notes.
 
-## 开发
+## 简体中文
 
-- [目录、独立构建与测试](development/BUILD.md)
-- [中继控制协议与加密边界](protocol/RELAY_V1.md)
-- [单仓与中继架构决策](RELAY_ARCHITECTURE_DISCUSSION_2026-09-14.md)
-- [工作台总计划](WORKBENCH_PLAN.md)
-
-## 验收
-
-- [分发精简、启动与介绍页收尾](verification/WRAPUP_2026-09-14.md)
-- [公网中继与真实游戏初步联调](verification/RELAY_LIVE_2026-09-14.md)
-- [引导、快捷连接和中继实施记录](verification/RELAY_SETUP_2026-09-14.md)
-- [中继网页管理后台验证](verification/RELAY_ADMIN_2026-09-14.md)
-- 历史阶段记录仍保留原文件名与路径，便于已有引用继续使用。它们记录各阶段当时的状态；后续修正与最新实测以日期更晚的记录为准。
-
-`artifacts/` 是忽略的本地产物目录，不提交配置、凭据、测试数据库、构建日志或发布 ZIP。品牌图标位于 `assets/branding/`，旧 SVG 变体位于其 `legacy/` 子目录。
+- [客户端指南](user/CLIENT_GUIDE.md#简体中文)：安装、连接与聊天。
+- [自建中继](user/SELF_HOSTED_RELAY.md#简体中文)：配对与后台管理。
+- [1Panel 离线镜像](user/RELAY_VPS_OFFLINE_IMAGE.md#简体中文)：无需服务器现场构建。
+- [1Panel HTTPS](user/RELAY_VPS_HTTPS.md#简体中文)：源码部署与反代。
+- [构建说明](development/BUILD.md#简体中文)：环境与打包。
+- [中继协议](protocol/RELAY_V1.md#简体中文)：认证与传输。
+- [更新说明](../CHANGELOG.md#简体中文)：新版变化与升级。

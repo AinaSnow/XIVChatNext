@@ -33,7 +33,9 @@ try {
         foreach ($language in @('en-US','zh-CN')) {
             if (!(Test-Path -LiteralPath (Join-Path $desktopRoot "Strings/$language/Resources.resw"))) { throw "Missing application translation: $language" }
         }
-        [IO.Compression.ZipFile]::CreateFromDirectory($desktopRoot, (Join-Path $releaseRoot 'XIVChatNext-Desktop-win-x64.zip'))
+        $desktopProject = [xml](Get-Content -LiteralPath 'XIVChat Desktop/XIVChat Desktop.csproj' -Raw)
+        $desktopVersion = $desktopProject.SelectSingleNode('//AssemblyVersion').InnerText
+        [IO.Compression.ZipFile]::CreateFromDirectory($desktopRoot, (Join-Path $releaseRoot "XIVChatNext-Desktop-v$desktopVersion-win-x64.zip"))
         Write-Output "Removed $($removed.Count) unused runtime language folders; retained English, Japanese, German, Chinese, French and neutral resources."
     }
     if ($Component -in @('all','plugin')) {
@@ -47,7 +49,7 @@ try {
             if ('XIVChatNext.dll' -notin $entries -or 'XIVChatNext.json' -notin $entries) { throw 'Plugin files must be at the archive root.' }
             if ($entries | Where-Object { $_ -match '(?i)\.zip$|(^|/)XIVChatNext/' }) { throw 'Nested plugin package detected.' }
         } finally { $archive.Dispose() }
-        Copy-Item -LiteralPath $pluginArchive -Destination (Join-Path $releaseRoot 'XIVChatNext-Plugin.zip')
+        Copy-Item -LiteralPath $pluginArchive -Destination (Join-Path $releaseRoot 'latest.zip')
     }
     $hashes = Get-ChildItem -LiteralPath $releaseRoot -Filter '*.zip' | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" }
     $hashes | Set-Content -LiteralPath (Join-Path $releaseRoot 'SHA256SUMS.txt') -Encoding utf8
