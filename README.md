@@ -19,7 +19,7 @@
 3. 同机直连使用 `127.0.0.1`；默认端口为 `14777`，两端端口必须一致。另一台电脑填写游戏电脑的 IP 或主机名。
 4. 首次连接核对两端显示的设备指纹并确认信任。连接成功后，点击首页 Logo 即可连接最近一次成功使用的目标；失败尝试不会覆盖它。
 
-不能直接访问游戏电脑时，可按 [自部署中继指南](docs/user/SELF_HOSTED_RELAY.md) 部署服务，在插件中生成邀请，再在客户端配对。游戏和插件仍需运行。
+不能直接访问游戏电脑时，可按 [自部署中继指南](docs/user/SELF_HOSTED_RELAY.md) 部署服务。自带中英文网页后台，可添加游戏设备、复制凭据、生成邀请、查看连接与撤销授权；日常管理无需命令行。游戏和插件仍需运行。
 
 ## 分别构建各组件
 
@@ -30,6 +30,7 @@
 ./build.ps1 -Component desktop
 ./build.ps1 -Component plugin
 ./build.ps1 -Component relay-tests
+./build.ps1 -Component relay-admin-tests
 ./build.ps1 -Component regression
 ```
 

@@ -3,6 +3,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using XIVChat.Relay;
 using XIVChat.Relay.Protocol;
 
+try { await RunRelay(args); }
+catch (Exception error) {
+    Console.Error.WriteLine("Relay stopped: " + error);
+    Environment.ExitCode = 1;
+}
+
+static async Task RunRelay(string[] args) {
 var dataPath = Environment.GetEnvironmentVariable("XIVCHAT_RELAY_DATA") ?? Path.Combine(AppContext.BaseDirectory, "data");
 if (args is ["health"]) {
     try { using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) }; using var response = await client.GetAsync("http://127.0.0.1:8080/healthz"); Environment.ExitCode = response.IsSuccessStatusCode ? 0 : 1; }
@@ -20,21 +27,28 @@ if (args.Length > 0 && args[0] is "add-device" or "list-devices" or "list-client
     return;
 }
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot") });
+// Console/container logs also work under restricted Windows accounts without Event Log write access.
+builder.Logging.ClearProviders().AddSimpleConsole();
 builder.WebHost.ConfigureKestrel(options => { options.Limits.MaxRequestBodySize = RelayProtocol.MaxControlBytes; options.Limits.MaxRequestHeadersTotalSize = 16 * 1024; });
 builder.Services.AddSingleton(new RelayStore(Path.Combine(dataPath, "relay.sqlite3")));
 builder.Services.AddSingleton<RelayHub>();
+builder.Services.AddSingleton<RelayAdmin>();
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = 429;
     options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
         PartitionedRateLimiter.Create<HttpContext, string>(_ => RateLimitPartition.GetConcurrencyLimiter("global", _ => new ConcurrencyLimiterOptions { PermitLimit = 1024, QueueLimit = 0 })),
         PartitionedRateLimiter.Create<HttpContext, string>(context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
 });
-var app = builder.Build();
+await using var app = builder.Build();
 app.UseRateLimiter();
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20), KeepAliveTimeout = TimeSpan.FromSeconds(20) });
 app.Use(async (context, next) => { context.Response.Headers.CacheControl = "no-store"; await next(context); });
+app.Services.GetRequiredService<RelayAdmin>().Map(app);
 var hub = app.Services.GetRequiredService<RelayHub>(); hub.Start();
+app.UseStaticFiles();
+app.MapGet("/", () => Results.Redirect("/admin/"));
+app.MapGet("/admin/", (IWebHostEnvironment environment) => Results.File(Path.Combine(environment.WebRootPath, "admin", "index.html"), "text/html; charset=utf-8"));
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok", protocol = RelayProtocol.Version }));
 app.Map("/v1/host", hub.HostControl);
 app.Map("/v1/client", hub.Client);
@@ -50,3 +64,4 @@ app.MapPost("/v1/pair", (PairRequest request, RelayStore store) => {
     return paired == null ? Results.BadRequest(new { error = "Invalid, expired or consumed invitation; incompatible version; or device limit reached." }) : Results.Json(paired, RelayProtocol.Json);
 });
 await app.RunAsync();
+}

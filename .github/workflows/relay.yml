@@ -1,9 +1,9 @@
 name: Relay
 on:
   push:
-    paths: ['src/**', 'tests/Relay/**', 'XIVChatCommon/**', 'deploy/relay/**', '.dockerignore', '.github/workflows/relay.yml']
+    paths: ['src/**', 'tests/Relay/**', 'tests/RelayAdmin/**', 'XIVChatCommon/**', 'deploy/relay/**', '.dockerignore', '.github/workflows/relay.yml']
   pull_request:
-    paths: ['src/**', 'tests/Relay/**', 'XIVChatCommon/**', 'deploy/relay/**', '.dockerignore', '.github/workflows/relay.yml']
+    paths: ['src/**', 'tests/Relay/**', 'tests/RelayAdmin/**', 'XIVChatCommon/**', 'deploy/relay/**', '.dockerignore', '.github/workflows/relay.yml']
 permissions:
   contents: read
 jobs:
@@ -17,6 +17,7 @@ jobs:
             9.0.x
             10.0.x
       - run: dotnet run --project tests/Relay/RelayTests.csproj -c Debug --no-launch-profile
+      - run: dotnet run --project tests/RelayAdmin/RelayAdminTests.csproj -c Debug --no-launch-profile
       - run: docker build -f deploy/relay/Dockerfile -t xivchat-relay:ci .
       - name: Container startup and non-root storage
         run: |

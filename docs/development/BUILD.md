@@ -7,7 +7,7 @@ XIVChat Desktop/                  Windows WinUI 桌面端
 XIVChatPlugin/                    Dalamud 插件
 XIVChatCommon/                    现有应用协议与加密实现
 XIVChatStorage/                   桌面历史存储
-src/XIVChat.Relay/                .NET 10 独立转发服务
+src/XIVChat.Relay/                .NET 10 独立转发服务与网页管理后台
 src/XIVChat.Relay.Protocol/       .NET 9 最小中继控制契约
 src/XIVChat.Relay.Transport/      .NET 9 端点传输、TLS 与系统凭据保护
 tests/                           回归及隔离界面测试
@@ -30,6 +30,7 @@ Relay 仅依赖 `XIVChat.Relay.Protocol`，不引用 WinUI、Dalamud、Storage�
 ./build.ps1 -Component desktop -Configuration Debug
 ./build.ps1 -Component plugin -Configuration Debug
 ./build.ps1 -Component relay-tests
+./build.ps1 -Component relay-admin-tests
 ./build.ps1 -Component regression
 ```
 
@@ -38,10 +39,13 @@ Linux 独立构建无需 PowerShell：
 ```sh
 dotnet build XIVChat.Relay.slnx -c Release
 dotnet run --project tests/Relay/RelayTests.csproj -c Debug --no-launch-profile
+dotnet run --project tests/RelayAdmin/RelayAdminTests.csproj -c Debug --no-launch-profile
 docker build -f deploy/relay/Dockerfile -t xivchat-relay:0.1.0 .
 ```
 
 中继回归会启动真实服务子进程，并在 `artifacts/relay-tests-*` 创建独立数据库。固定使用 Debug，因为该测试子进程读取 Debug 服务输出。测试将自行停止服务，不连接用户游戏。
+
+网页后台测试使用 `artifacts/relay-admin-tests-*` 隔离数据库，覆盖页面资源、密码登录、会话退出/重启失效、Host/Origin/CSRF 限制、网页设备注册、旧桌面邀请解码兼容、真实端点 TLS、撤销和持久化。Windows 上端点证书需要正常用户密钥存储访问权限。后台资源位于 `src/XIVChat.Relay/wwwroot/admin/`，直接随 .NET 输出与镜像发布，不需要 Node.js 或前端构建服务。
 
 `.github/workflows/relay.yml` 提供 Linux 回归、镜像构建和只读容器启动检查。工作流文件已提供；本地/远程命令验证不等于 GitHub Actions 已运行。
 

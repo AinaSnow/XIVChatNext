@@ -36,6 +36,13 @@ public sealed class RelayHub(RelayStore store, IHostApplicationLifetime lifetime
         return header.StartsWith("Bearer ", StringComparison.Ordinal) && header.Length <= 135 ? header[7..] : "";
     }
     public bool Online(string device) { lock (gate) return hosts.TryGetValue(device, out var host) && host.Registered && !host.Life.IsCancellationRequested; }
+    public object ManagementSnapshot() {
+        lock (gate) return new {
+            onlineDevices = hosts.Values.Where(h => h.Registered && !h.Life.IsCancellationRequested).Select(h => h.Id).ToArray(),
+            connections = sessions.Values.Where(s => !s.Life.IsCancellationRequested).Select(s => new { id = s.Id, deviceId = s.Host.Id, clientId = s.Client, ready = s.Ready.Task.IsCompletedSuccessfully }).ToArray(),
+            maxSessions, bytesPerSecond,
+        };
+    }
     public async Task HostControl(HttpContext context) {
         var identity = store.Host(Bearer(context));
         if (identity == null) { context.Response.StatusCode = 401; return; }

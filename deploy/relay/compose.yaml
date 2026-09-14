@@ -8,6 +8,8 @@ services:
     restart: unless-stopped
     environment:
       XIVCHAT_RELAY_DATA: /data
+      Relay__PublicUrl: https://${RELAY_DOMAIN:?Set RELAY_DOMAIN in .env}
+      Relay__AdminPassword: ${RELAY_ADMIN_PASSWORD:?Set a unique management password of at least 16 characters in .env}
       Relay__MaxSessions: "256"
       Relay__BytesPerSecond: "4194304"
       Logging__LogLevel__Default: Warning
