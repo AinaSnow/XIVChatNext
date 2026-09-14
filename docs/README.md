@@ -2,6 +2,7 @@
 
 ## 使用
 
+- [VPS 部署与公网 HTTPS](user/RELAY_VPS_HTTPS.md)
 - [自部署中继、插件注册与客户端配对](user/SELF_HOSTED_RELAY.md)
 - [首次启动引导与快捷连接设计](ONBOARDING_QUICK_CONNECT_PLAN_2026-09-14.md)
 

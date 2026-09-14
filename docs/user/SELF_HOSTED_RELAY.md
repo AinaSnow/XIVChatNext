@@ -8,6 +8,8 @@
 
 ## 部署服务
 
+第一次部署到自己的 VPS，可按 [VPS 部署与公网 HTTPS](RELAY_VPS_HTTPS.md) 从域名解析、部署包上传到网页登录逐步操作。
+
 准备 Docker 与 Compose，以及指向服务器的域名。示例使用 Caddy 获取 HTTPS 证书，服务器需允许域名验证及 HTTPS 所需的 80/443 入站连接。游戏插件端口 `14777` 无需映射到公网。
 
 在完整仓库的 `deploy/relay` 目录中：

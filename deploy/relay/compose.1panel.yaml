@@ -1,0 +1,35 @@
+# Standalone alternative to compose.yaml. Do not merge the two files.
+name: xivchat-relay
+services:
+  relay:
+    image: xivchat-relay:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/relay/Dockerfile
+    restart: unless-stopped
+    environment:
+      XIVCHAT_RELAY_DATA: /data
+      Relay__PublicUrl: https://${RELAY_DOMAIN:?Set RELAY_DOMAIN in .env}
+      Relay__AdminPassword: ${RELAY_ADMIN_PASSWORD:?Set a unique management password of at least 16 characters in .env}
+      Relay__MaxSessions: "256"
+      Relay__BytesPerSecond: "4194304"
+      Logging__LogLevel__Default: Warning
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - relay-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, dotnet, XIVChat.Relay.dll, health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+volumes:
+  relay-data:
