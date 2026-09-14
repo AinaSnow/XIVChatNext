@@ -26,8 +26,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="{x:Bind Name, Mode=OneWay}" />
-                        <TextBlock Grid.Column="1" Text="{x:Bind Host, Mode=OneWay}" />
-                        <TextBlock Grid.Column="2" Text="{x:Bind Port, Mode=OneWay}" />
+                        <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="{x:Bind Description, Mode=OneWay}" />
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
@@ -39,6 +38,7 @@
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
                     Click="AddServer_Click" local:Localize.Content="Dialog.Add" />
+            <Button HorizontalAlignment="Stretch" Margin="0,0,0,4" Click="AddRelay_Click" local:Localize.Content="Relay.Add" />
             <Button HorizontalAlignment="Stretch"
                     Margin="0,0,0,4"
                     Click="EditServer_Click" local:Localize.Content="Dialog.Edit" />

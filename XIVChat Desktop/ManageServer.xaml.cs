@@ -19,11 +19,11 @@ namespace XIVChat_Desktop {
         }
 
         private void Save_Click(object sender, RoutedEventArgs e) {
-            var serverName = this.ServerName.Text;
-            var serverHost = this.ServerHost.Text;
+            var serverName = this.ServerName.Text.Trim();
+            var serverHost = this.ServerHost.Text.Trim();
 
             if (serverName.Length == 0 || serverHost.Length == 0) {
-                // TODO: Show error dialog
+                ValidationError.Text = SetupText.T("请输入连接名称和游戏电脑地址。", "Enter a connection name and game computer address.");
                 return;
             }
 
@@ -32,11 +32,13 @@ namespace XIVChat_Desktop {
                 port = 14777;
             } else {
                 if (!ushort.TryParse(this.ServerPort.Text, out port) || port < 1) {
-                    // TODO: Show error dialog
+                    ValidationError.Text = SetupText.T("端口应为 1–65535 的整数。", "The port must be an integer between 1 and 65535.");
                     return;
                 }
             }
 
+            if (System.Uri.CheckHostName(serverHost) == System.UriHostNameType.Unknown) { ValidationError.Text = SetupText.T("请输入 IP 或主机名，不要包含协议或端口。", "Enter an IP address or hostname without a scheme or port."); return; }
+            var previous = this.Server?.Snapshot(); var previousLast = this.App.Config.LastSuccessfulConnection;
             if (this.isNewServer) {
                 this.Server = new SavedServer(
                     serverName,
@@ -50,8 +52,13 @@ namespace XIVChat_Desktop {
                 this.Server.Port = port;
             }
 
-            this.App.Config.Save();
-            this.Close();
+            if (this.App.Config.LastSuccessfulConnection?.Id == this.Server!.Id && (previous?.Host != serverHost || previous?.Port != port)) this.App.Config.LastSuccessfulConnection = null;
+            try { this.App.Config.Save(); this.Close(); }
+            catch (System.Exception ex) {
+                if (this.isNewServer) this.App.Config.Servers.Remove(this.Server);
+                else { this.Server.Name = previous!.Name; this.Server.Host = previous.Host; this.Server.Port = previous.Port; }
+                this.App.Config.LastSuccessfulConnection = previousLast; ValidationError.Text = ex.Message;
+            }
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e) {

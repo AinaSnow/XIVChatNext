@@ -27,6 +27,9 @@ namespace XIVChatPlugin {
 
         public bool AllowRelayConnections { get; set; }
         public string? RelayAuth { get; set; }
+        public string RelayUrl { get; set; } = "";
+        public string? RelayCredential { get; set; }
+        public string? RelayCertificate { get; set; }
 
         public ConcurrentDictionary<Guid, Tuple<string, byte[]>> TrustedKeys { get; set; } = new();
         public KeyPair? KeyPair { get; set; }

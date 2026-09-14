@@ -1,0 +1,14 @@
+**
+!src/
+!src/XIVChat.Relay/
+!src/XIVChat.Relay/**
+!src/XIVChat.Relay.Protocol/
+!src/XIVChat.Relay.Protocol/**
+!deploy/
+!deploy/relay/
+!deploy/relay/Dockerfile
+**/bin/
+**/obj/
+**/data/
+**/*.sqlite3*
+**/.env

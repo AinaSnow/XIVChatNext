@@ -4,6 +4,12 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 # User-specific files
+# Local relay credentials, databases and deployment overrides
+deploy/relay/.env
+src/XIVChat.Relay/data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 *.rsuser
 *.suo
 *.user

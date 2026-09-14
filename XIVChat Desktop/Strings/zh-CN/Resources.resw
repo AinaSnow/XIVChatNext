@@ -762,4 +762,6 @@
   <data name="Card.NoChinese" xml:space="preserve"><value>暂无中文</value></data>
   <data name="Card.TextLoading" xml:space="preserve"><value>正在加载卡片文本…</value></data>
   <data name="Card.DataDetails" xml:space="preserve"><value>数据来源与版本</value></data>
+  <data name="Relay.Add" xml:space="preserve"><value>添加中继</value></data>
+  <data name="Setup.Reopen" xml:space="preserve"><value>重新运行初始设置</value></data>
 </root>

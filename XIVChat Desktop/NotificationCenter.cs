@@ -125,6 +125,16 @@ namespace XIVChat_Desktop {
             var task = ReceiveEventAsync(app.Workbench.Source.Length > 0 ? app.Workbench.Source : "local", entry, null);
             Track(task); return task;
         }
+        internal string PreviewTest(NotificationOptions options) {
+            if (options.IsQuiet(DateTime.Now)) return SetupText.T("当前免打扰设置阻止了测试通知。", "Your current quiet settings suppress the test notification.");
+            if (Sink == null || PlatformError != null) return SetupText.T("Windows 通知暂不可用：", "Windows notifications are unavailable: ") + PlatformError;
+            var candidate = new NotificationCandidate("setup/" + Guid.NewGuid().ToString("N"), NotificationKind.Test,
+                new NotificationTarget(NotificationTargetKind.Event, "local", "setup"), L("Event.NotificationTest"), SetupText.T("点击返回初始设置。", "Click to return to initial setup."), DateTime.UtcNow);
+            try { return Sink.Show(new NotificationDelivery(candidate, 1, options.Sound, "setup-test"))
+                ? SetupText.T("测试通知已提交给 Windows。请确认横幅、声音与点击返回；若未出现，请检查系统通知和免打扰设置。", "The test was submitted to Windows. Check the banner, sound and click action. If absent, check system notifications and Do not disturb.")
+                : SetupText.T("Windows 未接受测试通知，请检查系统通知设置。", "Windows did not accept the test notification. Check system notification settings."); }
+            catch (Exception ex) { return ex.Message; }
+        }
 
         private async void Track(Task task) {
             writes.TryAdd(task, 0);

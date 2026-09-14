@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Input;
 namespace XIVChat_Desktop {
     public partial class ConfigWindow : Window {
         public Configuration Config { get; private set; }
+        private void InitialSetup_Click(object sender, RoutedEventArgs e) => SetupWizard.Show();
 
         public ConfigWindow(Configuration config) {
             this.Config = config;
@@ -113,6 +114,7 @@ namespace XIVChat_Desktop {
         }
 
         private void SavedServers_ItemDoubleClick(SavedServer? server) {
+            if (server?.Relay != null) { new RelayPairDialog(server).Activate(); return; }
             var dialog = new ManageServer(server);
             dialog.Activate();
         }

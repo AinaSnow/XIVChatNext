@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Input;
 namespace XIVChat_Desktop.Controls {
     public partial class SavedServers : UserControl {
         public App App => (App)Application.Current;
+        private void AddRelay_Click(object sender, RoutedEventArgs e) => new RelayPairDialog().Activate();
         private Configuration Config => this.App.Config;
 
         public IEnumerable<SavedServer> ItemsSource {
@@ -55,6 +56,7 @@ namespace XIVChat_Desktop.Controls {
             }
 
             this.Config.Servers.Remove(server);
+            if (this.Config.LastSuccessfulConnection?.Id == server.Id) this.Config.LastSuccessfulConnection = null;
             this.Config.Save();
         }
 
@@ -64,8 +66,8 @@ namespace XIVChat_Desktop.Controls {
                 return;
             }
 
-            var window = new ManageServer(server);
-            window.Activate();
+            if (server.Relay != null) new RelayPairDialog(server).Activate();
+            else new ManageServer(server).Activate();
         }
 
         private void Item_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e) {

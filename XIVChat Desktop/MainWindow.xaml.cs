@@ -371,6 +371,11 @@ namespace XIVChat_Desktop {
             if (!initialized) return;
             var connection = App.Connection; var model = selectedConversation; var player = App.Session.Player;
             MenuConnect.IsEnabled = !App.Connected; MenuDisconnect.IsEnabled = App.Connected; MenuRefreshFriends.IsEnabled = connection?.Available == true;
+            var quickLabel = connection != null
+                ? (connection.SessionReady ? SetupText.T("已连接：", "Connected: ") : SetupText.T("正在连接／等待信任：", "Connecting / awaiting trust: ")) + connection.Endpoint
+                : App.Config.LastSuccessfulConnection is { } recent ? SetupText.T("连接到 ", "Connect to ") + recent.Name + " · " + recent.Description : SetupText.T("设置游戏连接", "Set up a game connection");
+            ToolTipService.SetToolTip(QuickConnectButton, quickLabel);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(QuickConnectButton, quickLabel);
             ConnectionLabel.Text = connection?.Available == true ? L("Workbench.Connected") : L("Workbench.Disconnected");
             OwnAvatar.Identity = player?.Identity ?? App.Workbench.Owner;
             if (player == null) LoggedInAs.Text = App.Workbench.Owner?.Name ?? L("Status.Disconnected");
@@ -421,6 +426,19 @@ namespace XIVChat_Desktop {
         public void AddSystemMessage(string content) => AddMessage(new ServerMessage(DateTime.UtcNow, 0, Array.Empty<byte>(), Encoding.UTF8.GetBytes(content), new List<Chunk> { new TextChunk(content) { Foreground = 0xb38cffff } }));
         private void RefreshFriends_Click(object sender, RoutedEventArgs e) { if (App.Connection?.RefreshFriends() != true) FooterStatus.Text = L("FriendList.NotReady"); }
         private void Connect_Click(object sender, RoutedEventArgs e) => new ConnectDialog().Activate();
+        private void QuickConnect_Click(object sender, RoutedEventArgs e) {
+            if (App.Connection is { } active) {
+                var menu = new MenuFlyout();
+                menu.Items.Add(new MenuFlyoutItem { Text = active.Endpoint, IsEnabled = false });
+                var stop = new MenuFlyoutItem { Text = active.SessionReady ? L("Menu.Disconnect") : SetupText.T("取消连接", "Cancel connection") };
+                stop.Click += (_, _) => App.Disconnect(); menu.Items.Add(stop);
+                var manage = new MenuFlyoutItem { Text = SetupText.T("管理连接", "Manage connections") };
+                manage.Click += (_, _) => new ConfigWindow(App.Config).Activate(); menu.Items.Add(manage); menu.ShowAt(QuickConnectButton); return;
+            }
+            if (App.Config.LastSuccessfulConnection is { } recent) App.Connect(recent);
+            else if (App.Config.SetupVersion == 0) SetupWizard.Show();
+            else new ConnectDialog().Activate();
+        }
         private void Disconnect_Click(object sender, RoutedEventArgs e) => App.Disconnect();
         private void Configuration_Click(object sender, RoutedEventArgs e) => new ConfigWindow(App.Config).Activate();
         private void EditChannel_Click(object sender, RoutedEventArgs e) { if (selectedChannel != null) new ManageTab(selectedChannel).Activate(); }

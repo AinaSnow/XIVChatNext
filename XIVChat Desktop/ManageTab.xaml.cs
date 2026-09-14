@@ -94,8 +94,8 @@ namespace XIVChat_Desktop {
         }
 
         private void Save_Click(object sender, RoutedEventArgs e) {
-            if (this.TabName.Text.Length == 0) {
-                // TODO: Show error dialog
+            if (string.IsNullOrWhiteSpace(this.TabName.Text)) {
+                ValidationError.Text = SetupText.T("请输入频道视图名称。", "Enter a channel view name.");
                 return;
             }
 

@@ -20,10 +20,16 @@ namespace XIVChatPlugin {
 
         private readonly Dictionary<Guid, Tuple<BaseClient, Channel<bool>>> _pending = new();
         private readonly Dictionary<Guid, string> _pendingNames = new(0);
+        private string relayUrlDraft = "";
+        private string relayCredentialDraft = "";
+        private string? relayUiError;
+        private string? relayInvitation;
+        private Task<string>? relayInvitationTask;
 
         internal PluginUi(Plugin plugin) {
             this.Plugin = plugin ?? throw new ArgumentNullException(nameof(plugin), "Plugin cannot be null");
             this.portDraft = plugin.Config.Port;
+            this.relayUrlDraft = plugin.Config.RelayUrl;
         }
 
         private static class Colours {
@@ -155,20 +161,47 @@ namespace XIVChatPlugin {
             if (ImGui.CollapsingHeader(this.T("中继连接", "Relay") + "###relay")) {
                 var allowRelay = this.Plugin.Config.AllowRelayConnections;
                 if (ImGui.Checkbox(this.T("启用中继", "Enable relay") + "##allow-relay", ref allowRelay)) {
-                    this.Plugin.Config.AllowRelayConnections = allowRelay; this.Plugin.Config.Save();
-                    if (allowRelay) this.Plugin.StartRelay(); else this.Plugin.StopRelay();
+                    var old = this.Plugin.Config.AllowRelayConnections;
+                    try {
+                        this.Plugin.Config.AllowRelayConnections = allowRelay; this.Plugin.Config.Save();
+                        if (allowRelay) this.Plugin.StartRelay(); else this.Plugin.StopRelay();
+                    } catch (Exception ex) { this.Plugin.Config.AllowRelayConnections = old; relayUiError = ex.Message; }
                 }
-                var relayAuth = this.Plugin.Config.RelayAuth ?? "";
-                if (ImGui.InputText(this.T("中继认证码", "Relay authentication code") + "##relay-auth", ref relayAuth, 100, ImGuiInputTextFlags.Password)) {
-                    this.Plugin.Config.RelayAuth = string.IsNullOrWhiteSpace(relayAuth) ? null : relayAuth.Trim();
-                    this.Plugin.Config.Save();
-                }
-                if (ImGui.Button(this.T("重新连接中继", "Reconnect relay") + "##restart-relay")) {
-                    this.Plugin.StopRelay(); if (this.Plugin.Config.AllowRelayConnections) this.Plugin.StartRelay();
+                ImGui.TextWrapped(this.T("连接自己部署的中继服务。游戏电脑无需端口映射；服务端需要双方都能访问。", "Connect to your self-hosted relay. The game PC needs no port forwarding; both devices must be able to reach the relay."));
+                ImGui.InputText(this.T("中继地址", "Relay address") + "##relay-url", ref relayUrlDraft, 512);
+                ImGui.InputText(this.T("注册凭据（留空保留）", "Registration credential (blank keeps saved)") + "##relay-auth", ref relayCredentialDraft, 128, ImGuiInputTextFlags.Password);
+                if (ImGui.Button(this.T("保存并重新连接中继", "Save and reconnect relay") + "##restart-relay")) {
+                    try {
+                        XIVChat.Relay.Protocol.RelayProtocol.BaseUri(relayUrlDraft.Trim());
+                        var saved = string.IsNullOrWhiteSpace(relayCredentialDraft) ? this.Plugin.Config.RelayCredential : XIVChat.Relay.Transport.WindowsSecret.Protect(relayCredentialDraft.Trim());
+                        if (saved == null) throw new InvalidOperationException(this.T("请填写自建服务签发的注册凭据。", "Enter the registration credential issued by your relay."));
+                        var oldUrl = this.Plugin.Config.RelayUrl; var oldCredential = this.Plugin.Config.RelayCredential; var oldAuth = this.Plugin.Config.RelayAuth;
+                        this.Plugin.Config.RelayUrl = relayUrlDraft.Trim(); this.Plugin.Config.RelayCredential = saved; this.Plugin.Config.RelayAuth = null;
+                        try { this.Plugin.Config.Save(); }
+                        catch { this.Plugin.Config.RelayUrl = oldUrl; this.Plugin.Config.RelayCredential = oldCredential; this.Plugin.Config.RelayAuth = oldAuth; throw; }
+                        relayCredentialDraft = ""; relayInvitation = null; relayUiError = null;
+                        this.Plugin.StopRelay(); if (this.Plugin.Config.AllowRelayConnections) this.Plugin.StartRelay();
+                    } catch (Exception ex) { relayUiError = ex.Message; }
                 }
                 var status = this.Plugin.Relay?.Status ?? ConnectionStatus.Disconnected;
                 ImGui.TextUnformatted(this.T("中继状态：", "Relay status: ") + this.RelayStatus(status));
                 if (Relay.ConnectionError != null) ImGui.TextWrapped(Relay.ConnectionError);
+                if (relayUiError != null) ImGui.TextWrapped(relayUiError);
+                if (this.Plugin.Relay?.Fingerprint is { Length: > 0 } fingerprint) {
+                    ImGui.TextWrapped(this.T("配对指纹（请与客户端核对）：", "Pairing fingerprint (compare with the client): ") + fingerprint);
+                }
+                if (relayInvitationTask is { IsCompleted: true }) {
+                    try { relayInvitation = relayInvitationTask.GetAwaiter().GetResult(); relayUiError = null; }
+                    catch (Exception ex) { relayUiError = ex.Message; }
+                    relayInvitationTask = null;
+                }
+                ImGui.BeginDisabled(status != ConnectionStatus.Connected || relayInvitationTask != null);
+                if (ImGui.Button(this.T("生成一次性邀请（10 分钟）", "Create one-time invitation (10 minutes)") + "##relay-invite")) {
+                    relayInvitation = null; relayInvitationTask = this.Plugin.Relay!.CreateInvitationAsync();
+                }
+                ImGui.EndDisabled();
+                if (relayInvitation != null && ImGui.Button(this.T("复制邀请到剪贴板", "Copy invitation to clipboard") + "##relay-copy")) ImGui.SetClipboardText(relayInvitation);
+                ImGui.TextWrapped(this.T("在客户端新增连接时选择“自建中继”，粘贴邀请并核对指纹。生成新邀请会使旧邀请失效。", "Choose Self-hosted relay when adding a client connection, paste the invitation and compare the fingerprint. Creating a new invitation invalidates the previous one."));
             }
             if (ImGui.CollapsingHeader(this.T("服务器公钥", "Server public key") + "###public-key")) {
                 var key = this.Plugin.Config.KeyPair!.PublicKey;

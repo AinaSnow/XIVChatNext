@@ -1,0 +1,47 @@
+name: xivchat-relay
+services:
+  relay:
+    image: xivchat-relay:0.1.0
+    build:
+      context: ../..
+      dockerfile: deploy/relay/Dockerfile
+    restart: unless-stopped
+    environment:
+      XIVCHAT_RELAY_DATA: /data
+      Relay__MaxSessions: "256"
+      Relay__BytesPerSecond: "4194304"
+      Logging__LogLevel__Default: Warning
+    volumes:
+      - relay-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, dotnet, XIVChat.Relay.dll, health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      RELAY_DOMAIN: ${RELAY_DOMAIN:?Set RELAY_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      relay:
+        condition: service_healthy
+volumes:
+  relay-data:
+  caddy-data:
+  caddy-config:

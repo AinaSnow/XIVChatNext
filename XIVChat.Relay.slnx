@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/XIVChat.Relay.Protocol/XIVChat.Relay.Protocol.csproj" />
+  <Project Path="src/XIVChat.Relay/XIVChat.Relay.csproj" />
+</Solution>

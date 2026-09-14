@@ -12,6 +12,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
@@ -50,8 +51,9 @@
                  Text="{x:Bind Server.Port, Mode=OneWay}"
                  PlaceholderText="14777" />
 
+        <TextBlock x:Name="ValidationError" Grid.Row="3" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,8,0,0" />
         <StackPanel Margin="0,8,0,0"
-                   Grid.Row="3"
+                   Grid.Row="4"
                    Grid.ColumnSpan="2"
                    Grid.Column="0"
                    HorizontalAlignment="Right"

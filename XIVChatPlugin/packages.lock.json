@@ -72,6 +72,15 @@
         "resolved": "17.11.4",
         "contentHash": "mudqUHhNpeqIdJoUx2YDWZO/I9uEDYVowan89R6wsomfnUJQk6HteoQTlNjZDixhT2B4IXMkMtgZtoceIjLRmA=="
       },
+      "xivchat.relay.protocol": {
+        "type": "Project"
+      },
+      "xivchat.relay.transport": {
+        "type": "Project",
+        "dependencies": {
+          "XIVChat.Relay.Protocol": "[1.0.0, )"
+        }
+      },
       "xivchatcommon": {
         "type": "Project",
         "dependencies": {

@@ -22,6 +22,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
+        <ProjectReference Include="..\src\XIVChat.Relay.Transport\XIVChat.Relay.Transport.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Include="Resources\icon.png" CopyToOutputDirectory="PreserveNewest" TargetPath="images\icon.png" />

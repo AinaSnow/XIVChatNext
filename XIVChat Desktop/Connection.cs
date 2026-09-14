@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Net.Sockets;
+using System.IO;
+using XIVChat.Relay.Transport;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -21,6 +23,14 @@ namespace XIVChat_Desktop {
         private readonly ushort port;
 
         private TcpClient? client;
+        private Stream? transport;
+        public SavedServer Target { get; }
+        internal bool TargetWasSaved { get; }
+        private readonly TaskCompletionSource<bool> ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<bool> ReadyTask => ready.Task;
+        public bool SessionReady => ready.Task.IsCompletedSuccessfully && ready.Task.Result;
+        public string? FailureMessage { get; private set; }
+        internal bool RememberTarget { get; set; } = true;
 
         private readonly Channel<byte[]> outgoingMessages = Channel.CreateBounded<byte[]>(256);
         private readonly Channel<byte[]> incoming = Channel.CreateBounded<byte[]>(256);
@@ -33,7 +43,7 @@ namespace XIVChat_Desktop {
         private bool intentionalDisconnect;
         public string Id { get; } = Guid.NewGuid().ToString("N");
         public string Source => this.source;
-        public string Endpoint => this.host + ":" + this.port;
+        public string Endpoint => Target.Description;
         public PlayerData? LastPlayer { get; private set; }
         public bool SupportsGuardedCommands => this.capabilities?.GuardedCommands == true;
         public bool SupportsDirectedTell => this.capabilities?.DirectedTell == true;
@@ -60,11 +70,13 @@ namespace XIVChat_Desktop {
             }
         }
 
-        public Connection(App app, string host, ushort port) {
+        public Connection(App app, string host, ushort port) : this(app, new SavedServer(host, host, port)) { }
+        public Connection(App app, SavedServer target) {
             this.app = app;
-
-            this.host = host;
-            this.port = port;
+            Target = target.Snapshot();
+            TargetWasSaved = app.Config.Servers.Any(s => s.Id == target.Id);
+            this.host = target.Host;
+            this.port = target.Port;
             this.preferences = this.BuildPreferences();
             app.Config.Saved += this.UpdateSubscriptions;
             app.Config.PropertyChanged += this.ConfigChanged;
@@ -155,9 +167,16 @@ namespace XIVChat_Desktop {
         public async Task Connect() {
             Task? receiver = null;
             try {
-                this.client = new TcpClient();
-                await this.client.ConnectAsync(this.host, this.port, this.cancel.Token);
-                var stream = this.client.GetStream();
+                if (Target.Relay is { } relay) {
+                    transport = await RelayEndpoint.ConnectAsync(relay.Server, WindowsSecret.Unprotect(relay.ProtectedCredential), relay.Fingerprint, this.cancel.Token);
+                } else {
+                    this.client = new TcpClient();
+                    using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(this.cancel.Token);
+                    connectTimeout.CancelAfter(TimeSpan.FromSeconds(15));
+                    await this.client.ConnectAsync(this.host, this.port, connectTimeout.Token);
+                    transport = this.client.GetStream();
+                }
+                var stream = transport;
 
                 // write the magic bytes
                 await stream.WriteAsync(new byte[] {
@@ -182,12 +201,13 @@ namespace XIVChat_Desktop {
                     var trusted = await trustChannel.Reader.ReadAsync(this.cancel.Token);
 
                     if (!trusted) {
+                        FailureMessage = SetupText.T("设备信任未通过。请核对两端指纹后重新连接。", "Device trust was declined. Compare both fingerprints before reconnecting.");
                         goto Close;
                     }
                 }
 
                 // clear messages if connecting to a different host
-                var currentHost = $"{this.host}:{this.port}";
+                var currentHost = Target.Relay is { } relayTarget ? relayTarget.Server + "/" + relayTarget.DeviceId : $"{this.host}:{this.port}";
                 var sameHost = this.app.LastHost == currentHost && this.app.Session.Source == this.source;
                 if (!sameHost) {
                     this.DispatchIfCurrent(() => {
@@ -228,6 +248,10 @@ namespace XIVChat_Desktop {
                     try {
                         while (!this.cancel.IsCancellationRequested) {
                             var rawMessage = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, this.cancel.Token);
+                            if (!ready.Task.IsCompleted && rawMessage.Length != 0) {
+                                ready.TrySetResult(true);
+                                this.DispatchIfCurrent(() => { if (RememberTarget) this.app.RememberSuccessfulConnection(Target, TargetWasSaved); this.OnPropertyChanged(nameof(SessionReady)); });
+                            }
                             await this.incoming.Writer.WriteAsync(rawMessage, this.cancel.Token);
                         }
                         this.incoming.Writer.TryComplete();
@@ -288,9 +312,16 @@ namespace XIVChat_Desktop {
                 } catch (ObjectDisposedException) {
                 }
             } catch (Exception ex) {
-                if (!this.cancel.IsCancellationRequested && !(ex is OperationCanceledException)) {
+                if (!this.cancel.IsCancellationRequested) {
+                    FailureMessage = ex switch {
+                        SocketException socket when socket.SocketErrorCode is SocketError.HostNotFound or SocketError.NoData or SocketError.TryAgain => SetupText.T("无法解析游戏电脑地址，请检查 IP 或主机名。", "The game computer address could not be resolved. Check its IP or hostname."),
+                        SocketException socket when socket.SocketErrorCode == SocketError.ConnectionRefused => SetupText.T("连接被拒绝，请检查插件是否运行，以及两端端口是否一致。", "Connection refused. Check that the plugin is running and both ports match."),
+                        OperationCanceledException => SetupText.T("连接或加密握手超时，请检查网络和插件状态。", "The connection or encrypted handshake timed out. Check the network and plugin."),
+                        System.Security.Authentication.AuthenticationException => SetupText.T("中继端点指纹或证书验证失败，请与游戏插件重新核对。", "The relay endpoint fingerprint or certificate failed verification. Compare it with the game plugin again."),
+                        _ => ex.Message,
+                    };
                     this.DispatchIfCurrent(() => {
-                        this.app.Window.AddSystemMessage(string.Format(LocalizationHelper.GetString("Status.CommunicationError"), ex.Message));
+                        this.app.Window.AddSystemMessage(string.Format(LocalizationHelper.GetString("Status.CommunicationError"), FailureMessage));
                     });
                 }
             } finally {
@@ -299,6 +330,8 @@ namespace XIVChat_Desktop {
                 this.app.Config.Tabs.CollectionChanged -= this.CollectionsChanged;
                 this.app.Config.Notifications.CollectionChanged -= this.CollectionsChanged;
                 this.cancel.Cancel();
+                ready.TrySetResult(false);
+                transport?.Dispose();
                 this.client?.Dispose();
                 if (receiver != null) await receiver;
                 this.Available = false;

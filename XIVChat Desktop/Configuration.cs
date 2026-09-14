@@ -19,12 +19,22 @@ namespace XIVChat_Desktop {
     public class Configuration : INotifyPropertyChanged {
         public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? Saved;
+        [JsonIgnore] internal string? FilePathOverride { get; set; }
 
         public string? LicenceKey { get; set; }
 
         public KeyPair KeyPair { get; set; } = PublicKeyBox.GenerateKeyPair();
 
         public ObservableCollection<SavedServer> Servers { get; set; } = new ObservableCollection<SavedServer>();
+        public SavedServer? LastSuccessfulConnection { get; set; }
+        public int SetupVersion { get; set; }
+        public bool SetupInitialized { get; set; }
+        public bool SetupDeferred { get; set; }
+        internal bool PrepareSetup(bool existing, bool recovered) {
+            if (recovered) return false;
+            if (!SetupInitialized) { SetupInitialized = true; if (existing) SetupVersion = 1; }
+            return SetupVersion == 0 && !SetupDeferred;
+        }
         public HashSet<TrustedKey> TrustedKeys { get; set; } = new HashSet<TrustedKey>();
 
         public ObservableCollection<Tab> Tabs { get; set; } = Tab.Defaults();
@@ -137,6 +147,11 @@ namespace XIVChat_Desktop {
                 var tabIds = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var tab in config.Tabs)
                     if (string.IsNullOrWhiteSpace(tab.Id) || !tabIds.Add(tab.Id)) { tab.Id = Guid.NewGuid().ToString("N"); tabIds.Add(tab.Id); }
+                var serverIds = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var server in config.Servers) {
+                    if (server == null) throw new InvalidDataException("Invalid saved connection.");
+                    if (string.IsNullOrWhiteSpace(server.Id) || !serverIds.Add(server.Id)) { server.Id = Guid.NewGuid().ToString("N"); serverIds.Add(server.Id); }
+                }
                 return config;
             } catch (Exception ex) when (ex is JsonException or ArgumentException) {
                 throw new InvalidDataException("Configuration JSON is invalid.", ex);
@@ -145,7 +160,7 @@ namespace XIVChat_Desktop {
 
         public void Save() {
             var contents = JsonConvert.SerializeObject(this, Formatting.Indented);
-            ConfigurationFile.Save(FilePath(), contents, text => { _ = Deserialize(text); });
+            ConfigurationFile.Save(FilePathOverride ?? FilePath(), contents, text => { _ = Deserialize(text); });
             this.Saved?.Invoke();
         }
 
@@ -154,6 +169,11 @@ namespace XIVChat_Desktop {
 
     [JsonObject]
     public class SavedServer : INotifyPropertyChanged {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        private XIVChat.Relay.Protocol.RelayProfile? relay;
+        public XIVChat.Relay.Protocol.RelayProfile? Relay { get => relay; set { relay = value; OnPropertyChanged(nameof(Relay)); OnPropertyChanged(nameof(Description)); } }
+        [JsonIgnore] public string Description => Relay == null ? Host + ":" + Port : Relay.Server + " · Relay";
+        public SavedServer Snapshot() => new(Name, Host, Port) { Id = Id, Relay = Relay };
         private string name;
         private string host;
         private ushort port;
@@ -171,6 +191,7 @@ namespace XIVChat_Desktop {
             set {
                 this.host = value;
                 this.OnPropertyChanged(nameof(this.Host));
+                this.OnPropertyChanged(nameof(this.Description));
             }
         }
 
@@ -179,6 +200,7 @@ namespace XIVChat_Desktop {
             set {
                 this.port = value;
                 this.OnPropertyChanged(nameof(this.Port));
+                this.OnPropertyChanged(nameof(this.Description));
             }
         }
 
@@ -195,7 +217,7 @@ namespace XIVChat_Desktop {
         }
 
         protected bool Equals(SavedServer other) {
-            return this.Name == other.Name && this.Host == other.Host && this.Port == other.Port;
+            return this.Id == other.Id;
         }
 
         public override bool Equals(object? obj) {
@@ -212,7 +234,7 @@ namespace XIVChat_Desktop {
 
         [SuppressMessage("ReSharper", "NonReadonlyMemberInGetHashCode")]
         public override int GetHashCode() {
-            return HashCode.Combine(this.Name, this.Host, this.Port);
+            return this.Id.GetHashCode();
         }
     }
 

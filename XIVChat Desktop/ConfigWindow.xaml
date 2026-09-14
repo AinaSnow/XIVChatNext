@@ -28,6 +28,7 @@
 
                 <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="14" Padding="4,4,4,16">
+                        <Button Click="InitialSetup_Click" local:Localize.Content="Setup.Reopen" />
                         <CheckBox x:Name="ChkAlwaysOnTop" Content="窗口置顶"
                                   IsChecked="{x:Bind Config.AlwaysOnTop, Mode=TwoWay}"
                                   Checked="AlwaysOnTop_Checked"

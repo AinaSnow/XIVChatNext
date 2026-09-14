@@ -106,13 +106,20 @@ namespace XIVChat_Desktop {
 
         private Exception? configLoadException;
         private bool configRecoveredFromBackup;
+        private bool showInitialSetup;
+        private bool normalStartup;
+        private int connectionIntent, relayRetries;
+        private bool retryingRelay;
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args) {
             base.OnLaunched(args);
             this.dispatcher = DispatcherQueue.GetForCurrentThread();
+            normalStartup = true;
 
             try {
-                this.Config = Configuration.Load(out this.configRecoveredFromBackup) ?? new Configuration();
+                var loaded = Configuration.Load(out this.configRecoveredFromBackup);
+                this.Config = loaded ?? new Configuration();
+                this.showInitialSetup = this.Config.PrepareSetup(loaded != null, this.configRecoveredFromBackup);
             } catch (Exception ex) {
                 this.configLoadException = ex;
                 this.Config = new Configuration();
@@ -149,6 +156,7 @@ namespace XIVChat_Desktop {
                 wnd.Activate();
                 await this.Workspace.RestoreAsync();
                 this.Notifier.WindowReady();
+                if (showInitialSetup) { showInitialSetup = false; SetupWizard.Show(); }
 
                 if (this.configLoadException != null || this.configRecoveredFromBackup) {
                     var dialog = new ContentDialog {
@@ -207,14 +215,29 @@ namespace XIVChat_Desktop {
         }
 
         public void Connect(string host, ushort port) {
+            Connect(this.Config.Servers.FirstOrDefault(s => s.Relay == null && s.Host == host && s.Port == port) ?? new SavedServer(host, host, port));
+        }
+        public void Connect(SavedServer target, bool remember = true) {
+            ConnectCore(target, remember, false);
+        }
+        private void ConnectCore(SavedServer target, bool remember, bool retry) {
             if (this.Connected) {
                 return;
             }
-
-            var connection = new Connection(this, host, port);
+            connectionIntent++; retryingRelay = retry; if (!retry) relayRetries = 0;
+            var connection = new Connection(this, target) { RememberTarget = remember };
             this.Connection = connection;
             connection.ReceiveMessage += message => this.Notifier.MessageReceived(message, connection);
             this.connectionTask = Task.Run(connection.Connect);
+        }
+        internal void RememberSuccessfulConnection(SavedServer target, bool mustStillBeSaved = false) {
+            relayRetries = 0;
+            if (mustStillBeSaved && !this.Config.Servers.Any(s => s.Id == target.Id && s.Host == target.Host && s.Port == target.Port && s.Relay == target.Relay)) return;
+            this.Config.LastSuccessfulConnection = target.Snapshot();
+            // Test applications bypass normal startup. Only their explicit fixture paths may be written.
+            if (!normalStartup && this.Config.FilePathOverride == null) return;
+            try { this.Config.Save(); }
+            catch { this.Window?.AddSystemMessage(SetupText.T("连接成功，但未能保存快捷连接设置。", "Connected, but the quick connection could not be saved.")); }
         }
 
         public async Task StopSessionAsync() {
@@ -249,6 +272,7 @@ namespace XIVChat_Desktop {
         }
 
         public void Disconnect() {
+            connectionIntent++; retryingRelay = false;
             if (!this.Connected) {
                 return;
             }
@@ -275,8 +299,17 @@ namespace XIVChat_Desktop {
 
         internal void ConnectionEnded(Connection connection, bool unexpected) {
             if (!ReferenceEquals(this.Connection, connection)) return;
+            var retry = connection.Target.Relay != null && connection.RememberTarget && ((unexpected && connection.SessionReady) || retryingRelay) &&
+                (!connection.TargetWasSaved || this.Config.Servers.Any(s => s.Id == connection.Target.Id && s.Relay == connection.Target.Relay));
             if (unexpected) this.Notifier.ConnectionLost(connection);
             this.Disconnect();
+            if (retry) {
+                var expected = connectionIntent;
+                var seconds = Math.Min(30, 1 << Math.Min(5, relayRetries++));
+                _ = Task.Delay(TimeSpan.FromSeconds(seconds)).ContinueWith(_ => this.Dispatch(() => {
+                    if (connectionIntent == expected && !Connected) ConnectCore(connection.Target, true, true);
+                }), TaskScheduler.Default);
+            }
         }
     }
 }

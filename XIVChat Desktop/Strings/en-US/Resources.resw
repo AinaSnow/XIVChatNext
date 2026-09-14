@@ -762,4 +762,6 @@
   <data name="Card.NoChinese" xml:space="preserve"><value>Chinese unavailable</value></data>
   <data name="Card.TextLoading" xml:space="preserve"><value>Loading card text…</value></data>
   <data name="Card.DataDetails" xml:space="preserve"><value>Data sources and versions</value></data>
+  <data name="Relay.Add" xml:space="preserve"><value>Add relay</value></data>
+  <data name="Setup.Reopen" xml:space="preserve"><value>Run initial setup again</value></data>
 </root>

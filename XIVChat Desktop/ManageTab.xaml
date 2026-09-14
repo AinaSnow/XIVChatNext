@@ -12,6 +12,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBox Grid.Row="0"
@@ -28,8 +29,9 @@
         <TabView Grid.Row="2"
                  x:Name="Tabs"
                  IsAddTabButtonVisible="False" />
+        <TextBlock x:Name="ValidationError" Grid.Row="3" TextWrapping="Wrap" Margin="0,8,0,0" />
         <Button Margin="0,8,0,0"
-                Grid.Row="3"
+                Grid.Row="4"
                 local:Localize.Content="Dialog.Save"
                 Click="Save_Click" />
     </Grid>

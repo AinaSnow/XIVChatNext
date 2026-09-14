@@ -148,6 +148,7 @@ namespace XIVChat_Desktop {
             Activate();
             try {
                 if (target.Kind == NotificationTargetKind.Event) {
+                    if (target.Source == "local" && target.OwnerKey == "setup" && target.RecordId == null) { SetupWizard.Show(); return; }
                     var row = target.RecordId == null ? null : await App.Notifier.GetEventAsync(target.RecordId);
                     if (row == null || row.Source != target.Source || row.OwnerKey != target.OwnerKey) { FooterStatus.Text = L("Notify.TargetMissing"); return; }
                     await ShowEventsAsync(row); return;

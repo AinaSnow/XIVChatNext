@@ -18,7 +18,9 @@
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Image Source="ms-appx:///Resources/logo-c1.png" Width="30" Height="30" Stretch="Uniform" AutomationProperties.Name="XIVChat Next"/>
+                    <Button x:Name="QuickConnectButton" Click="QuickConnect_Click" Padding="3" Background="Transparent" BorderThickness="0" AutomationProperties.Name="XIVChat Next">
+                        <Image Source="ms-appx:///Resources/logo-c1.png" Width="30" Height="30" Stretch="Uniform"/>
+                    </Button>
                     <MenuBar VerticalAlignment="Center">
                     <MenuBarItem x:Name="MenuMain" Title="XIVChat Next">
                         <MenuFlyoutItem x:Name="MenuConnect" Click="Connect_Click"/>
