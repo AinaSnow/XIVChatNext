@@ -1,5 +1,19 @@
 # Changelog / 更新说明
 
+## Desktop 1.3.7 — 2026-09-14
+
+### English
+
+- Fixed chat and main windows reopening outside the screen on a secondary monitor.
+- Previously saved off-screen positions are moved back into the available display area automatically.
+- Compatible with plugin 1.7.15; this update requires replacing only the desktop client.
+
+### 简体中文
+
+- 修复副屏上的聊天小窗和主窗口在恢复布局时跑到屏幕外的问题。
+- 之前保存的屏幕外位置会自动收回可用显示区域。
+- 兼容插件 1.7.15，本次只需更新桌面客户端。
+
 ## Plugin 1.7.15 · Desktop 1.3.6 — 2026-09-14
 
 ### English

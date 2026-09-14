@@ -205,7 +205,9 @@ public sealed class WorkspaceWindows {
     public static WindowBounds WorkArea(WindowBounds bounds) {
         var display = DisplayArea.GetFromRect(new RectInt32(bounds.X, bounds.Y, Math.Max(1, bounds.Width), Math.Max(1, bounds.Height)), DisplayAreaFallback.Nearest);
         var area = display.WorkArea;
-        return new(area.X + display.OuterBounds.X, area.Y + display.OuterBounds.Y, area.Width, area.Height);
+        // WorkArea already uses desktop coordinates in the Windows App SDK runtime.
+        // Adding OuterBounds again pushes secondary-monitor windows off-screen.
+        return new(area.X, area.Y, area.Width, area.Height);
     }
     public static void ApplyBounds(Window window, WindowBounds bounds) {
         var fit = bounds.Fit(WorkArea(bounds));

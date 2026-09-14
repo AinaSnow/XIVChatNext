@@ -7,11 +7,11 @@
         <AssemblyName>XIVChat Desktop</AssemblyName>
         <Nullable>enable</Nullable>
         <Company>XIVChat</Company>
-        <Version>1.3.6</Version>
-        <AssemblyVersion>1.3.6</AssemblyVersion>
-        <FileVersion>1.3.6</FileVersion>
+        <Version>1.3.7</Version>
+        <AssemblyVersion>1.3.7</AssemblyVersion>
+        <FileVersion>1.3.7</FileVersion>
         <ApplicationIcon>Resources\logo-c1.ico</ApplicationIcon>
-        <PackageVersion>1.3.6</PackageVersion>
+        <PackageVersion>1.3.7</PackageVersion>
         <EnableDefaultPageItems>true</EnableDefaultPageItems>
         <UseWinUI>true</UseWinUI>
         <DefaultLanguage>en-US</DefaultLanguage>

@@ -12,7 +12,7 @@ A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://x
 
 | Component | Version | Download |
 | --- | --- | --- |
-| Windows x64 desktop client | **1.3.6** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/XIVChatNext-Desktop-v1.3.6-win-x64.zip) |
+| Windows x64 desktop client | **1.3.7** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.3.7/XIVChatNext-Desktop-v1.3.7-win-x64.zip) |
 | Dalamud plugin | **1.7.15** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip) |
 | Optional self-hosted relay | Included with this release | [Release assets](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
@@ -70,7 +70,7 @@ XIVChat Next 是基于 [XIVChat](https://xiv.chat/) 的 **FFXIV Windows 桌面�
 
 ### 下载与安装
 
-- **客户端 1.3.6**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/XIVChatNext-Desktop-v1.3.6-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
+- **客户端 1.3.7**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.3.7/XIVChatNext-Desktop-v1.3.7-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
 - **插件 1.7.15**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip)。
 - **可选中继**：从 [本次发布](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) 取得 Ubuntu x86_64 + 1Panel 离线部署包。
 
