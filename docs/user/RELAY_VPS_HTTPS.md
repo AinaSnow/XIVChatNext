@@ -1,5 +1,7 @@
 # Ubuntu + 1Panel 部署 XIVChat 中继
 
+已有预编译镜像包时，优先按 [直接上传 Docker 镜像部署](RELAY_VPS_OFFLINE_IMAGE.md) 导入启动，省去源码构建；本文的 1Panel 反代和证书设置仍适用。
+
 适用你的环境：Ubuntu，1Panel 已经通过 OpenResty 使用 80/443 做反向代理。继续由 1Panel 管理域名和 HTTPS 证书，中继只监听本机 `127.0.0.1:18080`。
 
 ```text

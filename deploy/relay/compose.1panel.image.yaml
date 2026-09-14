@@ -1,0 +1,34 @@
+# Offline image deployment. This file is standalone; no source build or Caddy.
+name: xivchat-relay
+services:
+  relay:
+    image: xivchat-relay:20260914-web-admin
+    platform: linux/amd64
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      XIVCHAT_RELAY_DATA: /data
+      Relay__PublicUrl: https://${RELAY_DOMAIN:?Set the RELAY_DOMAIN environment variable}
+      Relay__AdminPassword: ${RELAY_ADMIN_PASSWORD:?Set RELAY_ADMIN_PASSWORD to a unique password of at least 16 characters}
+      Relay__MaxSessions: "256"
+      Relay__BytesPerSecond: "4194304"
+      Logging__LogLevel__Default: Warning
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - relay-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, dotnet, XIVChat.Relay.dll, health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+volumes:
+  relay-data:
