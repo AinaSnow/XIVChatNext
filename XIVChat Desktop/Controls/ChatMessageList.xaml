@@ -18,6 +18,10 @@
             <ListView.Clip>
                 <RectangleGeometry x:Name="MessageViewportClip" />
             </ListView.Clip>
+            <!-- Staggered insertion animations can hide the newest rows during bursts. -->
+            <ListView.ItemContainerTransitions>
+                <TransitionCollection />
+            </ListView.ItemContainerTransitions>
             <ListView.ItemsPanel>
                 <ItemsPanelTemplate>
                     <ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView" />

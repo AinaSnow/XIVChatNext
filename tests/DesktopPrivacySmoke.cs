@@ -20,6 +20,7 @@ using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XIVChatCommon.Message;
+using XIVChatCommon.Message.Client;
 using XIVChatCommon.Message.Server;
 using XIVChatStorage;
 
@@ -100,6 +101,44 @@ internal sealed class DesktopPrivacySmokeApp : App {
         public Task ClearAsync() { Clears++; Deliveries.Clear(); return Task.CompletedTask; }
         public void Dispose() { }
     }
+    private void CheckOutboundPackets(CharacterIdentity owner, CharacterIdentity peer) {
+        // Exercise the actual outbound queue without ever opening a transport.
+        if (owner.Key == null) throw new Exception("Fixture owner has no identity key");
+        var connection = new Connection(this, "127.0.0.1", 1);
+        void Set(string name, object value) => typeof(Connection).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(connection, value);
+        Set("available", true);
+        Set("capabilities", new ServerCapabilities { GuardedCommands = true, DirectedTell = true });
+        Set("commandPlayer", Session.Player!); Set("channelRevision", 17L);
+        var queue = (System.Threading.Channels.Channel<byte[]>)typeof(Connection).GetField("outgoingMessages", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(connection)!;
+        XIVChatCommon.Message.Client.ClientMessage Read() {
+            if (!queue.Reader.TryRead(out var packet)) throw new Exception("No outbound test packet");
+            if (packet[0] != (byte)ClientOperation.Message) throw new Exception("Wrong outbound packet type");
+            return XIVChatCommon.Message.Client.ClientMessage.Decode(packet.Skip(1).ToArray());
+        }
+        const string body = "中文发送测试 🐇\n第二行";
+        var target = TellTarget.From(peer);
+        var request = connection.SendTell(target, body, owner.Key, "fixture-login");
+        var tell = Read();
+        Check(request != null && tell.RequestId == request && tell.Content == body && tell.TellTarget?.Name == peer.Name
+            && tell.ExpectedOwnerKey == owner.Key && tell.ExpectedOwnerEpoch == "fixture-login",
+            "Tell packet preserves real recipient and multiline UTF-8 text while streamer mode is enabled");
+        request = connection.SendMessageWithId(body);
+        var channel = Read();
+        Check(request != null && channel.RequestId == request && channel.Content == body && channel.TellTarget == null
+            && channel.ExpectedChannelRevision == 17 && channel.ExpectedOwnerKey == owner.Key,
+            "Channel packet carries the current owner and channel revision");
+        Check(connection.SendTell(target, body, "different-owner", "fixture-login") == null
+            && connection.SendTell(target, body, owner.Key, "old-login") == null,
+            "Stale character and login identity cannot queue a tell");
+        string oversized = new('中', 2731); // 8,193 UTF-8 bytes despite fewer characters.
+        Check(connection.SendMessageWithId(oversized) == null && connection.SendTell(target, oversized, owner.Key, "fixture-login") == null
+            && connection.SendMessageWithId(" \n ") == null, "Oversized UTF-8 and empty messages are rejected before queuing");
+        Set("available", false);
+        Check(connection.SendMessageWithId(body) == null && connection.SendTell(target, body, owner.Key, "fixture-login") == null,
+            "Unavailable connection rejects channel and tell packets");
+        Set("available", true); connection.Disconnect();
+        Check(connection.SendMessageWithId(body) == null && !queue.Reader.TryRead(out _), "Cancelled connection queues no messages");
+    }
     protected override async void OnLaunched(LaunchActivatedEventArgs args) {
         try {
             Directory.CreateDirectory(fixture);
@@ -134,6 +173,7 @@ internal sealed class DesktopPrivacySmokeApp : App {
             await Workbench.FlushAsync();
             var main = new MainWindow(); typeof(App).GetProperty(nameof(Window))!.SetValue(this, main); main.Activate();
             await Until(() => main.Content.XamlRoot != null, "main window");
+            await Workspace.RestoreAsync();
             var model = Workbench.Open(peer)!; main.Navigate("conversations"); main.ShowConversation(model);
             await Until(() => Descendants<RichTextBlock>((DependencyObject)main.Content).Any(t => t.Blocks.Count > 0), "conversation text");
             await Task.Delay(200);
@@ -222,13 +262,13 @@ internal sealed class DesktopPrivacySmokeApp : App {
             Invoke(Descendants<Button>(chat).Single(b => b.Name == "LatestButton")); await Task.Delay(300);
             var scroll = Descendants<ScrollViewer>(chat).First();
             Check(chat.FollowingLatest && scroll.ScrollableHeight - scroll.VerticalOffset <= 2, "Return to latest still reaches the newest disconnect error");
+            var channelPopout = main.PopoutCurrent()!;
+            await Until(() => channelPopout.Content.XamlRoot != null, "channel popout");
             for (int i = 0; i < 80; i++) {
                 const string body = "离线历史测试消息\n多行正文不能越过消息列表进入输入框。";
                 main.AddMessage(new ServerMessage(DateTime.UtcNow, ChatType.Say, Encoding.UTF8.GetBytes(owner.Name), Encoding.UTF8.GetBytes(body),
                     new() { new TextChunk(body) }) { Owner = owner });
             }
-            var channelPopout = main.PopoutCurrent()!;
-            await Until(() => channelPopout.Content.XamlRoot != null, "channel popout");
             await Until(() => channelPopout.LoadedMessages.Count >= 80, "popout multiline backlog");
             channelPopout.AppWindow.Resize(new Windows.Graphics.SizeInt32(600, 420)); await Task.Delay(300);
             await Capture(channelPopout, Path.Combine(AppContext.BaseDirectory, "chat-disconnected-popout-latest-zh.png"));
@@ -236,6 +276,43 @@ internal sealed class DesktopPrivacySmokeApp : App {
             channelPopout.MessageView.ScrollToMessage(channelPopout.LoadedMessages[20]); await Task.Delay(300);
             await CheckMessageBounds(channelPopout, "Disconnected channel popout reading multiline history");
             await Capture(channelPopout, Path.Combine(AppContext.BaseDirectory, "chat-disconnected-popout-zh.png"));
+            string mainDraft = "主窗口草稿：中文与 emoji 🐇\n第二行保留。";
+            string popoutDraft = "小窗草稿：断线时不能丢失\n第二行。";
+            var mainComposer = Control<TextBox>(main, "Composer");
+            mainComposer.Text = mainDraft;
+            Check(mainComposer.Text.Replace("\r\n", "\n").Replace('\r', '\n') == mainDraft, "Main composer preserves Chinese, emoji and line breaks");
+            mainDraft = mainComposer.Text; // WinUI normalizes editor line endings.
+            typeof(MainWindow).GetMethod("Submit", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(main, null);
+            Check(mainComposer.Text == mainDraft, "Disconnected main-window submit preserves multiline draft");
+            Check(!Workbench.Send(model, "must stay local") && model.Peer.Name == peer.Name,
+                "Disconnected tell is rejected and retains the real recipient");
+            channelPopout.Composer.Text = popoutDraft;
+            Check(channelPopout.Composer.Text.Replace("\r\n", "\n").Replace('\r', '\n') == popoutDraft, "Popout composer preserves multiline Chinese text");
+            popoutDraft = channelPopout.Composer.Text;
+            Check(!channelPopout.Submit() && channelPopout.Composer.Text == popoutDraft && channelPopout.State.PendingDraft == null,
+                "Disconnected popout submit preserves draft without queuing a send");
+            main.Navigate("conversations"); main.Navigate("channels");
+            Check(mainComposer.Text == mainDraft, "Switching views preserves the channel draft");
+            await Workspace.SaveAsync();
+            var savedLayout = (await Session.Store.LoadLayoutAsync("current"))!;
+            Check(savedLayout.MainDrafts.Values.Contains(mainDraft) && savedLayout.Windows.Any(w => w.Key == channelPopout.State.Key && w.Draft == popoutDraft),
+                "Main and popout multiline drafts round-trip through the layout database");
+            await Workspace.ClosePopoutAsync(channelPopout);
+            var reopened = main.PopoutCurrent()!;
+            await Until(() => reopened.Content.XamlRoot != null, "reopened popout");
+            Check(reopened.Composer.Text == popoutDraft && !reopened.CanSend, "Reopening offline popout restores the unsent draft");
+            reopened.State.PendingDraft = "older pending draft";
+            Workspace.SendReply(reopened.State.Key, "Disconnected", "older pending draft", true);
+            Check(reopened.Composer.Text == popoutDraft && reopened.State.FailedDraft == "older pending draft" && reopened.State.PendingDraft == null,
+                "A failed pending send preserves both the newer draft and failed text");
+            WorkspaceWindows.ApplyBounds(main, new(-50000, -50000, 900, 540));
+            await Task.Delay(150);
+            var workArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(main.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary).WorkArea;
+            Check(main.AppWindow.Position.X >= workArea.X && main.AppWindow.Position.Y >= workArea.Y
+                && main.AppWindow.Position.X + main.AppWindow.Size.Width <= workArea.X + workArea.Width
+                && main.AppWindow.Position.Y + main.AppWindow.Size.Height <= workArea.Y + workArea.Height,
+                "A saved off-screen main window is brought back inside an available display");
+            CheckOutboundPackets(owner, peer);
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {
