@@ -217,7 +217,16 @@ public sealed class IdentityDisplay {
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         return rules[scope] = new(pattern, replacements);
     }
-    private static bool NameChar(char c) => char.IsLetterOrDigit(c) || c is '\'' or '-';
+    private static bool NameChar(char c) => char.IsLetterOrDigit(c) || c is '\'' or '-' ||
+        char.GetUnicodeCategory(c) is System.Globalization.UnicodeCategory.NonSpacingMark or System.Globalization.UnicodeCategory.SpacingCombiningMark;
+    private static bool ContinuesName(char adjacent, char edge) {
+        if (!NameChar(adjacent)) return false;
+        // Japanese game text joins Latin names directly to particles ("Alice Snowの攻撃").
+        // A switch from a Latin name to CJK prose is a boundary, unlike a longer Latin name.
+        bool latinEdge = char.IsLetter(edge) && (edge <= '\u024f' || edge is >= '\u1e00' and <= '\u1eff');
+        bool cjkAdjacent = adjacent is >= '\u2e80' and <= '\u9fff' or >= '\uf900' and <= '\ufaff' or >= '\uff66' and <= '\uff9f';
+        return !(latinEdge && cjkAdjacent);
+    }
     private List<Edit> Edits(DisplayContext context, string text) {
         var result = new List<Edit>();
         if (!settings.Enabled || text.Length == 0) return result;
@@ -225,7 +234,8 @@ public sealed class IdentityDisplay {
         if (rule.Pattern == null) return result;
         try {
             foreach (Match match in rule.Pattern.Matches(text)) {
-                if (match.Index > 0 && NameChar(text[match.Index - 1]) || match.Index + match.Length < text.Length && NameChar(text[match.Index + match.Length])) continue;
+                if (match.Index > 0 && ContinuesName(text[match.Index - 1], match.Value[0]) ||
+                    match.Index + match.Length < text.Length && ContinuesName(text[match.Index + match.Length], match.Value[^1])) continue;
                 result.Add(new(match.Index, match.Length, rule.Replacements[match.Value]));
             }
         } catch (RegexMatchTimeoutException) { return new() { new(0, text.Length, Anonymous) }; }

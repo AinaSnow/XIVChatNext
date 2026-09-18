@@ -58,6 +58,15 @@ Check(alias.Hidden && alias.World == "" && alias.Name != peer.Name && alias.Name
 Check(view.Identity(scope, peer).Name == alias.Name, "stable repeated pseudonym");
 Check(!view.Text(scope, message.ContentText).Contains("Bob Birch") && !view.Text(scope, message.ContentText).Contains("Alpha"), "body and linked world redacted");
 Equal(view.Text(scope, "Bob Birchwood and XBob Birch"), "Bob Birchwood and XBob Birch", "partial names not corrupted");
+Equal(view.Text(scope, "Alice Snowは戦利品を手に入れた。"), "Meは戦利品を手に入れた。", "Japanese loot text masks adjacent Latin character name");
+Equal(view.Text(scope, "Alice Snowの攻撃"), "Meの攻撃", "Japanese combat text masks adjacent Latin character name");
+Equal(view.Text(scope, "玩家Alice Snow获得了物品。"), "玩家Me获得了物品。", "Chinese text masks adjacent Latin character name");
+Equal(view.Text(scope, "Alice Snowé Alice Snow\u0301"), "Alice Snowé Alice Snow\u0301", "accented and combining suffixes do not match partial names");
+var cjkPeer = Person("星野光", cid: 505); view.Register(scope, cjkPeer);
+Equal(view.Text(scope, "星野光子"), "星野光子", "longer CJK names do not match partial names");
+var japaneseMessage = Message("Alice Snowは戦利品を手に入れた。");
+Check(!view.ExportLine("fixture", japaneseMessage, false).Contains(self.Name), "Japanese export masks character name");
+Check(!string.Concat(view.Chunks("fixture", japaneseMessage).OfType<TextChunk>().Select(c => c.Content)).Contains(self.Name), "Japanese rendered and copied text masks character name");
 Equal(view.Text(scope, "unknown nickname"), "unknown nickname", "unknown free text left alone");
 var projected = view.Chunks("fixture", message).OfType<TextChunk>().ToArray();
 var rendered = string.Concat(projected.Select(c => c.Content));
