@@ -91,6 +91,7 @@ namespace XIVChat_Desktop {
         }
         private async void FavoriteEdit_Click(object sender, RoutedEventArgs e) {
             if (FavoritesList.SelectedItem is not CardFavorite favorite || App.Session.Store is not { } store || dialogOpen) return;
+            if (App.Presentation.Enabled) { FavoritesStatus.Text = L("Privacy.EditAfterDisable"); return; }
             dialogOpen = true;
             try {
                 var group = new TextBox { Header = L("Card.Group"), Text = favorite.Group, MaxLength = 128 };
@@ -98,7 +99,7 @@ namespace XIVChat_Desktop {
                 var note = new TextBox { Header = L("History.Note"), Text = favorite.Note, MaxLength = 8192, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100, MaxHeight = 220 };
                 var panel = new StackPanel { Spacing = 12 }; panel.Children.Add(group); panel.Children.Add(tags); panel.Children.Add(note);
                 var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = favorite.Name, Content = panel, PrimaryButtonText = L("Dialog.Save"), CloseButtonText = L("Dialog.Cancel") };
-                if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+                if (await ShowIdentityEditorAsync(dialog) != ContentDialogResult.Primary) return;
                 await store.UpdateCardFavoriteMetadataAsync(favorite.Id, favorite.Source, favorite.OwnerKey, group.Text.Trim(), tags.Text.Trim(), note.Text);
                 if (section == "favorites") await LoadFavoritesAsync(false);
             } catch (Exception ex) { FavoritesStatus.Text = ex.Message; } finally { dialogOpen = false; }

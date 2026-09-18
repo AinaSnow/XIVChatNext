@@ -19,7 +19,7 @@ public sealed record HistoryRow(long RowId, string Id, string OwnerKey, ServerMe
 
 /// <summary>All writes run on one worker. Completion means the transaction committed.</summary>
 public sealed partial class HistoryStore : IAsyncDisposable {
-    private const int SchemaVersion = 5;
+    private const int SchemaVersion = 6;
     private readonly string connectionString;
     private readonly SqliteConnection writer;
     private readonly Channel<Write> writes = Channel.CreateBounded<Write>(new BoundedChannelOptions(2048) {
@@ -59,6 +59,7 @@ public sealed partial class HistoryStore : IAsyncDisposable {
                 if (version < 3) MigrateWorkbench(connection, tx);
                 if (version < 4) MigrateEvents(connection, tx);
                 if (version < 5) MigrateCards(connection, tx);
+                if (version < 6) MigrateContactDisplay(connection, tx);
                 Execute(connection, $"PRAGMA user_version={SchemaVersion}", tx);
                 tx.Commit();
             }
@@ -178,20 +179,22 @@ public sealed partial class HistoryStore : IAsyncDisposable {
 
     /// <summary>Streams a consistent SQLite snapshot in chronological order with bounded managed memory.</summary>
     public Task<long> ExportAsync(HistoryQuery query, TextWriter writer, bool rtf, bool timestamps,
-        Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default) => Task.Run(() => {
+        Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
+        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null) => Task.Run(() => {
         long count = 0;
         if (rtf) writer.Write("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Segoe UI;}}\\uc1\\f0 ");
         ReadHistory(query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null }, row => {
             if (filter != null && !filter(row.Message)) return;
-            var line = HistoryExport.Line(row.Message, timestamps);
+            token.ThrowIfCancellationRequested();
+            var line = displayLine?.Invoke(row, timestamps) ?? HistoryExport.Line(row.Message, timestamps);
             writer.Write(rtf ? HistoryExport.EscapeRtf(line) + "\\par\n" : line + Environment.NewLine);
             if (++count % 500 == 0) progress?.Report(count);
-        }, token, true);
+        }, token, true, prepareRow);
         if (rtf) writer.Write("}");
         writer.Flush(); progress?.Report(count); return count;
     }, token);
 
-    private long ReadHistory(HistoryQuery query, Action<HistoryRow> consume, CancellationToken token, bool export) {
+    private long ReadHistory(HistoryQuery query, Action<HistoryRow> consume, CancellationToken token, bool export, Action<HistoryRow>? prepareRow = null) {
         token.ThrowIfCancellationRequested();
         using var db = this.OpenReader();
         var conditions = new List<string>();
@@ -233,6 +236,16 @@ public sealed partial class HistoryStore : IAsyncDisposable {
         using var registration = token.Register(() => SQLitePCL.raw.sqlite3_interrupt(db.Handle));
         try {
             token.ThrowIfCancellationRequested();
+            // Discover identities before emitting text, within the same SQLite snapshot.
+            // Retain only identities in the caller, never buffer the message history.
+            if (prepareRow != null) {
+                using var preparation = cmd.ExecuteReader();
+                while (preparation.Read()) {
+                    token.ThrowIfCancellationRequested();
+                    prepareRow(new HistoryRow(preparation.GetInt64(0), preparation.GetString(1), preparation.GetString(2),
+                        MessagePackSerializer.Deserialize<ServerMessage>((byte[])preparation[3]), preparation.GetString(4), preparation.GetBoolean(5), preparation.GetString(6)));
+                }
+            }
             using var reader = cmd.ExecuteReader();
             long count = 0;
             while (reader.Read()) {

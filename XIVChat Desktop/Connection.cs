@@ -570,14 +570,14 @@ namespace XIVChat_Desktop {
                 if (playerData?.Identity?.Key is { } owner && owner != previousOwner) _ = this.app.RestorePlayerHistoryAsync(playerData);
                 var window = this.app.Window;
 
-                window.LoggedInAsText.Text = playerData?.name ?? "Not logged in";
+                window.UpdatePlayerDisplay();
 
-                window.LoggedInAsSeparatorText.Visibility = visibility;
+                window.LoggedInAsSeparatorText.Visibility = this.app.Presentation.Hidden(playerData?.Identity) ? Visibility.Collapsed : visibility;
 
-                window.CurrentWorldText.Text = playerData?.currentWorld;
-                window.CurrentWorldText.Visibility = visibility;
+                window.CurrentWorldText.Text = this.app.Presentation.Hidden(playerData?.Identity) ? "" : playerData?.currentWorld;
+                window.CurrentWorldText.Visibility = this.app.Presentation.Hidden(playerData?.Identity) ? Visibility.Collapsed : visibility;
 
-                window.CurrentWorldSeparatorText.Visibility = visibility;
+                window.CurrentWorldSeparatorText.Visibility = this.app.Presentation.Hidden(playerData?.Identity) ? Visibility.Collapsed : visibility;
 
                 window.LocationText.Text = playerData?.location;
                 window.LocationButton.Visibility = visibility;

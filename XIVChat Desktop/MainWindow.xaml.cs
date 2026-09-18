@@ -17,7 +17,7 @@ using XIVChatCommon.Message.Server;
 using XIVChatStorage;
 
 namespace XIVChat_Desktop {
-    public sealed record FriendRow(Player Player, CharacterIdentity? Peer, string Name, string World, string Status);
+    public sealed record FriendRow(Player Player, CharacterIdentity? Peer, string Name, string World, string Status) { public override string ToString() => Name; }
     public partial class MainWindow : INotifyPropertyChanged {
         public App App => (App)Application.Current;
         public List<ServerMessage> Messages => App.Session.Messages;
@@ -62,6 +62,7 @@ namespace XIVChat_Desktop {
             ChannelList.ItemsSource = App.Config.Tabs;
             App.Config.Tabs.CollectionChanged += TabsChanged;
             App.Config.Saved += ConfigSaved;
+            App.Presentation.Changed += UpdatePrivacyDisplay;
             App.PropertyChanged += AppChanged;
             App.Workbench.Changed += WorkbenchChanged;
             App.Session.MessagesChanged += SessionMessagesChanged;
@@ -121,9 +122,9 @@ namespace XIVChat_Desktop {
             ChannelSwitchButton.Flyout = CreateChannelFlyout();
             foreach (var view in channelViews.Values) view.UpdateLocalizations();
             conversationView?.UpdateLocalizations(); UpdateHistoryLocalizations();
-            RefreshFriendRows(); UpdateNavigation(); UpdateReady();
+            RefreshFriendRows(); UpdateNavigation(); UpdateReady(); UpdatePrivacyDisplay();
         }
-        private void ConfigSaved() { if (initialized) { UpdateLocalizations(); UpdateReady(); if (section == "channels" && selectedChannel != null) ChatTitle.Text = selectedChannel.Name; } }
+        private void ConfigSaved() { if (initialized) { UpdateLocalizations(); UpdateReady(); if (section == "channels" && selectedChannel != null) ChatTitle.Text = App.Presentation.Text(selectedChannel.Name); } }
         private void AppChanged(object? sender, PropertyChangedEventArgs e) {
             if (e.PropertyName == nameof(App.Connection)) ObserveConnection();
         }
@@ -196,12 +197,12 @@ namespace XIVChat_Desktop {
             AddViewButton.Visibility = V(section is "channels" or "conversations"); RefreshFriendsButton.Visibility = V(section == "friends");
             SidebarEmpty.Visibility = V(section == "conversations" && visibleConversations.Count == 0 || section == "friends" && visibleFriends.Count == 0 || section == "channels" && App.Config.Tabs.Count == 0);
             SidebarEmpty.Text = App.Workbench.OwnerKey == null && section != "channels" ? L("Workbench.ConnectFirst") : L(section == "friends" ? "FriendList.Empty" : "Conversation.Empty");
-            if (section != "friends") SidebarStatus.Text = App.Workbench.Owner is { } owner ? owner.Name + " · " + owner.HomeWorld : L("Workbench.OfflineHistory");
+            if (section != "friends") SidebarStatus.Text = App.Workbench.Owner is { } owner ? App.Presentation.Identity(owner).Label : L("Workbench.OfflineHistory");
         }
         private void ListSearch_TextChanged(object sender, TextChangedEventArgs e) { if (!initialized || syncing) return; if (section == "friends") RefreshFriendRows(); else FilterConversations(); UpdateNavigation(); }
         private void FilterConversations() {
             var search = ListSearch.Text.Trim();
-            var desired = App.Workbench.Conversations.Where(c => section != "conversations" || search.Length == 0 || (c.Name + " " + c.World + " " + c.Note).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var desired = App.Workbench.Conversations.Where(c => section != "conversations" || search.Length == 0 || (c.Name + " " + c.World + " " + (App.Presentation.Enabled ? App.Presentation.Text(c.Note) : c.Peer.Name + " " + c.Peer.HomeWorld + " " + c.Note)).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
             syncing = true;
             foreach (var item in visibleConversations.Where(c => !desired.Contains(c)).ToArray()) visibleConversations.Remove(item);
             for (int i = 0; i < desired.Length; i++) { var existing = visibleConversations.IndexOf(desired[i]); if (existing < 0) visibleConversations.Insert(i, desired[i]); else if (existing != i) visibleConversations.Move(existing, i); }
@@ -220,8 +221,11 @@ namespace XIVChat_Desktop {
                 foreach (var player in snapshot.Players.OrderByDescending(p => p.HasStatus(PlayerStatus.Online)).ThenBy(p => p.IdentityUnavailable).ThenBy(p => p.Name)) {
                     var world = player.HomeWorld > 0 ? player.HomeWorldName ?? Util.WorldName(player.HomeWorld) ?? "" : "";
                     var identity = player.IdentityUnavailable ? null : new CharacterIdentity { Name = player.Name ?? "", HomeWorldId = player.HomeWorld, HomeWorld = world, ContentId = player.ContentId };
-                    var name = identity == null ? L("FriendList.IdentityUnavailable") : player.Name ?? "";
-                    if (search.Length > 0 && !(name + " " + world).Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+                    var display = App.Presentation.Identity(identity);
+                    var name = identity == null ? L("FriendList.IdentityUnavailable") : display.Name;
+                    var searchable = name + " " + display.World + (App.Presentation.Enabled ? "" : " " + player.Name + " " + world);
+                    if (search.Length > 0 && !searchable.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+                    world = display.World;
                     var status = PresenceText(player.ContentId);
                     if (state.IsStale) status = L("FriendList.Cached") + " · " + status;
                     desiredFriends.Add(new FriendRow(player, identity, name, world, status));
@@ -281,7 +285,7 @@ namespace XIVChat_Desktop {
             ChatPresenceText.Visibility = Visibility.Collapsed;
             ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed; ComposerPanel.Visibility = Visibility.Visible;
             if (!channelViews.TryGetValue(tab, out var view)) { view = new Controls.ChatMessageList(tab); channelViews.Add(tab, view); }
-            ChatHost.Content = view; ChatTitle.Text = tab.Name; ChatSubtitle.Text = L("Workbench.ChannelView");
+            ChatHost.Content = view; ChatTitle.Text = App.Presentation.Text(tab.Name); ChatSubtitle.Text = L("Workbench.ChannelView");
             activeChannelDraftKey = ChannelDraftKey(tab);
             syncing = true; Composer.Text = channelDrafts.GetValueOrDefault(activeChannelDraftKey, ""); syncing = false;
             UpdateChatActions(false); UpdateReady();
@@ -363,7 +367,7 @@ namespace XIVChat_Desktop {
         }
         private void UpdateChatActions(bool conversation) {
             PopoutButton.IsEnabled = section is "channels" or "conversations" or "friends";
-            PeerAvatar.Visibility = V(conversation); PinConversationButton.Visibility = V(conversation); ConversationNoteButton.Visibility = V(conversation);
+            PeerAvatar.Visibility = V(conversation); PinConversationButton.Visibility = V(conversation); ConversationNoteButton.Visibility = V(conversation); NicknameButton.Visibility = V(conversation);
             AvatarButton.Visibility = V(conversation); LoadOlderButton.Visibility = V(conversation); EditChannelButton.Visibility = V(!conversation); BackHistoryButton.Visibility = Visibility.Collapsed;
         }
         private void Screenshot_Click(object sender, RoutedEventArgs e) => ScreenshotWindow.ShowScreenshot();
@@ -378,18 +382,18 @@ namespace XIVChat_Desktop {
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(QuickConnectButton, quickLabel);
             ConnectionLabel.Text = connection?.Available == true ? L("Workbench.Connected") : L("Workbench.Disconnected");
             OwnAvatar.Identity = player?.Identity ?? App.Workbench.Owner;
-            if (player == null) LoggedInAs.Text = App.Workbench.Owner?.Name ?? L("Status.Disconnected");
+            UpdatePlayerDisplay();
             Composer.PlaceholderText = L("Workbench.TypeMessage");
             Composer.IsEnabled = model != null || connection?.Available == true;
             var canTell = model != null && model.State.Source == App.Session.Source && model.State.OwnerKey == player?.Identity?.Key && connection?.Available == true && connection.SupportsDirectedTell;
             SendButton.IsEnabled = !string.IsNullOrWhiteSpace(Composer.Text) && (model != null ? canTell : connection?.Available == true && selectedChannel != null);
             ChannelSwitchButton.Visibility = V(model == null); ChannelSwitchButton.Content = connection?.CurrentChannel ?? L("Workbench.Channel"); ChannelSwitchButton.IsEnabled = connection?.Available == true;
-            ComposerTarget.Text = model != null ? string.Format(L("Conversation.Target"), model.Name, model.World) : L("Workbench.ChannelTarget");
+            ComposerTarget.Text = model != null ? string.Format(L(model.World.Length == 0 ? "Conversation.TargetPrivate" : "Conversation.Target"), model.Name, model.World) : L("Workbench.ChannelTarget");
             ComposerStatus.Text = model != null && !canTell
                 ? L(connection?.Available == true && !connection.SupportsDirectedTell ? "Conversation.UpgradeRequired" : "Conversation.ReadOnly")
                 : model?.SendStatus is { Length: > 0 } status ? status : L("Workbench.EnterHint");
             RestoreDraftButton.Visibility = V(model?.FailedDraft != null); PinConversationButton.IsChecked = model?.Pinned == true;
-            FooterStatus.Text = App.Workbench.Error is { } error ? L("History.Unavailable") + " " + error :
+            FooterStatus.Text = App.Presentation.Error != null ? L("Privacy.SaveFailed") : App.Workbench.Error is { } error ? L("History.Unavailable") + " " + error :
                 (App.Config.HistoryEnabled ? string.Format(L("Workbench.HistoryRetention"), App.Config.HistoryRetentionDays == 0 ? L("Workbench.Forever") : App.Config.HistoryRetentionDays.ToString()) : L("Workbench.HistoryOff"));
         }
         private void SaveComposer() {
@@ -462,6 +466,7 @@ namespace XIVChat_Desktop {
             App.Cards.FavoritesChanged -= FavoritesChanged; favoritesVersion++;
             presenceTimer.Stop(); presenceTimer.Tick -= PresenceTick;
             App.Session.Friends.Presence.Changed -= RefreshFriendRows;
+            App.Presentation.Changed -= UpdatePrivacyDisplay;
             App.Config.Tabs.CollectionChanged -= TabsChanged; App.Config.Saved -= ConfigSaved; App.PropertyChanged -= AppChanged;
             App.Workbench.Changed -= WorkbenchChanged; App.Session.MessagesChanged -= SessionMessagesChanged; App.Session.Cleared -= SessionCleared; App.Session.Friends.Changed -= RefreshFriendRows;
             if (observedConnection != null) observedConnection.PropertyChanged -= ConnectionChanged;

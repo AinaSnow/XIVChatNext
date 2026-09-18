@@ -119,7 +119,7 @@ namespace XIVChat_Desktop {
                 elements.Add(tsRun);
             }
 
-            foreach (var chunk in message.Chunks) {
+            foreach (var chunk in ((App)Application.Current).Presentation.Chunks(message)) {
                 switch (chunk) {
                     case TextChunk textChunk:
                         var colour = textChunk.Foreground ?? textChunk.FallbackColour ?? 0;

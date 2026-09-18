@@ -30,11 +30,13 @@ namespace XIVChat_Desktop {
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1120, 800));
             this.AppWindow.SetPresenter(Microsoft.UI.Windowing.AppWindowPresenterKind.Overlapped);
             this.Session.Changed += this.Update;
+            this.App.Presentation.Changed += this.Update;
             this.App.PropertyChanged += this.AppChanged;
             this.Root.Loaded += (_, _) => this.Update();
             Localize.BindWindow(this, this.LocalizeWindow);
             this.Closed += (_, _) => {
                 this.closed = true; this.imageVersion++; this.Session.Changed -= this.Update;
+                this.App.Presentation.Changed -= this.Update;
                 this.App.PropertyChanged -= this.AppChanged; this.Session.Close();
                 this.PreviewImage.Source = null; this.displayed = null; this.loading = null; instance = null;
             };
@@ -74,10 +76,11 @@ namespace XIVChat_Desktop {
             bool hasImage = this.displayed != null;
             this.EmptyPanel.Visibility = hasImage ? Visibility.Collapsed : Visibility.Visible;
             this.FitButton.IsEnabled = this.ActualButton.IsEnabled = this.ZoomInButton.IsEnabled = this.ZoomOutButton.IsEnabled = hasImage;
-            this.SourceText.Text = this.displayed is { } shown ? shown.CharacterName + (this.Session.IsCurrent(shown) ? "" : " · " + L("Screenshot.Previous")) : "";
+            this.SourceText.Text = this.displayed is { } shown ? this.App.Presentation.OwnerLabel(shown.Source, shown.OwnerKey) + (this.Session.IsCurrent(shown) ? "" : " · " + L("Screenshot.Previous")) : "";
             this.DetailsText.Text = this.displayed is { } details
                 ? string.Format(L("Screenshot.Details"), DateTimeOffset.FromUnixTimeMilliseconds(details.Image.CapturedAtUnixMilliseconds).ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                     details.Image.Width, details.Image.Height, (details.Image.Bytes.Length / 1024d).ToString("N0")) : L("Screenshot.Hint");
+            this.DetailsText.Text += "\n" + L("Privacy.Screenshot");
         }
         private async Task LoadImageAsync(ScreenshotPreview preview) {
             this.loading = preview;

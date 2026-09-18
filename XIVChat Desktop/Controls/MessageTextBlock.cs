@@ -16,7 +16,8 @@ namespace XIVChat_Desktop.Controls {
             this.FontFamily = new FontFamily("ms-appx:///Resources/fonts/ffxiv.ttf#XIV AXIS Std ATK");
             this.TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap;
             this.ActualThemeChanged += (_, _) => Render();
-            this.Loaded += (_, _) => Render();
+            this.Loaded += (_, _) => { ((App)Application.Current).Presentation.Changed += Render; Render(); };
+            this.Unloaded += (_, _) => ((App)Application.Current).Presentation.Changed -= Render;
         }
 
         public static readonly DependencyProperty FontSizeOverrideProperty = DependencyProperty.Register(

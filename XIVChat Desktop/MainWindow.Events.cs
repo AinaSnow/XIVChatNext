@@ -14,9 +14,9 @@ namespace XIVChat_Desktop {
     public sealed record EventKindOption(string Label, GameEventKind? Kind);
     public sealed record EventListItem(EventRow Row) {
         public string Heading => LocalizationHelper.GetString("Event." + Row.Event.Kind);
-        public string Details => NotificationCenter.EventDetails(Row.Event);
+        public string Details => ((App)Application.Current).Presentation.EventDetails(Row.Source, Row.Event);
         public string Context => Row.Event.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " +
-            (Row.Event.Owner is { } owner ? owner.Name + " @ " + owner.HomeWorld : LocalizationHelper.GetString("History.Unassigned"));
+            (Row.Event.Owner is { } owner ? ((App)Application.Current).Presentation.OwnerLabel(Row.Source, Row.OwnerKey, owner) : LocalizationHelper.GetString("History.Unassigned"));
         public string Expiry => Row.Event.Kind == GameEventKind.DutyReady ? LocalizationHelper.GetString(
             Row.Event.ExpiresAt <= DateTime.UtcNow ? "Event.Expired" : "Event.ReturnToGame") : "";
         public string Glyph => Row.Event.Kind switch {
@@ -62,7 +62,7 @@ namespace XIVChat_Desktop {
             if (version != eventLoadVersion || section != "events") return;
             var choices = new List<HistoryOwnerOption> { new(L("History.AllOwners"), null) };
             choices.AddRange(owners.Select(owner => new HistoryOwnerOption(
-                (owner.Identity is { } identity ? identity.Name + " @ " + identity.HomeWorld : L("History.Unassigned")) +
+                (owner.Identity is { } identity ? App.Presentation.OwnerLabel(owner.Source, owner.OwnerKey, identity) : L("History.Unassigned")) +
                 " · " + owner.Source[..Math.Min(8, owner.Source.Length)], owner)));
             var source = focus?.Source ?? selected?.Source ?? App.Workbench.Source;
             var ownerKey = focus?.OwnerKey ?? selected?.OwnerKey ?? App.Workbench.OwnerKey;

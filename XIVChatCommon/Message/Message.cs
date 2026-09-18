@@ -12,6 +12,12 @@ namespace XIVChatCommon.Message {
 
     [MessagePackObject]
     public class TextChunk : Chunk {
+        // A display-only copy preserves link metadata without modifying stored/wire chunks.
+        public TextChunk WithContent(string content) {
+            var copy = (TextChunk)MemberwiseClone();
+            copy.Content = content;
+            return copy;
+        }
         [Key(0)]
         public uint? FallbackColour { get; set; }
 

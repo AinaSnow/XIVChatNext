@@ -764,4 +764,24 @@
   <data name="Card.DataDetails" xml:space="preserve"><value>数据来源与版本</value></data>
   <data name="Relay.Add" xml:space="preserve"><value>添加中继</value></data>
   <data name="Setup.Reopen" xml:space="preserve"><value>重新运行初始设置</value></data>
+  <data name="Privacy.Title" xml:space="preserve"><value>主播模式</value></data>
+  <data name="Privacy.Active" xml:space="preserve"><value>主播模式已开启</value></data>
+  <data name="Privacy.Off" xml:space="preserve"><value>已关闭</value></data>
+  <data name="Privacy.HideSelf" xml:space="preserve"><value>隐藏自己的角色信息</value></data>
+  <data name="Privacy.HideOthers" xml:space="preserve"><value>隐藏其他玩家的角色信息</value></data>
+  <data name="Privacy.SelfName" xml:space="preserve"><value>自己的显示名称（留空显示“我”）</value></data>
+  <data name="Privacy.Me" xml:space="preserve"><value>我</value></data>
+  <data name="Privacy.Help" xml:space="preserve"><value>用固定化名替换角色名，同时隐藏对应的服务器和头像。主窗口、小窗、通知、复制和导出使用同一套规则。重启后会记住开关状态。</value></data>
+  <data name="Privacy.Limits" xml:space="preserve"><value>仅替换能确认的完整姓名。输入框中的文字和游戏截图不会自动打码，未知昵称也可能保留。原始聊天记录仍保存在本机；已经复制、保存或发送到外部的内容不会追溯修改。</value></data>
+  <data name="Privacy.Saved" xml:space="preserve"><value>已保存，所有窗口已更新。</value></data>
+  <data name="Privacy.SaveFailed" xml:space="preserve"><value>保存失败，请检查本地配置和数据目录是否可写。</value></data>
+  <data name="Privacy.SelectScope" xml:space="preserve"><value>请选择隐藏自己、其他玩家，或同时隐藏两者。</value></data>
+  <data name="Privacy.EditAfterDisable" xml:space="preserve"><value>请先关闭主播模式再编辑备注或头像，避免编辑框显示原始信息。</value></data>
+  <data name="Privacy.Export" xml:space="preserve"><value>主播模式已开启：预览和导出的文件使用脱敏文字，原始数据库保持不变。</value></data>
+  <data name="Privacy.ExportChanged" xml:space="preserve"><value>显示设置已改变，已取消当前导出。请重新预览后保存。</value></data>
+  <data name="Privacy.Screenshot" xml:space="preserve"><value>游戏截图不会自动打码，画面里可能仍有真实角色名。</value></data>
+  <data name="Contact.Nickname" xml:space="preserve"><value>设置备注名</value></data>
+  <data name="Contact.NicknameHelp" xml:space="preserve"><value>只在本机显示，最多 64 个字符；清空后恢复角色名。</value></data>
+  <data name="Contact.SaveFailed" xml:space="preserve"><value>备注名未保存。请使用 64 字符以内的单行文字，并检查本地数据是否可写。</value></data>
+  <data name="Conversation.TargetPrivate" xml:space="preserve"><value>私聊目标：{0}</value></data>
 </root>

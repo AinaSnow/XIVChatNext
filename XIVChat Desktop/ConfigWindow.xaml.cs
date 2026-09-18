@@ -13,6 +13,9 @@ namespace XIVChat_Desktop {
             this.Config = config;
 
             this.InitializeComponent();
+            LoadPrivacySettings();
+            ((App)Application.Current).Presentation.PolicyChanged += LoadPrivacySettings;
+            this.Closed += (_, _) => ((App)Application.Current).Presentation.PolicyChanged -= LoadPrivacySettings;
             this.HistoryRetention.Value = this.Config.HistoryRetentionDays;
             ThemeHelper.InitializeWindow(this);
             this.AppWindow.Resize(new Windows.Graphics.SizeInt32(650, 520));
@@ -41,6 +44,17 @@ namespace XIVChat_Desktop {
             try {
                 this.Title = LocalizationHelper.GetString("Menu.Config");
                 TabServers.Header = LocalizationHelper.GetString("Config.Servers");
+                TabPrivacy.Header = LocalizationHelper.GetString("Privacy.Title");
+                PrivacyEnabled.Header = LocalizationHelper.GetString("Privacy.Title");
+                PrivacyEnabled.OnContent = LocalizationHelper.GetString("Privacy.Active");
+                PrivacyEnabled.OffContent = LocalizationHelper.GetString("Privacy.Off");
+                PrivacySelf.Content = LocalizationHelper.GetString("Privacy.HideSelf");
+                PrivacyOthers.Content = LocalizationHelper.GetString("Privacy.HideOthers");
+                PrivacySelfName.Header = LocalizationHelper.GetString("Privacy.SelfName");
+                PrivacySelfName.PlaceholderText = LocalizationHelper.GetString("Privacy.Me");
+                PrivacyHelp.Text = LocalizationHelper.GetString("Privacy.Help");
+                PrivacyLimits.Text = LocalizationHelper.GetString("Privacy.Limits");
+                SavePrivacy.Content = LocalizationHelper.GetString("Dialog.Save");
                 TabWindow.Header = LocalizationHelper.GetString("Config.Window");
                 TabConnection.Header = LocalizationHelper.GetString("Config.Connection");
                 TabNotifications.Header = LocalizationHelper.GetString("Config.Notifications");

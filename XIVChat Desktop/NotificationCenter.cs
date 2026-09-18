@@ -11,6 +11,7 @@ using XIVChatStorage;
 namespace XIVChat_Desktop {
     public interface INotificationSink : IDisposable {
         bool Show(NotificationDelivery delivery);
+        Task ClearAsync() => Task.CompletedTask;
     }
 
     public sealed class NotificationCenter : IDisposable {
@@ -32,10 +33,11 @@ namespace XIVChat_Desktop {
         public NotificationCenter(App app) {
             this.app = app;
             timer.Tick += Tick; timer.Start();
+            app.Presentation.PolicyChanged += PrivacyChanged;
         }
 
         public void InitializePlatform() {
-            try { Sink = new WindowsNotificationSink(Activate); }
+            try { Sink = new WindowsNotificationSink(Activate); if (app.Presentation.Enabled) PrivacyChanged(); }
             catch (Exception ex) { PlatformError = ex.Message; StatusChanged?.Invoke(); }
         }
 
@@ -62,9 +64,11 @@ namespace XIVChat_Desktop {
             var peer = ConversationIdentity.PeerKey(message.TellPeer) != null ? message.TellPeer : null;
             var target = new NotificationTarget(peer == null ? NotificationTargetKind.Message : NotificationTargetKind.Conversation,
                 source, owner, message.MessageId == null ? null : HistoryStore.StorageId(source, message), peer, (ushort)channel);
-            var title = peer?.Name ?? message.GetSenderPlayer()?.Name ?? L("Notify.KeywordTitle");
+            var context = app.Presentation.Observe(message);
+            var title = peer != null ? app.Presentation.Identity(peer, context).Name : app.Presentation.Sender(message);
+            if (string.IsNullOrEmpty(title)) title = L("Notify.KeywordTitle");
             var candidate = new NotificationCandidate(message.MessageId ?? Guid.NewGuid().ToString("N"), tell ? NotificationKind.Tell : NotificationKind.Keyword,
-                target, title, Limit(message.ContentText, 500), message.Timestamp, ConnectionId: connection.Id, OwnerEpoch: app.Session.Player?.OwnerEpoch);
+                target, title, Limit(app.Presentation.Content(message), 500), message.Timestamp, ConnectionId: connection.Id, OwnerEpoch: app.Session.Player?.OwnerEpoch);
             policy.Enqueue(candidate, options, DateTime.UtcNow, DateTime.Now, app.Workspace.IsReading(target));
         }
 
@@ -96,7 +100,7 @@ namespace XIVChat_Desktop {
                     };
                     var target = new NotificationTarget(NotificationTargetKind.Event, source, owner, id);
                     var candidate = new NotificationCandidate(entry.EventId, kind, target, L("Event." + entry.Kind),
-                        EventDetails(entry), entry.Timestamp, entry.ExpiresAt, connection?.Id, entry.OwnerEpoch);
+                        app.Presentation.EventDetails(source, entry), entry.Timestamp, entry.ExpiresAt, connection?.Id, entry.OwnerEpoch);
                     policy.Enqueue(candidate, app.Config.NotificationOptions, DateTime.UtcNow, DateTime.Now);
                     Tick(null, null!);
                 } catch (Exception ex) { applied.TrySetException(ex); }
@@ -143,6 +147,12 @@ namespace XIVChat_Desktop {
             finally { writes.TryRemove(task, out _); }
         }
         public Task FlushAsync() => Task.WhenAll(writes.Keys);
+
+        private async void PrivacyChanged() {
+            policy.ClearPending();
+            try { if (Sink != null) await Sink.ClearAsync(); }
+            catch (Exception ex) { PlatformError = ex.Message; StatusChanged?.Invoke(); }
+        }
 
         private void Tick(object? sender, object args) {
             if (disposed) return;
@@ -243,6 +253,7 @@ namespace XIVChat_Desktop {
         public void Dispose() {
             if (disposed) return;
             disposed = true; timer.Stop(); timer.Tick -= Tick; policy.ClearPending(); Sink?.Dispose();
+            app.Presentation.PolicyChanged -= PrivacyChanged;
         }
     }
 }

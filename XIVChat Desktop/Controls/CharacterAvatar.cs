@@ -13,8 +13,8 @@ namespace XIVChat_Desktop.Controls {
         public CharacterIdentity? Identity { get => (CharacterIdentity?)GetValue(IdentityProperty); set => SetValue(IdentityProperty, value); }
         public CharacterAvatar() {
             Content = picture;
-            Loaded += (_, _) => { service = ((App)Application.Current).Avatars; service.Changed += AvatarChanged; Refresh(); };
-            Unloaded += (_, _) => { version++; if (service != null) service.Changed -= AvatarChanged; service = null; };
+            Loaded += (_, _) => { service = ((App)Application.Current).Avatars; service.Changed += AvatarChanged; ((App)Application.Current).Presentation.Changed += Refresh; Refresh(); };
+            Unloaded += (_, _) => { version++; if (service != null) service.Changed -= AvatarChanged; service = null; ((App)Application.Current).Presentation.Changed -= Refresh; };
         }
         private static void Changed(DependencyObject sender, DependencyPropertyChangedEventArgs args) => ((CharacterAvatar)sender).Refresh();
         private void AvatarChanged(string key) {
@@ -22,13 +22,17 @@ namespace XIVChat_Desktop.Controls {
         }
         private async void Refresh() {
             var current = ++version;
-            picture.DisplayName = Identity?.Name ?? ""; picture.ProfilePicture = null;
+            var presentation = ((App)Application.Current).Presentation;
+            var display = presentation.Identity(Identity);
+            picture.DisplayName = display.Name; picture.Initials = display.Hidden ? "?" : ""; picture.ProfilePicture = null;
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(picture, display.Name);
+            if (display.Hidden) return;
             if (Identity == null || !IsLoaded || service == null) return;
             var active = service;
             var identity = ConversationIdentity.Copy(Identity);
             try {
                 var mapping = await active.GetAsync(identity);
-                if (current == version && IsLoaded && active.ValidLocalPath(mapping?.ImagePath))
+                if (current == version && IsLoaded && !presentation.Hidden(Identity) && active.ValidLocalPath(mapping?.ImagePath))
                     picture.ProfilePicture = new BitmapImage(new Uri(mapping!.ImagePath!));
             } catch { /* Keep the name placeholder when a cached file or profile cannot be read. */ }
         }

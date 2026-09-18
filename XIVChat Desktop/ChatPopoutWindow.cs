@@ -21,6 +21,8 @@ public sealed class ChatPopoutWindow : Window {
     private readonly Tab tab;
     private readonly Controls.ChatMessageList messages;
     private readonly TextBox composer = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 72, MaxHeight = 160, MaxLength = 16384 };
+    private readonly TextBlock privacyStatus = new() { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+    private XIVChatCommon.Presentation.DisplayContext DisplayContext => app.Presentation.Context(State.Source, State.OwnerKey, State.Owner);
     private readonly TextBlock target = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock status = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Opacity = .8 };
     private readonly TextBlock historyStatus = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Opacity = .75 };
@@ -59,7 +61,7 @@ public sealed class ChatPopoutWindow : Window {
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         toolbar.Children.Add(returnMain); toolbar.Children.Add(older); toolbar.Children.Add(menu); root.Children.Add(toolbar);
-        var heading = new StackPanel { Spacing = 4 }; heading.Children.Add(target); heading.Children.Add(historyStatus);
+        var heading = new StackPanel { Spacing = 4 }; heading.Children.Add(privacyStatus); heading.Children.Add(target); heading.Children.Add(historyStatus);
         Grid.SetRow(heading, 1); root.Children.Add(heading); Grid.SetRow(messages, 2); root.Children.Add(messages);
         var input = new StackPanel { Spacing = 6 }; input.Children.Add(composer); input.Children.Add(status);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
@@ -88,6 +90,7 @@ public sealed class ChatPopoutWindow : Window {
         app.Workbench.Changed += ContextChanged;
         app.PropertyChanged += AppChanged;
         app.Config.Saved += ConfigChanged;
+        app.Presentation.Changed += Localize;
         LocalizationHelper.LanguageChanged += Localize;
         root.Loaded += async (_, _) => {
             if (ready) return; ready = true;
@@ -105,7 +108,8 @@ public sealed class ChatPopoutWindow : Window {
     }
     private void Localize() {
         if (closed) return;
-        Title = State.Name + " · XIVChat";
+        Title = (State.Peer == null ? app.Presentation.Text(State.Name, DisplayContext) : app.Presentation.Identity(State.Peer, DisplayContext).Name) + " · XIVChat";
+        privacyStatus.Text = L("Privacy.Active"); privacyStatus.Visibility = app.Presentation.Enabled ? Visibility.Visible : Visibility.Collapsed;
         returnMain.Content = L("Windows.ReturnMain"); older.Content = L("History.LoadOlder"); send.Content = L("Workbench.Send");
         restoreDraft.Content = L("Conversation.RestoreDraft"); composer.PlaceholderText = L("Workbench.TypeMessage");
         menu.Flyout = BuildMenu(); messages.UpdateLocalizations(); UpdateReady();
@@ -170,9 +174,10 @@ public sealed class ChatPopoutWindow : Window {
     private void ModelChanged(object? sender, PropertyChangedEventArgs e) => UpdateReady();
     private void UpdateReady() {
         if (closed) return;
-        target.Text = State.Peer != null ? string.Format(L("Conversation.Target"), State.Peer.Name, State.Peer.HomeWorld)
+        var peerDisplay = app.Presentation.Identity(State.Peer, DisplayContext);
+        target.Text = State.Peer != null ? string.Format(L(peerDisplay.World.Length == 0 ? "Conversation.TargetPrivate" : "Conversation.Target"), peerDisplay.Name, peerDisplay.World)
             : L("Workbench.ChannelTarget") + " · " + (app.Connection?.CurrentChannel ?? L("Status.Disconnected"));
-        target.Text += "\n" + (State.Owner is { } owner ? owner.Name + " @ " + owner.HomeWorld : L("History.Unassigned"));
+        target.Text += "\n" + (State.Owner is { } owner ? app.Presentation.Identity(owner, DisplayContext).Label : L("History.Unassigned"));
         send.IsEnabled = CanSend && State.PendingDraft == null && State.FailedDraft == null && !string.IsNullOrWhiteSpace(composer.Text);
         status.Text = !CanSend ? L(State.ChannelId != null && Channel == null ? "Windows.ViewMissing" : "Conversation.ReadOnly") : sendStatus.Length > 0 ? sendStatus : L("Workbench.EnterHint");
         restoreDraft.Visibility = State.FailedDraft == null ? Visibility.Collapsed : Visibility.Visible;
@@ -277,6 +282,7 @@ public sealed class ChatPopoutWindow : Window {
         if (model != null) model.PropertyChanged -= ModelChanged;
         if (observed != null) observed.PropertyChanged -= ConnectionChanged;
         app.Session.MessagesChanged -= MessagesChanged; app.Workbench.Changed -= ContextChanged;
+        app.Presentation.Changed -= Localize;
         app.PropertyChanged -= AppChanged; app.Config.Saved -= ConfigChanged; LocalizationHelper.LanguageChanged -= Localize;
     }
     private sealed class ViewFilter(ChatPopoutWindow window) : Filter {

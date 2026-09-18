@@ -13,6 +13,8 @@ namespace XIVChat_Desktop {
     public partial class App : INotifyPropertyChanged {
         public MainWindow Window { get; private set; } = null!;
         public Configuration Config { get; private set; } = null!;
+        private IdentityPresentation? presentation;
+        public IdentityPresentation Presentation => presentation ??= new IdentityPresentation(this);
         private ChatSession? session;
         public ChatSession Session => this.session ??= new ChatSession(() => this.Config);
         private WorkbenchSession? workbench;
@@ -141,6 +143,7 @@ namespace XIVChat_Desktop {
             } catch (Exception ex) {
                 this.Session.ReportStorageError(ex);
             }
+            await this.Presentation.InitializeAsync();
             this.Notifier.InitializePlatform();
             this.InitialiseWindow();
             if (this.Session.StorageError != null) this.Window.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + this.Session.StorageError.Message);
@@ -247,6 +250,7 @@ namespace XIVChat_Desktop {
             this.Disconnect();
             if (this.connectionTask != null) await this.connectionTask;
             if (this.workbench != null) await this.workbench.FlushAsync();
+            if (this.presentation != null) await this.presentation.FlushAsync();
             if (this.workspace != null) await this.workspace.SaveAsync();
             if (this.notifier != null) { await this.notifier.FlushAsync(); this.notifier.Dispose(); }
             this.avatars?.Dispose();

@@ -15,10 +15,12 @@ namespace XIVChat_Desktop {
         public ConversationState State { get; private set; }
         public CharacterIdentity Peer => State.Peer;
         public string Key => State.PeerKey;
-        public string Name => Peer.Name;
-        public string World => Peer.HomeWorld;
+        private IdentityPresentation Presentation => ((App)Microsoft.UI.Xaml.Application.Current).Presentation;
+        private XIVChatCommon.Presentation.DisplayContext DisplayContext => Presentation.Context(State.Source, State.OwnerKey);
+        public string Name => Presentation.Identity(Peer, DisplayContext).Name;
+        public string World => Presentation.Identity(Peer, DisplayContext).World;
         public string Initials => string.Concat(Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]));
-        public string Preview => Draft.Length > 0 ? LocalizationHelper.GetString("Conversation.Draft") + ": " + Draft : Latest?.ContentText ?? Note;
+        public string Preview => Draft.Length > 0 ? LocalizationHelper.GetString("Conversation.Draft") + ": " + Presentation.Text(Draft, DisplayContext) : Latest != null ? Presentation.Content(Latest) : Presentation.Text(Note, DisplayContext);
         public string Time => Latest?.Timestamp.ToLocalTime().ToString("HH:mm") ?? "";
         public ServerMessage? Latest { get; private set; }
         public int Unread { get; private set; }
@@ -44,6 +46,7 @@ namespace XIVChat_Desktop {
         public void MarkRead() { Unread = 0; Notify(); }
         public void UpdatePeer(CharacterIdentity peer) { State = State with { Peer = ConversationIdentity.Copy(peer) }; Notify(); }
         public void SetStatus(string status, string? failed = null) { SendStatus = status; FailedDraft = failed; Notify(); }
+        public void RefreshDisplay() => Notify("");
         public event PropertyChangedEventHandler? PropertyChanged;
         private void Notify([CallerMemberName] string? property = null) {
             if (property == nameof(Draft)) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Draft)));
@@ -74,6 +77,7 @@ namespace XIVChat_Desktop {
             app.Session.ContextChanged += ContextChanged;
             app.Session.MessagesChanged += MessagesChanged;
             app.Session.Friends.Changed += FriendsChanged;
+            app.Presentation.Changed += () => { foreach (var model in Conversations) model.RefreshDisplay(); Changed?.Invoke(); };
             app.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(App.Connection)) ConnectionChanged(); };
             ConnectionChanged(); ContextChanged();
         }
@@ -92,6 +96,7 @@ namespace XIVChat_Desktop {
         public void SetContext(string source, CharacterIdentity? owner) {
             foreach (var model in Conversations.Where(c => c.Dirty).ToArray()) Save(model);
             Source = source; Owner = owner == null ? null : ConversationIdentity.Copy(owner); OwnerKey = owner?.Key;
+            app.Presentation.Engine.Context(source, OwnerKey, Owner);
             version++; byPeer.Clear(); Conversations.Clear(); Error = null;
             if (app.Session.Player == null) app.Session.Friends.SetContext(source, OwnerKey, null, false);
             if (OwnerKey != null) _ = RestoreAsync(version, source, OwnerKey);

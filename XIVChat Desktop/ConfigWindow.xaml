@@ -8,11 +8,25 @@
         mc:Ignorable="d"
         Title="配置"
         d:DataContext="{d:DesignInstance local:ConfigWindow}">
-    <TabView x:Name="ConfigTabs" IsAddTabButtonVisible="False">
+    <TabView x:Name="ConfigTabs" IsAddTabButtonVisible="False" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <TabViewItem x:Name="TabServers" Header="服务器" IsClosable="False">
             <cc:SavedServers ItemsSource="{x:Bind Config.Servers, Mode=OneWay}"
                              ItemDoubleClick="SavedServers_ItemDoubleClick"
                              ControlsVisibility="Visible" />
+        </TabViewItem>
+        <TabViewItem x:Name="TabPrivacy" IsClosable="False">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+                <StackPanel Spacing="16" Padding="18">
+                    <ToggleSwitch x:Name="PrivacyEnabled"/>
+                    <CheckBox x:Name="PrivacySelf"/>
+                    <CheckBox x:Name="PrivacyOthers"/>
+                    <TextBox x:Name="PrivacySelfName" MaxLength="64" AcceptsReturn="False"/>
+                    <TextBlock x:Name="PrivacyHelp" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="PrivacyLimits" TextWrapping="Wrap" Opacity="0.75"/>
+                    <TextBlock x:Name="PrivacySaveStatus" TextWrapping="Wrap"/>
+                    <Button x:Name="SavePrivacy" Click="SavePrivacy_Click"/>
+                </StackPanel>
+            </ScrollViewer>
         </TabViewItem>
         <TabViewItem x:Name="TabWindow" Header="窗口" IsClosable="False">
             <Grid Margin="8">

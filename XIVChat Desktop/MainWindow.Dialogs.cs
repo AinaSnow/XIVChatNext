@@ -8,14 +8,22 @@ using XIVChatCommon.Message;
 namespace XIVChat_Desktop {
     public partial class MainWindow {
         private bool dialogOpen;
+        private async Task<ContentDialogResult> ShowIdentityEditorAsync(ContentDialog dialog) {
+            if (App.Presentation.Enabled) return ContentDialogResult.None;
+            void CloseOnPrivacyChange() { if (App.Presentation.Enabled) dialog.Hide(); }
+            App.Presentation.PolicyChanged += CloseOnPrivacyChange;
+            try { return await dialog.ShowAsync(); }
+            finally { App.Presentation.PolicyChanged -= CloseOnPrivacyChange; }
+        }
         private async Task<string?> EditTextAsync(string title, string value) {
             if (dialogOpen) return null;
+            if (App.Presentation.Enabled) { FooterStatus.Text = L("Privacy.EditAfterDisable"); return null; }
             dialogOpen = true;
             try {
                 var input = new TextBox { Text = value, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 140, MaxHeight = 360, MaxLength = 8192 };
                 var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = title, Content = input,
                     PrimaryButtonText = L("Dialog.Save"), CloseButtonText = L("Dialog.Cancel") };
-                return await dialog.ShowAsync() == ContentDialogResult.Primary ? input.Text : null;
+                return await ShowIdentityEditorAsync(dialog) == ContentDialogResult.Primary ? input.Text : null;
             } finally { dialogOpen = false; }
         }
         private async void ConversationNote_Click(object sender, RoutedEventArgs e) {
@@ -49,6 +57,7 @@ namespace XIVChat_Desktop {
         private void Account_Click(object sender, RoutedEventArgs e) { if ((App.Session.Player?.Identity ?? App.Workbench.Owner) is { } identity) _ = EditAvatarAsync(identity); }
         private async Task EditAvatarAsync(CharacterIdentity identity) {
             if (dialogOpen) return;
+            if (App.Presentation.Enabled) { FooterStatus.Text = L("Privacy.EditAfterDisable"); return; }
             dialogOpen = true;
             try {
                 var mapping = App.Session.Store is { } store ? await store.GetAvatarAsync(ConversationIdentity.PeerKey(identity)!) : null;
@@ -62,7 +71,7 @@ namespace XIVChat_Desktop {
                 dialog.PrimaryButtonClick += (_, args) => {
                     if (!string.IsNullOrWhiteSpace(input.Text) && LodestoneParser.ExtractId(input.Text) == null) { args.Cancel = true; state.Text = L("Avatar.Invalid"); }
                 };
-                var result = await dialog.ShowAsync();
+                var result = await ShowIdentityEditorAsync(dialog);
                 if (result == ContentDialogResult.Primary) await App.Avatars.BindAsync(identity, string.IsNullOrWhiteSpace(input.Text) ? null : input.Text);
                 else if (result == ContentDialogResult.Secondary) await App.Avatars.BindAsync(identity, null, true);
             } catch (Exception ex) { FooterStatus.Text = L("Avatar.Unavailable") + " " + ex.Message; }

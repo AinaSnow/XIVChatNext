@@ -64,6 +64,7 @@ namespace XIVChat_Desktop {
         // Zero means keep forever. Turning history off stops new persistence.
         public int HistoryRetentionDays { get; set; } = 90;
         public bool OnlineAvatars { get; set; } = true;
+        public XIVChatCommon.Presentation.PrivacySettings Privacy { get; set; } = new();
 
         private double opacity = 1.0;
 
@@ -142,6 +143,8 @@ namespace XIVChat_Desktop {
                     throw new InvalidDataException("Configuration is missing required keys or collections.");
                 }
                 config.NotificationOptions ??= new NotificationOptions();
+                config.Privacy ??= new XIVChatCommon.Presentation.PrivacySettings();
+                config.Privacy.Validate();
                 if (!config.NotificationOptions.ValidTimes || config.Notifications.Any(rule => rule == null || rule.Channels == null || rule.Substrings == null))
                     throw new InvalidDataException("Notification settings are invalid.");
                 var tabIds = new HashSet<string>(StringComparer.Ordinal);
@@ -153,7 +156,7 @@ namespace XIVChat_Desktop {
                     if (string.IsNullOrWhiteSpace(server.Id) || !serverIds.Add(server.Id)) { server.Id = Guid.NewGuid().ToString("N"); serverIds.Add(server.Id); }
                 }
                 return config;
-            } catch (Exception ex) when (ex is JsonException or ArgumentException) {
+            } catch (Exception ex) when (ex is JsonException or ArgumentException or FormatException) {
                 throw new InvalidDataException("Configuration JSON is invalid.", ex);
             }
         }

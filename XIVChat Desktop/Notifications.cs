@@ -38,5 +38,6 @@ namespace XIVChat_Desktop {
             AppNotificationManager.Default.NotificationInvoked -= Invoked;
             AppNotificationManager.Default.Unregister();
         }
+        public async System.Threading.Tasks.Task ClearAsync() => await AppNotificationManager.Default.RemoveByGroupAsync("XIVChatNext");
     }
 }

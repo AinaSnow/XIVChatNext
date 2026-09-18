@@ -34,12 +34,13 @@ namespace XIVChat_Desktop {
             UntilDate.Date = query.UntilUtc?.ToLocalTime(); UntilTime.Time = query.UntilUtc?.ToLocalTime().TimeOfDay ?? TimeSpan.Zero;
             Localize.BindWindow(this, LocalizeWindow);
             active.Add(this);
-            Closed += async (_, _) => { closed = true; operation?.Cancel(); try { await running; } catch (Exception) { /* SaveAsync owns the displayed failure; closing only waits for cleanup. */ } finally { active.Remove(this); } };
+            app.Presentation.PolicyChanged += PrivacyChanged;
+            Closed += async (_, _) => { closed = true; app.Presentation.PolicyChanged -= PrivacyChanged; operation?.Cancel(); try { await running; } catch (Exception) { /* SaveAsync owns the displayed failure; closing only waits for cleanup. */ } finally { active.Remove(this); } };
             Root.Loaded += async (_, _) => {
                 try {
                     if (app.Session.Store is { } store && scope.OwnerKey != null) {
                         var owner = (await store.GetOwnersAsync()).FirstOrDefault(o => o.OwnerKey == scope.OwnerKey && (scope.Source == null || o.Source == scope.Source));
-                        if (owner?.Identity is { } who) ownerLabel = who.Name + " @ " + who.HomeWorld;
+                        if (owner?.Identity is { } who) { app.Presentation.Context(owner.Source, owner.OwnerKey, who); ownerLabel = who.Name + " @ " + who.HomeWorld; }
                         if (!closed) LocalizeWindow();
                     }
                 } catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
@@ -47,11 +48,13 @@ namespace XIVChat_Desktop {
             };
         }
         private void LocalizeWindow() {
-            Title = L("Export.Title"); Scope.Text = scopeName;
+            Title = L("Export.Title"); Scope.Text = app.Presentation.Text(scopeName, app.Presentation.Context(scope.Source ?? "", scope.OwnerKey));
             Explanation.Text = L("Export.DatabaseOnly") + "\n" +
                 (scope.OwnerKey == null ? L("History.AllOwners") : ownerLabel ?? L("History.Unassigned")) + " · " + (scope.Source == null ? L("Export.AllConnections") : app.Config.TrustedKeys.FirstOrDefault(k => Convert.ToHexString(k.Key) == scope.Source)?.Name ?? L("Export.SavedConnection")) +
                 (scope.Channel is { } channel ? " · " + channel : "") + (scope.Person is { Length: > 0 } person ? " · " + person : "") +
                 (scope.BookmarksOnly ? " · " + L("History.BookmarksOnly") : "");
+            Explanation.Text = app.Presentation.Text(Explanation.Text, app.Presentation.Context(scope.Source ?? "", scope.OwnerKey)) +
+                (app.Presentation.Enabled ? "\n" + L("Privacy.Export") : "");
             Keyword.Header = L("Workbench.Search");
             FromDate.PlaceholderText = L("Export.From"); UntilDate.PlaceholderText = L("Export.UntilExclusive");
             Timestamps.Content = L("Export.ShowTimestamps"); PreviewButton.Content = L("Export.Preview");
@@ -75,9 +78,11 @@ namespace XIVChat_Desktop {
             operation?.Cancel(); operation?.Dispose(); operation = new(); SetBusy(true);
             try {
                 var rows = await store.SearchAsync(Query() with { Limit = 500 }, operation.Token);
-                if (closed) return;
+                if (closed || operation.IsCancellationRequested) return;
+                foreach (var row in rows) app.Presentation.Observe(row.Message);
+                var display = app.Presentation.Engine.Snapshot();
                 PreviewList.ItemsSource = rows.Reverse().Where(r => filter?.Allowed(r.Message) != false).TakeLast(100)
-                    .Select(r => HistoryExport.Line(r.Message, Timestamps.IsChecked == true)).ToArray();
+                    .Select(r => display.ExportLine(r.Source, r.Message, Timestamps.IsChecked == true)).ToArray();
                 Status.Text = L("Export.PreviewLimit");
             } catch (OperationCanceledException) { }
             catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
@@ -101,7 +106,9 @@ namespace XIVChat_Desktop {
                 var file = await picker.PickSaveFileAsync();
                 token.ThrowIfCancellationRequested(); if (file == null) return;
                 var progress = new Progress<long>(count => { if (!closed) Status.Text = string.Format(L("Export.Progress"), count); });
-                var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token);
+                var display = app.Presentation.Engine.Snapshot();
+                var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token, (row, showTime) => display.ExportLine(row.Source, row.Message, showTime),
+                    display.Enabled ? row => display.Observe(row.Source, row.Message) : null);
                 running = write; var count = await write;
                 if (!closed) Status.Text = string.Format(L("Export.Complete"), count);
             } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
@@ -109,19 +116,23 @@ namespace XIVChat_Desktop {
             finally { if (!closed) SetBusy(false); }
         }
         internal static async Task<long> WriteFileAsync(HistoryStore store, StorageFile file, HistoryQuery query, bool timestamps,
-            Filter? filter = null, IProgress<long>? progress = null, CancellationToken token = default) {
+            Filter? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
+            Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null) {
             token.ThrowIfCancellationRequested();
             using var transaction = await file.OpenTransactedWriteAsync();
             using var stream = transaction.Stream.AsStreamForWrite(); stream.Position = 0;
             using var writer = new StreamWriter(stream, new UTF8Encoding(false), 65536, leaveOpen: true);
             var count = await store.ExportAsync(query, writer, file.FileType.Equals(".rtf", StringComparison.OrdinalIgnoreCase), timestamps,
-                filter == null ? null : filter.Allowed, progress, token);
+                filter == null ? null : filter.Allowed, progress, token, displayLine, prepareRow);
             await writer.FlushAsync(token); token.ThrowIfCancellationRequested();
             stream.SetLength(stream.Position); await transaction.CommitAsync(); return count;
         }
         public static async Task CancelAllAsync() {
             var windows = active.ToArray(); foreach (var window in windows) window.operation?.Cancel();
             await Task.WhenAll(windows.Select(async w => { try { await w.running; } catch (Exception) { /* The export window has already reported this failure. */ } }));
+        }
+        private void PrivacyChanged() {
+            operation?.Cancel(); PreviewList.ItemsSource = null; LocalizeWindow(); Status.Text = L("Privacy.ExportChanged");
         }
     }
 }

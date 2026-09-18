@@ -1,0 +1,23 @@
+# Privacy regression checks
+
+Run from the repository root with the SDKs described in [BUILD](../docs/development/BUILD.md).
+
+```powershell
+dotnet run --project tests/PrivacyRegression/PrivacyRegression.csproj -c Release
+```
+
+The console suite checks identity projection, nickname isolation, pseudonym persistence and collisions, original message/link preservation, SQLite v5-to-v6 migration and rollback, and streaming TXT/RTF export. It uses a unique temporary database and deletes only its own fixture.
+
+The Windows UI suite exercises real WinUI windows with synthetic identities and fake notifications. It does not read your normal configuration or history, connect to a game or issue Windows notifications. It creates uniquely named fixture directories, `privacy-smoke-results.txt` and Chinese screenshots next to the test executable.
+
+```powershell
+$privacyTargets = Join-Path (Get-Location) 'tests/DesktopPrivacySmoke.targets'
+dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -p:PublishSingleFile=false "-p:CustomAfterMicrosoftCommonTargets=$privacyTargets"
+$privacyExe = Join-Path (Get-Location) 'XIVChat Desktop/bin/Debug/net9.0-windows10.0.26100.0/win-x64/XIVChat Desktop.exe'
+Start-Process -FilePath $privacyExe -WindowStyle Hidden -Wait
+Get-Content (Join-Path (Split-Path $privacyExe) 'privacy-smoke-results.txt')
+```
+
+Look for `All desktop privacy checks completed.`; any `FAIL` line is a failure. This suite temporarily replaces the Debug entry point. Restore a normal Debug build with `dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild -p:PublishSingleFile=false` before using that output interactively. Normal Release packaging does not include the test entry point.
+
+这些检查使用虚构角色和独立数据库，不读取日常配置、不连接游戏。控制台检查覆盖存储和显示规则，Windows 检查覆盖主窗口、小窗、通知、导出及中英文设置。它们不能替代实际游戏联调或干净系统上的安装测试。

@@ -72,7 +72,11 @@ project.fragment.lock.json
 artifacts/
 
 # Local development support is archived outside the product repository.
-tests/
+tests/*
+!tests/PrivacyRegression/
+!tests/DesktopPrivacySmoke.cs
+!tests/DesktopPrivacySmoke.targets
+!tests/README.md
 docs/verification/
 docs/design/
 docs/*PLAN*.md

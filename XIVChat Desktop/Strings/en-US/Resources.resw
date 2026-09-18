@@ -764,4 +764,24 @@
   <data name="Card.DataDetails" xml:space="preserve"><value>Data sources and versions</value></data>
   <data name="Relay.Add" xml:space="preserve"><value>Add relay</value></data>
   <data name="Setup.Reopen" xml:space="preserve"><value>Run initial setup again</value></data>
+  <data name="Privacy.Title" xml:space="preserve"><value>Streamer mode</value></data>
+  <data name="Privacy.Active" xml:space="preserve"><value>Streamer mode on</value></data>
+  <data name="Privacy.Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Privacy.HideSelf" xml:space="preserve"><value>Hide my character identity</value></data>
+  <data name="Privacy.HideOthers" xml:space="preserve"><value>Hide other players’ identities</value></data>
+  <data name="Privacy.SelfName" xml:space="preserve"><value>My display name (leave empty for “Me”)</value></data>
+  <data name="Privacy.Me" xml:space="preserve"><value>Me</value></data>
+  <data name="Privacy.Help" xml:space="preserve"><value>Replace character names with stable aliases and hide their worlds and avatars. Main windows, popouts, notifications, copied messages and exports share this setting. The setting is remembered across restarts.</value></data>
+  <data name="Privacy.Limits" xml:space="preserve"><value>Only recognized full names are replaced. Text in input fields and game screenshots is not automatically masked; unknown nicknames may remain. Original history stays on this computer. Previously copied, saved or shared content is not changed.</value></data>
+  <data name="Privacy.Saved" xml:space="preserve"><value>Saved. All windows have been updated.</value></data>
+  <data name="Privacy.SaveFailed" xml:space="preserve"><value>Could not save. Check that the local configuration and data folders are writable.</value></data>
+  <data name="Privacy.SelectScope" xml:space="preserve"><value>Choose to hide yourself, other players, or both.</value></data>
+  <data name="Privacy.EditAfterDisable" xml:space="preserve"><value>Turn off streamer mode before editing notes or avatars so the editor does not reveal original information.</value></data>
+  <data name="Privacy.Export" xml:space="preserve"><value>Streamer mode is on: previews and exported files use masked text. Original stored history is unchanged.</value></data>
+  <data name="Privacy.ExportChanged" xml:space="preserve"><value>Display settings changed. The current export was cancelled. Preview again before saving.</value></data>
+  <data name="Privacy.Screenshot" xml:space="preserve"><value>Game screenshots are not automatically masked and may contain real character names.</value></data>
+  <data name="Contact.Nickname" xml:space="preserve"><value>Set nickname</value></data>
+  <data name="Contact.NicknameHelp" xml:space="preserve"><value>Shown only on this computer. Up to 64 characters; clear to restore the character name.</value></data>
+  <data name="Contact.SaveFailed" xml:space="preserve"><value>Nickname was not saved. Use a single line of up to 64 characters and check that local data is writable.</value></data>
+  <data name="Conversation.TargetPrivate" xml:space="preserve"><value>Tell target: {0}</value></data>
 </root>

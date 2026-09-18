@@ -12,13 +12,14 @@ using XIVChatCommon;
 using XIVChatStorage;
 
 namespace XIVChat_Desktop {
-    public sealed record HistoryOwnerOption(string Label, HistoryOwner? Owner);
+    public sealed record HistoryOwnerOption(string Label, HistoryOwner? Owner) { public override string ToString() => Label; }
     public sealed record HistoryChannelOption(string Label, ushort? Channel);
     public sealed record HistoryResult(HistoryRow Row, string Query) {
         public override string ToString() => Heading + ": " + Content;
-        public string Heading => (Row.Bookmarked ? "★  " : "") + Row.Message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " + Row.Message.Owner?.Name + " · " + Row.Message.SenderText + " · " + Row.Message.Channel;
-        public string Content => Row.Message.ContentText;
-        public string Note => Row.Note;
+        private IdentityPresentation Display => ((App)Application.Current).Presentation;
+        public string Heading => (Row.Bookmarked ? "★  " : "") + Row.Message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " + Display.OwnerLabel(Row.Source, Row.OwnerKey, Row.Message.Owner) + " · " + Display.Sender(Row.Message) + " · " + Row.Message.Channel;
+        public string Content => Display.Content(Row.Message);
+        public string Note => Display.Text(Row.Note, Display.Context(Row.Source, Row.OwnerKey, Row.Message.Owner));
     }
     public partial class MainWindow {
         private CancellationTokenSource? historyCancellation;
@@ -47,7 +48,7 @@ namespace XIVChat_Desktop {
                 var saved = (HistoryOwnerPicker.SelectedItem as HistoryOwnerOption)?.Owner;
                 var owners = await store.GetOwnersAsync();
                 historyOwners = new() { new(L("History.AllOwners"), null) };
-                historyOwners.AddRange(owners.Select(o => new HistoryOwnerOption((o.Identity is { } who ? who.Name + " @ " + who.HomeWorld : L("History.Unassigned")) + " · " + o.Source, o)));
+                historyOwners.AddRange(owners.Select(o => new HistoryOwnerOption(App.Presentation.OwnerLabel(o.Source, o.OwnerKey, o.Identity) + " · " + o.Source[..Math.Min(8, o.Source.Length)], o)));
                 historySyncing = true; HistoryOwnerPicker.ItemsSource = historyOwners;
                 HistoryOwnerPicker.SelectedItem = historyOwners.FirstOrDefault(o => o.Owner?.Source == saved?.Source && o.Owner?.OwnerKey == saved?.OwnerKey) ?? historyOwners[0];
                 historySyncing = false;
@@ -114,7 +115,7 @@ namespace XIVChat_Desktop {
                 contextView = new Controls.ChatMessageList(tab);
                 ChatHost.Content = contextView; ChatPanel.Visibility = Visibility.Visible; HistoryPanel.Visibility = Visibility.Collapsed;
                 ComposerPanel.Visibility = Visibility.Collapsed; ChatTitle.Text = L("History.Context");
-                ChatSubtitle.Text = result.Row.Message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " + result.Row.Message.ContentText;
+                ChatSubtitle.Text = result.Row.Message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " · " + App.Presentation.Content(result.Row.Message);
                 UpdateChatActions(false); EditChannelButton.Visibility = Visibility.Collapsed; BackHistoryButton.Visibility = Visibility.Visible;
                 contextView.Loaded += (_, _) => contextView?.ScrollToMessage(result.Row.Message);
             } catch (Exception ex) { HistorySummary.Text = L("History.Unavailable") + " " + ex.Message; }
