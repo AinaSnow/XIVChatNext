@@ -24,7 +24,7 @@ Packaging supports `-Component desktop`, `plugin` or `all`. It creates a new ign
 
 The plugin ZIP comes directly from the SDK's `XIVChatNext/latest.zip`, checked for root-level files and no nested ZIP. Do not ZIP the entire build directory. Packages include SHA-256 checksums.
 
-Relay CI builds the Linux solution and checks container startup with a read-only root filesystem and a writable volume. Local tests and process records are archived outside the repository; product builds/workflows do not reference them.
+Relay CI builds the Linux solution and checks container startup with a read-only root filesystem and a writable volume. Maintained privacy/storage and Windows UI checks are in [tests](../../tests/README.md). Retired tests and process records remain archived outside the repository; product builds do not reference them.
 
 ## 简体中文
 
@@ -36,4 +36,4 @@ Relay CI builds the Linux solution and checks container startup with a read-only
 
 插件直接使用 SDK 的 `XIVChatNext/latest.zip`，检查根目录入口且无嵌套 ZIP，不要压缩整个构建目录。输出附带 SHA-256 校验。
 
-中继 CI 构建 Linux 解决方案并检查只读根文件系统、持久卷下的容器启动。本地测试和过程记录已在仓库外归档，产品构建及工作流不依赖这些路径。
+中继 CI 构建 Linux 解决方案并检查只读根文件系统、持久卷下的容器启动。本次维护的隐私、存储和 Windows 窗口检查放在 [tests](../../tests/README.md)，运行方法见该目录。旧测试和过程记录仍在仓库外归档，产品构建不依赖这些路径。

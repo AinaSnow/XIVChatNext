@@ -33,11 +33,23 @@ Open conversations as popouts and save/restore layouts. They share conversation 
 
 Select item/map links to inspect cards; comparisons depend on available data/equipment. Allow screenshots in the plugin, request one from the client and preview/save/copy the result.
 
+### Contact nicknames and streamer mode (Desktop 1.4.0)
+
+Right-click a friend or conversation and choose **Contact nickname**, or use the nickname button in a conversation. Names must fit on one line, up to 64 characters. Clear the field to restore the character name. Nicknames belong to the connection and current character; they also work for friends without saved messages. They do not replace long notes or change the tell recipient. Friend/conversation search accepts both nicknames and real names. Ordinary history search, copying and exports retain original identities when streamer mode is off.
+
+Toggle **Streamer mode** at the top of the main window. In Settings, choose whether to hide yourself, other players, or both, and optionally set your own display name. Both scopes default on. The app remembers the setting before reopening its windows. Protected players use stable pseudonyms, with their server and avatar hidden; pseudonyms take precedence over nicknames. Open popouts update with the main window.
+
+The same display rules apply to known complete names in chat text, previews, history, favorites, events, notifications, selected/copied text and TXT/RTF exports. Ambiguous names use a generic anonymous label. Switching the policy clears this app's previous notifications, clears export previews and cancels running exports. Already copied text, saved files and notifications outside the app's control cannot be recalled.
+
+**This is not automatic image or free-text redaction.** Game screenshots remain unchanged. Unknown nicknames, unrecognized names, images, search fields and text you type may still identify someone. Turn streamer mode off to edit stored notes, nicknames or avatar mappings; an open identity editor closes when it is enabled. The database keeps original messages. Check the actual screen or export before sharing.
+
 ### Data and upgrades
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
 
 Close the client normally and back up configuration/data before upgrading. Extract the new package into a separate directory; never mix runtime DLLs. Update the plugin in Dalamud and retain the old client package for rollback.
+
+Desktop 1.4.0 remains compatible with plugin 1.7.15 and upgrades the history database from schema v5 to v6. Migration makes a `*.before-v6-*.bak` backup next to the database. To roll back, close the client and restore the previous configuration and database together with the previous executable; do not open the v6 database with an older client. Keep a copy of the current data first, since restoring a backup omits messages saved after that backup.
 
 Live sending, friends and screenshots require the game, logged-in character and plugin. This app cannot keep a character logged in or send after the game closes. Game/Dalamud updates may require a plugin update.
 
@@ -72,10 +84,22 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 会话可打开为小窗并保存/恢复布局，共享状态，断线保留草稿。其他角色的历史不改变当前发送角色。点击物品/地图链接查看卡片，对比依赖可用数据和装备。截图需插件允许，再从客户端请求并预览、保存、复制。
 
+### 备注名和主播模式（客户端 1.4.0）
+
+右键点击好友或会话，选择“备注名”，也可以点击聊天窗口里的备注名按钮。备注名单行、最多 64 个字符，清空就恢复角色名。不同连接和当前角色各自保存，没聊过天的好友也能设置。它不会覆盖原有的长文本备注，也不会改变消息实际发给谁。好友和会话搜索可以输入备注名或真实姓名；关闭主播模式时，历史全文搜索、复制和导出仍使用原始记录。
+
+主窗口顶部可以一键开关“主播模式”。在设置里选择隐藏自己、其他玩家，或者两者都隐藏；自己默认显示“我”，也能自定义。首次开启默认隐藏双方，重启后会在显示聊天前恢复上次设置。被隐藏的玩家使用固定化名，服务器和头像也会隐藏；即使设置了备注名，也优先显示化名。已经打开的小窗会一起更新。
+
+聊天正文中能确认的完整姓名，以及列表、预览、历史、收藏、事件、通知、复制选区、复制消息和 TXT/RTF 导出，都按同一规则处理。无法确定是哪位同名玩家时，会显示通用匿名名称。修改隐私设置会清理本应用之前发出的通知、清空导出预览并取消正在进行的导出。已经复制出去或保存到别处的内容无法撤回。
+
+**游戏截图不会自动打码。** 未知昵称、无法识别的姓名、图片、搜索框和你正在输入的内容仍可能包含身份信息。主播模式开启时不能编辑备注名、原有备注或头像绑定，已经打开的相关编辑框会关闭。本地数据库仍保留原始消息。分享前请检查实际画面或导出文件。
+
 ### 数据与升级
 
 历史、收藏、备注、布局在本机，中继不提供云同步。配置在 `%APPDATA%\XIVChat for Windows`，数据在 `%LOCALAPPDATA%\XIVChatDesktop`，不要公开；受保护凭据绑定当前 Windows 用户。
 
 升级前正常退出并备份，新包解压到独立目录，不混用旧 DLL。通过 Dalamud 更新插件，并保留旧客户端包回退。
+
+客户端 1.4.0 继续兼容插件 1.7.15，历史数据库会从 v5 升到 v6，升级前会在数据库旁生成 `*.before-v6-*.bak` 备份。要退回旧版，先退出客户端，备份当前数据，再把旧客户端、之前的配置和数据库一起恢复；不要用旧客户端打开 v6 数据库。恢复旧备份后，备份之后的新记录不会出现在旧数据库中。
 
 实时发送、好友、截图需要游戏运行、角色在线、插件加载。本应用不保持角色在线，也不能在游戏关闭后发送。游戏/Dalamud 更新可能需要新版插件。

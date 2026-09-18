@@ -6,6 +6,8 @@
 
 A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
+**In development: Desktop 1.4.0**, compatible with plugin 1.7.15. Adds contact nicknames and streamer mode. The downloads below remain the published 1.3.7 release until 1.4.0 is published.
+
 [Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
 ## Download
@@ -43,6 +45,8 @@ Without direct access to the game PC, use your own HTTPS relay. It includes an E
 - Chat popouts, saved layouts and event notifications.
 - Direct connections or an optional self-hosted relay.
 
+Desktop 1.4.0 adds local contact nicknames and a streamer-mode switch for names, worlds and avatars, including copied chat and text exports. See the [scope and limitations](docs/user/CLIENT_GUIDE.md#contact-nicknames-and-streamer-mode-desktop-140) before sharing your screen.
+
 **Keep the game running and your character logged in for live chat, friends and screenshots.** Local history remains accessible offline. Presence/game data depend on the installed game and Dalamud version. Upgrade the client and plugin together. New self-hosted relay credentials are not compatible with legacy public-relay codes.
 
 ## Build and documentation
@@ -56,7 +60,7 @@ Without direct access to the game PC, use your own HTTPS relay. It includes an E
 
 [Build guide](docs/development/BUILD.md) · [Documentation](docs/README.md) · [Changelog](CHANGELOG.md)
 
-Product source, deployment files and maintained documentation live here. Local tests, process notes and retired artwork are archived outside the product tree and are not included in release packages.
+Product source, deployment files, documentation and [privacy regression checks](tests/README.md) live here. Retired tests, process notes and artwork remain archived outside the product tree.
 
 An independent community project based on XIVChat, originally created by Anna. Not affiliated with Square Enix. FINAL FANTASY XIV is a trademark of Square Enix.
 
@@ -64,7 +68,11 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 ## 简体中文
 
-XIVChat Next 是基于 [XIVChat](https://xiv.chat/) 的 **FFXIV Windows 桌面聊天工作台**。游戏运行时，将会话、好友、可搜索历史和游戏截图放在手边。
+不用切回游戏，也能收发 FF14 消息。XIVChat Next 基于 [XIVChat](https://xiv.chat/)，把聊天放到一个单独的 Windows 窗口里。你可以给好友发悄悄话、查看聊天记录，也可以把常聊的人放进独立小窗。
+
+使用时，**游戏需要保持运行，角色也需要在线**。
+
+正在准备 **客户端 1.4.0**，新增好友备注名和主播模式，继续兼容插件 1.7.15。新版还未在线发布，下面的下载链接仍是已发布的 1.3.7。
 
 [介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
 
@@ -78,18 +86,25 @@ XIVChat Next 是基于 [XIVChat](https://xiv.chat/) 的 **FFXIV Windows 桌面�
 
 ### 首次连接
 
-1. 登录角色并加载插件，启用需要的连接方式。
-2. 打开客户端，完成语言、连接与通知引导。
-3. 同机默认 `127.0.0.1:14777`，局域网用游戏电脑地址，两端端口须一致。
-4. 核对两端指纹并确认信任。之后点击 Logo 连接最近成功目标。
-5. 无法直连时，使用自建 HTTPS 中继，通过中英文网页后台添加设备、生成邀请和管理授权。保存凭据与信任后，正常重启不需重新邀请。
+1. 在 Dalamud 中添加上面的插件仓库，安装 **XIVChatNext Server**，登录游戏并在插件里启用连接。
+2. 下载并解压客户端，运行 `XIVChat Desktop.exe`，按提示设置语言、连接和通知。
+3. 客户端和游戏在同一台电脑时，地址填 `127.0.0.1`，默认端口是 `14777`。如果改过插件端口，两边要填一致。局域网连接则填游戏电脑的地址。
+4. 核对两端显示的指纹，确认是自己的设备后允许连接。以后点击 Logo 就能连接上次成功使用的目标。
+5. 如果无法直接连接，可以在自己的服务器上部署 HTTPS 中继。后台可以添加设备、生成邀请和撤销授权；正常重启不需要重新邀请。中继需要自己部署，不是公共服务。
 
 ### 功能与说明
 
-支持频道与固定悄悄话、置顶与未读、好友状态及可选头像、按角色隔离的本地历史/搜索/收藏/备注/导出、物品和地图卡片、可用装备对比、截图预览/保存/复制、小窗与布局、事件通知及可选中继。
+- **频道和私聊分开看**：按频道查看消息，把常聊的人置顶，查看未读提醒。
+- **聊天可以单独开个小窗**：把窗口放在屏幕一角，边做别的事边看消息。
+- **以前聊过的内容可以搜索**：记录保存在这台电脑上，也能收藏消息、添加备注和导出。
+- **从好友列表直接开始聊天**：查看游戏里的好友和能获取到的在线状态，选中好友就能打开私聊。
+- **消息里的物品和坐标可以点开看**：查看物品资料、地图位置和支持的装备对比。
+- **在客户端查看游戏截图**：让游戏电脑截图，再预览、保存或复制。需要先在插件里允许截图。
+
+1.4.0 可以给好友设置独立的备注名，也能打开主播模式，把需要隐藏的角色改成化名，并隐藏服务器和头像。复制聊天、导出 TXT/RTF 时也按同样规则处理。**游戏截图不会自动打码**，正文里的未知昵称和输入框内容也不会自动隐藏。详细范围见[客户端指南](docs/user/CLIENT_GUIDE.md#备注名和主播模式客户端-140)。
 
 实时功能需要**游戏运行、角色在线、插件加载**，已保存历史可离线查看。游戏与 Dalamud 更新可能影响好友状态和数据，请配套升级两端；新中继不兼容旧公共中继认证码。
 
-使用上方命令构建，详见 [构建说明](docs/development/BUILD.md#简体中文)、[文档](docs/README.md#简体中文) 和 [更新说明](CHANGELOG.md#简体中文)。仓库保留产品源码、部署文件和维护中的说明，测试、过程记录和旧素材在仓库外本地归档，不进入发布包。
+使用上方命令构建，详见 [构建说明](docs/development/BUILD.md#简体中文)、[文档](docs/README.md#简体中文) 和 [更新说明](CHANGELOG.md)。本次新增的回归检查放在 [tests](tests/README.md)，可直接运行；旧测试、过程记录和旧素材仍在仓库外归档。
 
 本项目基于 Anna 创建的 XIVChat，与 Square Enix 无关联。FINAL FANTASY XIV 是 Square Enix 的商标。

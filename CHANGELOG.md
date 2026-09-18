@@ -1,5 +1,30 @@
 # Changelog / 更新说明
 
+## Desktop 1.4.0 — 2026-09-18 (local candidate, not published)
+
+### English
+
+- Added contact nicknames, separate from long notes and scoped by connection, current character and recipient. Friend/conversation search accepts nicknames and real names.
+- Added a persistent streamer-mode switch, independent self/other scopes, custom self name and stable pseudonyms. Protected identities hide worlds and avatars across main/popout windows, history, favorites, events and notifications.
+- Known complete names are masked across formatted chat segments, copied chat and TXT/RTF exports without changing original messages, item/map links or tell routing. Policy changes clear previous app notifications, dismiss identity editors and cancel exports; cancelled file writes preserve existing content.
+- Added schema v6 contact display storage with migration backup and transactional rollback. Restore both the old database and configuration when rolling back to an earlier client.
+- Rewrote Chinese getting-started copy and documented privacy limits: screenshots, unknown free text and input fields are not automatically redacted; original history remains local.
+- Compatible with plugin 1.7.15; no protocol or plugin changes.
+
+Validation: 55 core/storage checks and 25 Windows UI checks, including bilingual controls, multiple windows, migration failure, streaming export and cancellation. The self-contained Release ZIP's runtime also passed the UI suite in a separate extracted copy with an isolated fixture entry point. Live game integration and clean-machine installation were not repeated for this candidate.
+
+### 简体中文
+
+- 新增好友备注名，与原有备注分开保存。不同连接和角色各自保存，好友和会话可以用备注名或真实姓名搜索。
+- 主窗口可以一键开关主播模式，选择隐藏自己、其他玩家或两者都隐藏。自己可自定义显示名，其他玩家使用固定化名；服务器和头像也会隐藏，重启后保留设置。
+- 主窗口、小窗、历史、收藏、事件、通知、聊天复制和 TXT/RTF 导出使用同一显示规则。正文只处理能确认的完整姓名，保留格式与物品、地图链接，不改变实际收件人或原始记录。
+- 切换隐私设置会清理之前的应用通知、关闭身份编辑框并取消导出。取消导出不会覆盖原有文件。
+- 数据库从 v5 升到 v6，升级前自动备份。回退旧客户端时需一起恢复旧数据库和配置。
+- 中文介绍和安装说明改用直接易懂的说法。游戏截图、未知自由文本和输入框内容不会自动打码，已复制或保存到外部的内容无法撤回。
+- 继续兼容插件 1.7.15，没有修改插件或通信协议。本版本仅为本地候选包，尚未在线发布。
+
+已通过 55 项显示与存储检查、25 项 Windows 窗口检查，覆盖中英文、多窗口、迁移失败、流式导出和取消。Release ZIP 解压到独立目录后，也通过隔离测试入口验证了随包运行库启动。本次未重新进行实际游戏联调或干净系统安装测试。
+
 ## Desktop 1.3.7 — 2026-09-14
 
 ### English
