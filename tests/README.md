@@ -10,6 +10,8 @@ The console suite checks identity projection, nickname isolation, pseudonym pers
 
 The Windows UI suite exercises real WinUI windows with synthetic identities and fake notifications. It does not read your normal configuration or history, connect to a game or issue Windows notifications. It creates uniquely named fixture directories, `privacy-smoke-results.txt` and Chinese screenshots next to the test executable.
 
+The suite also floods a disconnected channel with repeated error messages, reads older messages, resizes the main window and checks a popout with multiline history. Rendered pixel comparisons with the list visible/hidden assert that no chat pixels appear outside its viewport, including over the return-to-latest button and composer. It checks that returning to the newest message still works and saves `chat-disconnected-*-zh.png` screenshots. These synthetic checks do not reproduce every live compositor timing issue.
+
 ```powershell
 $privacyTargets = Join-Path (Get-Location) 'tests/DesktopPrivacySmoke.targets'
 dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -p:PublishSingleFile=false "-p:CustomAfterMicrosoftCommonTargets=$privacyTargets"

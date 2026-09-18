@@ -79,6 +79,12 @@ namespace XIVChat_Desktop.Controls {
             this.DetachScrollViewer();
         }
 
+        private void MessageList_SizeChanged(object sender, SizeChangedEventArgs e) {
+            // Use the list's own arranged bounds, including changes when the latest
+            // button appears or the composer grows. Sizes are already in XAML DIPs.
+            this.MessageViewportClip.Rect = new Windows.Foundation.Rect(0, 0, e.NewSize.Width, e.NewSize.Height);
+        }
+
         private void DetachScrollViewer() {
             if (this.scrollViewer == null) return;
             this.scrollViewer.ViewChanging -= this.OnViewChanging;

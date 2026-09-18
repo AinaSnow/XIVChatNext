@@ -57,6 +57,33 @@ internal sealed class DesktopPrivacySmokeApp : App {
         throw new Exception("Timed out: " + label);
     }
     private static void Invoke(Button button) => ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
+    private async Task CheckMessageBounds(Window window, string label) {
+        var root = (FrameworkElement)window.Content;
+        var view = Descendants<Controls.ChatMessageList>(root).Single();
+        var list = Descendants<ListView>(view).Single();
+        var origin = list.TransformToVisual(root).TransformPoint(new Windows.Foundation.Point());
+        async Task<(byte[] Pixels, int Width, int Height)> Pixels() {
+            var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(root);
+            var buffer = await bitmap.GetPixelsAsync(); using var reader = DataReader.FromBuffer(buffer);
+            var bytes = new byte[buffer.Length]; reader.ReadBytes(bytes);
+            return (bytes, bitmap.PixelWidth, bitmap.PixelHeight);
+        }
+        var visible = await Pixels();
+        list.Opacity = 0;
+        var hidden = await Pixels();
+        list.Opacity = 1;
+        int outside = 0, inside = 0;
+        double scaleX = visible.Width / root.ActualWidth, scaleY = visible.Height / root.ActualHeight;
+        for (int y = 0; y < visible.Height; y++) for (int x = 0; x < visible.Width; x++) {
+            int offset = (y * visible.Width + x) * 4;
+            if (visible.Pixels[offset] == hidden.Pixels[offset] && visible.Pixels[offset + 1] == hidden.Pixels[offset + 1]
+                && visible.Pixels[offset + 2] == hidden.Pixels[offset + 2]) continue;
+            if (x < Math.Floor(origin.X * scaleX) || x >= Math.Ceiling((origin.X + list.ActualWidth) * scaleX)
+                || y < Math.Floor(origin.Y * scaleY) || y >= Math.Ceiling((origin.Y + list.ActualHeight) * scaleY)) outside++;
+            else inside++;
+        }
+        Check(inside > 100 && outside == 0, $"{label}: rendered chat stays inside viewport ({inside} visible, {outside} escaped pixels; {list.ActualWidth} x {list.ActualHeight})");
+    }
     private static async Task Capture(Window window, string path) {
         var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync((FrameworkElement)window.Content);
         var buffer = await bitmap.GetPixelsAsync(); using var reader = DataReader.FromBuffer(buffer);
@@ -175,6 +202,40 @@ internal sealed class DesktopPrivacySmokeApp : App {
             Check(position.X >= 0 && position.X + button.ActualWidth <= ((FrameworkElement)main.Content).ActualWidth + 1, "Streamer button remains reachable in a compact window");
             await Presentation.FlushAsync();
             Check(File.Exists(config.FilePathOverride) && File.ReadAllText(config.FilePathOverride!).Contains("\"Enabled\": true"), "Last privacy state is saved to the isolated config");
+            popout.Close(); main.Navigate("channels");
+            for (int i = 0; i < 120; i++) {
+                main.AddSystemMessage($"连接或通信中断：The server returned status code '409' when status code '101' was expected. ({i})");
+                main.AddSystemMessage("已断开");
+            }
+            await Task.Delay(400);
+            var chat = Descendants<Controls.ChatMessageList>((DependencyObject)main.Content).Single();
+            Check(!Control<TextBox>(main, "Composer").IsEnabled, "Disconnected composer stays disabled during repeated errors");
+            await CheckMessageBounds(main, "Disconnected main window following latest");
+            chat.ScrollToMessage(config.Tabs[0].Messages[30]); await Task.Delay(300);
+            for (int i = 0; i < 20; i++) main.AddSystemMessage("连接或通信中断：The channel has been closed.\n已断开");
+            await Task.Delay(300);
+            Check(!chat.FollowingLatest, "Appending disconnect errors preserves history reading");
+            await CheckMessageBounds(main, "Disconnected main window reading history");
+            main.AppWindow.Resize(new Windows.Graphics.SizeInt32(900, 480)); await Task.Delay(300);
+            await CheckMessageBounds(main, "Resized disconnected main window");
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "chat-disconnected-main-zh.png"));
+            Invoke(Descendants<Button>(chat).Single(b => b.Name == "LatestButton")); await Task.Delay(300);
+            var scroll = Descendants<ScrollViewer>(chat).First();
+            Check(chat.FollowingLatest && scroll.ScrollableHeight - scroll.VerticalOffset <= 2, "Return to latest still reaches the newest disconnect error");
+            for (int i = 0; i < 80; i++) {
+                const string body = "离线历史测试消息\n多行正文不能越过消息列表进入输入框。";
+                main.AddMessage(new ServerMessage(DateTime.UtcNow, ChatType.Say, Encoding.UTF8.GetBytes(owner.Name), Encoding.UTF8.GetBytes(body),
+                    new() { new TextChunk(body) }) { Owner = owner });
+            }
+            var channelPopout = main.PopoutCurrent()!;
+            await Until(() => channelPopout.Content.XamlRoot != null, "channel popout");
+            await Until(() => channelPopout.LoadedMessages.Count >= 80, "popout multiline backlog");
+            channelPopout.AppWindow.Resize(new Windows.Graphics.SizeInt32(600, 420)); await Task.Delay(300);
+            await Capture(channelPopout, Path.Combine(AppContext.BaseDirectory, "chat-disconnected-popout-latest-zh.png"));
+            await CheckMessageBounds(channelPopout, "Disconnected channel popout");
+            channelPopout.MessageView.ScrollToMessage(channelPopout.LoadedMessages[20]); await Task.Delay(300);
+            await CheckMessageBounds(channelPopout, "Disconnected channel popout reading multiline history");
+            await Capture(channelPopout, Path.Combine(AppContext.BaseDirectory, "chat-disconnected-popout-zh.png"));
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {

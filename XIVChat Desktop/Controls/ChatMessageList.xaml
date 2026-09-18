@@ -10,9 +10,14 @@
         </Grid.RowDefinitions>
         <!-- Keep this list bounded by the grid; an outer ScrollViewer disables virtualization. -->
         <ListView x:Name="MessageList" SelectionMode="None" IsItemClickEnabled="False"
+                  SizeChanged="MessageList_SizeChanged"
                   HorizontalContentAlignment="Stretch" Padding="4"
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <!-- Virtualized rich text must not paint into the latest button or composer. -->
+            <ListView.Clip>
+                <RectangleGeometry x:Name="MessageViewportClip" />
+            </ListView.Clip>
             <ListView.ItemsPanel>
                 <ItemsPanelTemplate>
                     <ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView" />

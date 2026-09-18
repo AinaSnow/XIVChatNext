@@ -26,3 +26,14 @@ Read-only projection audit of 2,205 actual stored messages found 796 bodies cont
 - The read-only live-data projection audit does not replace manually toggling streamer mode in the running game-connected UI. That interactive check awaits the user's switch; the session's Windows automation rules prohibit changing app privacy settings.
 - Live outgoing chat, fresh friend presence, real OS notification delivery and installation on a clean Windows system were not verified here.
 - The running original candidate remains separate from the corrected package at `artifacts/desktop-1.4.0-live-fix/`. Restart from the corrected package to apply the fix. No online release or push was performed.
+
+## Disconnect-message clipping follow-up
+
+The user supplied a screenshot showing repeated disconnect errors painting below the message list, over the return-to-latest button and composer. The shared `ChatMessageList` now clips its ListView to its arranged size and updates the clip when the window, composer or latest-button row changes size. Main and popout windows use the same control.
+
+- Added eight WinUI checks (33 total). They cover repeated 409/closed-channel error text with a disabled composer, history reading while more errors arrive, resizing, return-to-latest and multiline offline history in a popout. Pixel comparisons require visible content inside the list and zero changed pixels outside its bounds.
+- All 33 checks passed against the self-contained ZIP's resources/runtime in a separate extracted copy with the isolated test entry point. Inspected Chinese main/popout screenshots; no message text overlaps the composer. The distributed ZIP retains the production entry point.
+- The exact live overflow was not reproduced reliably in the synthetic baseline; this change explicitly enforces the missing outer drawing boundary. The user's running client has not been replaced, so confirmation of the original live case requires restarting with the new package.
+- A separate synthetic case inserting 80 messages during popout initialization produced a blank latest view even with the clip removed. The final offline-history fixture loads those messages before opening the popout. This initialization/arrival race is not fixed or covered by the passing offline-history checks.
+
+Latest local package: `artifacts/desktop-1.4.0-chat-clip-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip` (includes the earlier privacy fix). SHA-256: `7eca8cc9fd11ba98bb07fd28398445be5682fda72f44ae42beb8dc220265e002`. No game connection, outgoing player chat, online release or push was performed for this regression run.

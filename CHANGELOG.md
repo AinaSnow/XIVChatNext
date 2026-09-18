@@ -10,6 +10,7 @@
 - Added schema v6 contact display storage with migration backup and transactional rollback. Restore both the old database and configuration when rolling back to an earlier client.
 - Rewrote Chinese getting-started copy and documented privacy limits: screenshots, unknown free text and input fields are not automatically redacted; original history remains local.
 - Compatible with plugin 1.7.15; no protocol or plugin changes.
+- Added an explicit, resize-aware clip to the shared chat list to prevent disconnect messages painting over the return-to-latest button and composer in main/popout windows.
 
 Live follow-up: fixed masking of Latin character names adjoining Japanese particles or Chinese prose (for example `Alice Snowの攻撃`). Added seven regression checks, including export/rendering and partial-name safeguards. See [live validation](docs/development/VALIDATION-1.4.0.md).
 
@@ -24,6 +25,7 @@ Initial validation: 55 core/storage checks and 25 Windows UI checks, including b
 - 数据库从 v5 升到 v6，升级前自动备份。回退旧客户端时需一起恢复旧数据库和配置。
 - 中文介绍和安装说明改用直接易懂的说法。游戏截图、未知自由文本和输入框内容不会自动打码，已复制或保存到外部的内容无法撤回。
 - 继续兼容插件 1.7.15，没有修改插件或通信协议。本版本仅为本地候选包，尚未在线发布。
+- 为主窗口和聊天小窗共用的消息列表补充随尺寸更新的裁剪边界，防止断线消息穿过列表、叠到“回到最新消息”和输入框上。
 
 后续实机检查修复了日文助词、中文正文紧接拉丁角色名时的脱敏遗漏，例如 `Alice Snowの攻撃`。补充 7 项回归检查，覆盖显示、导出和姓名前缀保护，详见[实测记录](docs/development/VALIDATION-1.4.0.md)。
 
