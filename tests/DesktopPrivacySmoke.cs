@@ -313,6 +313,52 @@ internal sealed class DesktopPrivacySmokeApp : App {
                 && main.AppWindow.Position.Y + main.AppWindow.Size.Height <= workArea.Y + workArea.Height,
                 "A saved off-screen main window is brought back inside an available display");
             CheckOutboundPackets(owner, peer);
+            var combat = new ServerMessage(DateTime.UtcNow, ChatType.Damage, Array.Empty<byte>(),
+                Encoding.UTF8.GetBytes("Alice Snowの攻撃 → Bob Birchに59ダメージ。"),
+                new() { new TextChunk("Alice "), new TextChunk("Snowの攻撃 → Bob Birchに59ダメージ。") }) {
+                Owner = owner, MessageId = "combat-privacy-history", ServiceId = "fixture", RunId = "fixture", Sequence = 1000
+            };
+            await Session.RecordAsync(combat, Session.Source, true); Session.Add(combat);
+            main.Navigate("history");
+            await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Any(r => r.Row.Message.MessageId == combat.MessageId), "combat history result");
+            await Task.Delay(200);
+            Check(!VisibleText(main).Contains(owner.Name) && !VisibleText(main).Contains(peer.Name), "History renders combat actor and target with streamer mode enabled");
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(200);
+            Check(VisibleText(main).Contains("Alice Snowの攻撃") && VisibleText(main).Contains("Bob Birchに59"), "Disabling streamer mode restores already-visible combat history");
+            config.Privacy.Enabled = true; config.Save(); await Task.Delay(200);
+            Check(!VisibleText(main).Contains(owner.Name) && !VisibleText(main).Contains(peer.Name), "Enabling streamer mode refreshes already-visible combat history");
+            var cnOwner = new CharacterIdentity { Name = "国服测试角色", ContentId = 99001, HomeWorldId = 1, HomeWorld = "Alpha" };
+            Session.Source = "cn-fixture";
+            Session.SetPlayer(new PlayerData("Alpha", "Alpha", "测试区域", cnOwner.Name) { Identity = cnOwner, OwnerEpoch = "cn-login" });
+            Workbench.SetContext(Session.Source, cnOwner);
+            var cnTab = Tab.Defaults()[1]; cnTab.Name = "国服战斗"; config.Tabs.Add(cnTab);
+            var cnBodies = new[] { "国服测试角色发动了“冲刺”。", "野渡烟正在发动“传送”。", "→ 对野渡烟附加了“冲刺”的效果。", "野渡烟的冲刺状态效果消失了。" };
+            var cnTypes = new[] { ChatType.Action, ChatType.Action, ChatType.GainBuff, ChatType.LoseBuff };
+            for (int i = 0; i < cnBodies.Length; i++) {
+                var cnMessage = new ServerMessage(DateTime.UtcNow, cnTypes[i], Array.Empty<byte>(), Encoding.UTF8.GetBytes(cnBodies[i]),
+                    new() { new TextChunk(cnBodies[i]) }) { Owner = cnOwner, MessageId = "cn-combat-" + i, ServiceId = "cn", RunId = "cn", Sequence = i + 1 };
+                await Session.RecordAsync(cnMessage, "cn-fixture", true); Session.Add(cnMessage);
+            }
+            main.Navigate("channels"); Control<ListView>(main, "ChannelList").SelectedItem = cnTab; await Task.Delay(250);
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "privacy-cn-battle.png"));
+            Check(VisibleText(main).Contains("传送") && !VisibleText(main).Contains(cnOwner.Name) && !VisibleText(main).Contains("野渡烟"),
+                "Chinese Battle view masks self and unregistered actors while retaining ability text");
+            main.Navigate("history");
+            await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Count(r => r.Row.Source == "cn-fixture") == 4, "Chinese combat history");
+            await Task.Delay(200);
+            Check(!VisibleText(main).Contains(cnOwner.Name) && !VisibleText(main).Contains("野渡烟"), "Chinese history hides actor slots after switching owner/source");
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(200);
+            Check(VisibleText(main).Contains("野渡烟"), "Disabling streamer mode restores Chinese combat history");
+            config.Privacy.Enabled = true; config.Save(); await Task.Delay(200);
+            Check(!VisibleText(main).Contains(cnOwner.Name) && !VisibleText(main).Contains("野渡烟"), "Enabling streamer mode refreshes already-visible Chinese history");
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "privacy-cn-history.png"));
+            var cnSnapshot = Presentation.Engine.Snapshot();
+            await Export.WriteFileAsync(Session.Store, file, new(Source: "cn-fixture"), false,
+                displayLine: (r, timestamps) => cnSnapshot.ExportLine(r.Source, r.Message, timestamps));
+            var cnExport = File.ReadAllText(file.Path);
+            Check(cnExport.Contains("冲刺") && !cnExport.Contains("野渡烟") && !cnExport.Contains(cnOwner.Name), "Chinese combat export uses the same actor protection as the windows");
+            var originals = await Session.Store.SearchAsync(new(Source: "cn-fixture"));
+            Check(originals.Count == 4 && originals.All(r => cnBodies.Contains(r.Message.ContentText)), "Chinese history payloads remain original after projection and export");
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {

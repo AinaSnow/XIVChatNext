@@ -91,7 +91,7 @@ public sealed class IdentityPresentation {
     }
     public DisplayIdentity Identity(CharacterIdentity? peer, DisplayContext? context = null) => Engine.Identity(context ?? Current, peer);
     public string Text(string? text, DisplayContext? context = null) => Engine.Text(context ?? Current, text);
-    public string Content(ServerMessage message) => Engine.Text(Observe(message), message.ContentText);
+    public string Content(ServerMessage message) { Observe(message); return Engine.Content(message.LocalSource ?? app.Session.Source, message); }
     public string Sender(ServerMessage message) => Engine.SenderLabel(Observe(message), message);
     public bool Hidden(CharacterIdentity? peer, DisplayContext? context = null) => Engine.Hidden(context ?? Current, peer);
     public IReadOnlyList<Chunk> Chunks(ServerMessage message) { Observe(message); return Engine.Chunks(message.LocalSource ?? app.Session.Source, message); }

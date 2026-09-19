@@ -51,3 +51,17 @@ The game and client were not running when this pass started. Reproduced the blan
 Remaining live boundaries: successful reconnection after the game/plugin comes online, actual outgoing/incoming game chat on this build, fresh friend presence, real Windows notification delivery, live streamer-toggle behavior and clean-machine/mixed-DPI installation checks. The automated privacy checks use synthetic identities; they do not constitute a manual privacy-toggle test on the live account.
 
 Newest local package (supersedes the packages above): `artifacts/desktop-1.4.0-selftest-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip`. SHA-256: `e23cae695427351c9301032a982bf003dbf847e6775c1c5638810ee549add34c`.
+
+## Chinese combat privacy follow-up — 2026-09-19
+
+The user's screenshot showed Chinese character IDs and other combat actors remaining visible with streamer mode enabled. Two gaps were reproduced: the complete-name boundary treated adjacent Chinese prose as part of the name, and sender-less combat events did not identify nearby actors who had never chatted. The core test failed before the correction on `星野光发动了攻击，对白露造成了59点伤害。`.
+
+Generated game text now allows known Chinese names directly adjoining Chinese prose. A bounded parser recognizes Chinese combat actor slots for casts/actions, effects and expiration; unregistered actors use the neutral alias when hiding others, without adding speculative identities to the contact directory. Known actors honor self/other settings and existing aliases. Ordinary chat retains the previous conservative matching rules. Because old battle text cannot reliably distinguish an unknown player from a monster, unidentified monster actors in those slots may also be anonymized. Unrecognized text formats remain outside this fallback.
+
+History content now calls the same message-aware projection used by chat chunks and export instead of the generic free-text projection. Raw message bytes, ability text and link metadata are retained. No plugin/protocol or schema changes were made.
+
+- All 100 core/storage checks passed, including the user's action/buff/expiration formats, Chinese names across styled chunks, original message preservation and ordinary-chat safeguards.
+- All 58 WinUI checks passed using the new ZIP's runtime/resources in an isolated extracted copy. Verified Battle rendering, Chinese history, on/off refresh while history is visible, TXT export and unchanged stored Chinese payloads. Inspected `privacy-cn-battle.png` and `privacy-cn-history.png`.
+- These tests used synthetic Chinese identities and examples from the supplied screenshot. They do not claim live verification on the user's CN game session. No player chat was sent or online release performed.
+
+Newest local package: `artifacts/desktop-1.4.0-cn-privacy-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip`. SHA-256: `f84c5959ac200dcf238a4471eea6f67fe77f1a3936cb5b7873a44921f679af57`.

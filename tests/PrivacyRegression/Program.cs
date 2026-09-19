@@ -64,6 +64,43 @@ Equal(view.Text(scope, "玩家Alice Snow获得了物品。"), "玩家Me获得了
 Equal(view.Text(scope, "Alice Snowé Alice Snow\u0301"), "Alice Snowé Alice Snow\u0301", "accented and combining suffixes do not match partial names");
 var cjkPeer = Person("星野光", cid: 505); view.Register(scope, cjkPeer);
 Equal(view.Text(scope, "星野光子"), "星野光子", "longer CJK names do not match partial names");
+var cnSelf = Person("星野光", cid: 606);
+var cnPeer = Person("白露", cid: 607);
+var cnView = new IdentityDisplay(new PrivacySettings { Enabled = true }, true);
+var cnScope = cnView.Context("cn-fixture", cnSelf.Key, cnSelf); cnView.Register(cnScope, cnPeer);
+foreach (var channel in new[] { ChatType.Damage, ChatType.Action, ChatType.Healing, ChatType.GainBuff, ChatType.LoseDebuff, ChatType.System, ChatType.LootNotice }) {
+    const string body = "星野光发动了攻击，对白露造成了59点伤害。";
+    var cnMessage = new ServerMessage(DateTime.UtcNow, channel, Array.Empty<byte>(), Encoding.UTF8.GetBytes(body),
+        new() { new TextChunk("星野") { Foreground = 0xabcdef00 }, new TextChunk("光发动了攻击，对白露造成了59点伤害。") }) { Owner = cnSelf };
+    var cnOriginal = MessagePackSerializer.Serialize(cnMessage);
+    var cnRendered = string.Concat(cnView.Chunks("cn-fixture", cnMessage).OfType<TextChunk>().Select(c => c.Content));
+    Check(!cnRendered.Contains(cnSelf.Name) && !cnRendered.Contains(cnPeer.Name) && cnRendered.Contains("造成了59点伤害"), "Chinese game text masks adjacent names in " + channel);
+    Check(!cnView.ExportLine("cn-fixture", cnMessage, false).Contains(cnSelf.Name) && !cnView.ExportLine("cn-fixture", cnMessage, false).Contains(cnPeer.Name), "Chinese history export masks names in " + channel);
+    Check(cnOriginal.SequenceEqual(MessagePackSerializer.Serialize(cnMessage)), "Chinese game text projection preserves original bytes in " + channel);
+}
+foreach (var sample in new[] {
+    (ChatType.Action, "野渡烟发动了“冲刺”。", "野渡烟"),
+    (ChatType.Action, "Manzuy正在发动“传送”。", "Manzuy"),
+    (ChatType.GainBuff, "→ 对野渡烟附加了“\ue0bb冲刺”的效果。", "野渡烟"),
+    (ChatType.GainBuff, "野渡烟附加了“慢跑”效果。", "野渡烟"),
+    (ChatType.LoseBuff, "野渡烟的\ue0bb冲刺状态效果消失了。", "野渡烟"),
+    (ChatType.LoseBuff, "路过的猫的\ue0bb冲刺状态效果消失了。", "路过的猫"),
+    (ChatType.Action, "薯条蘸麦旋风发动了“借用”。", "薯条蘸麦旋风"),
+}) {
+    var unseen = new ServerMessage(DateTime.UtcNow, sample.Item1, Array.Empty<byte>(), Encoding.UTF8.GetBytes(sample.Item2),
+        new() { new TextChunk(sample.Item2) }) { Owner = cnSelf };
+    Check(!cnView.Content("cn-fixture", unseen).Contains(sample.Item3), "Unregistered combat actor is hidden: " + sample.Item1);
+    Check(!string.Concat(cnView.Chunks("cn-fixture", unseen).OfType<TextChunk>().Select(t => t.Content)).Contains(sample.Item3), "Unregistered combat actor is hidden across rendered chunks: " + sample.Item1);
+}
+var cnSettings = new PrivacySettings { Enabled = true, HideOthers = false };
+var cnSelfOnly = new IdentityDisplay(cnSettings, true);
+var cnAction = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), Encoding.UTF8.GetBytes("星野光子发动了“冲刺”。"), new()) { Owner = cnSelf };
+Equal(cnSelfOnly.Content("cn-fixture", cnAction), cnAction.ContentText, "Self-only mode leaves a longer unknown combat actor intact");
+var literalChat = new ServerMessage(DateTime.UtcNow, ChatType.Say, Array.Empty<byte>(), Encoding.UTF8.GetBytes("野渡烟发动了“冲刺”。"), new()) { Owner = cnSelf };
+Equal(cnView.Content("cn-fixture", literalChat), literalChat.ContentText, "Combat actor inference never rewrites ordinary chat or quoted prose");
+var cnLongPeer = Person("白露清风", cid: 609); cnView.Register(cnScope, cnLongPeer);
+var longAction = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), Encoding.UTF8.GetBytes("白露清风发动了“冲刺”。"), new()) { Owner = cnSelf };
+Equal(cnView.Content("cn-fixture", longAction), cnView.Identity(cnScope, cnLongPeer).Name + "发动了“冲刺”。", "Longest complete Chinese combat actor wins over a shorter known prefix");
 var japaneseMessage = Message("Alice Snowは戦利品を手に入れた。");
 Check(!view.ExportLine("fixture", japaneseMessage, false).Contains(self.Name), "Japanese export masks character name");
 Check(!string.Concat(view.Chunks("fixture", japaneseMessage).OfType<TextChunk>().Select(c => c.Content)).Contains(self.Name), "Japanese rendered and copied text masks character name");
