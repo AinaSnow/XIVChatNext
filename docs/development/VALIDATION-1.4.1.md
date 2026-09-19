@@ -1,6 +1,6 @@
 # Desktop 1.4.1 update checks — 2026-09-19
 
-Local preview; not published as a GitHub release. Plugin 1.7.16 and the relay are unchanged.
+Approved for release by the user on 2026-09-19 as desktop-1.4.1, using the exact tested package without rebuilding. Plugin 1.7.16 and the relay are unchanged.
 
 - 26 update checks passed using the production release client and state manager with fake HTTP. Coverage includes numeric desktop asset versions inside plugin-tagged releases, plugin-only releases, drafts/prereleases, matching repository URLs, pagination, empty/invalid responses, rate limiting, cancellation/failure, retries, one shared request and enabled/disabled startup behavior.
 - A read-only check against the public GitHub API selected desktop **1.4.0** from release **1.7.16**, with the expected Windows ZIP URL. No download, install, credentials, character data or chat content was sent by the checker.

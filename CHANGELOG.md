@@ -1,6 +1,6 @@
 # Changelog / 更新说明
 
-## Desktop 1.4.1 — Unreleased / 尚未发布
+## Desktop 1.4.1 — 2026-09-19
 
 - Added a background update check after startup and a bilingual Updates settings page with a manual check, current version, release notes and Windows download link. Startup checks can be disabled; failures do not interrupt chat. Available updates use a dismissible, nonmodal main-window banner.
 - Compare numeric desktop ZIP versions from public GitHub releases, rather than plugin release tags. Ignore drafts, prereleases and plugin-only releases; requests time out, share one in-flight check and send no character or chat information. Downloads open in the browser and never replace a running client automatically.

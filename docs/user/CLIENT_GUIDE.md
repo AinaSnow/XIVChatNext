@@ -43,7 +43,7 @@ The same display rules apply to known complete names in chat text, previews, his
 
 **This is not automatic image or free-text redaction.** Game screenshots remain unchanged. Unknown nicknames, unrecognized names, images, search fields and text you type may still identify someone. Turn streamer mode off to edit stored notes, nicknames or avatar mappings; an open identity editor closes when it is enabled. The database keeps original messages. Check the actual screen or export before sharing.
 
-### Update checks (Desktop 1.4.1 preview)
+### Update checks (Desktop 1.4.1)
 
 The client checks public GitHub releases shortly after startup. If a newer Windows client is available, a dismissible banner opens **Settings → Updates**, where you can read the release notes and open the download. This page also shows the current version and a **Check for updates** button. Turn off **Check for updates at startup** to use manual checks only; the preference saves immediately. Failed checks do not interrupt chat.
 
@@ -106,7 +106,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 **游戏截图不会自动打码。** 未知昵称、无法识别的姓名、图片、搜索框和你正在输入的内容仍可能包含身份信息。主播模式开启时不能编辑备注名、原有备注或头像绑定，已经打开的相关编辑框会关闭。本地数据库仍保留原始消息。分享前请检查实际画面或导出文件。
 
-### 更新检查（客户端 1.4.1 测试版）
+### 更新检查（客户端 1.4.1）
 
 客户端启动后会在后台检查 GitHub 上的公开版本。发现新版 Windows 客户端时，主窗口显示可关闭的提示，点击后进入“设置 → 更新”，查看更新说明或打开下载。这一页也会显示当前版本，并提供“检查更新”按钮。关闭“启动时检查更新”后只保留手动检查，选项立即保存；检查失败不影响聊天。
 
