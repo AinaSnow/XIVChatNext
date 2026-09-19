@@ -77,3 +77,7 @@ The live CN screenshot and window inspection exposed a missing case: a cross-wor
 - Restored the normal Debug entry point; the self-contained production package contains no fixture entry point. No plugin/protocol/schema changes, online release or push.
 
 Newest package: `artifacts/desktop-1.4.0-symbols-emote-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip`. SHA-256: `e412b22ca2881e8631a8a78f886fec0e32c90b9012c9afc42cfda3b4813bb03b`.
+
+## Release confirmation — 2026-09-19
+
+After loading the extracted plugin 1.7.16 development package, the user confirmed live retesting was satisfactory and requested publication. Release staging preserves the exact tested desktop package above and plugin package `artifacts/plugin-1.7.16-cn-chat-fix/latest.zip` (SHA-256 `b007899a08d7e8d9c28bab50f017963f958e881626c31149865c4d06d0433bbe`), without rebuilding. The plugin's seven CN data checks passed; see the plugin regression instructions in [tests/README.md](../../tests/README.md). Earlier entries describe the state at their respective test times; this user confirmation supersedes their pending live-retest status without claiming clean-machine or extended weak-network testing.

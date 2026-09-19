@@ -6,7 +6,7 @@
 
 A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
-**In development: Desktop 1.4.0**, compatible with plugin 1.7.15. Adds contact nicknames and streamer mode. The downloads below remain the published 1.3.7 release until 1.4.0 is published.
+**Desktop 1.4.0 · Plugin 1.7.16** adds contact nicknames, streamer mode and a game-symbol picker, and fixes CN item-link messages being lost before forwarding.
 
 [Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
@@ -14,9 +14,9 @@ A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://x
 
 | Component | Version | Download |
 | --- | --- | --- |
-| Windows x64 desktop client | **1.3.7** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.3.7/XIVChatNext-Desktop-v1.3.7-win-x64.zip) |
-| Dalamud plugin | **1.7.15** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip) |
-| Optional self-hosted relay | Included with this release | [Release assets](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
+| Windows x64 desktop client | **1.4.0** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/XIVChatNext-Desktop-v1.4.0-win-x64.zip) |
+| Dalamud plugin | **1.7.16** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip) |
+| Optional self-hosted relay | Unchanged | [Existing relay package](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
 The desktop ZIP includes .NET and Windows App SDK dependencies. Runtime language resources are limited to English, Japanese, German, Chinese and French; the application UI supports **English and Simplified Chinese**. Web-based cards use Microsoft Edge WebView2 Runtime.
 
@@ -55,7 +55,7 @@ Desktop 1.4.0 adds local contact nicknames and a streamer-mode switch for names,
 ./build.ps1 -Component desktop -Configuration Release
 ./build.ps1 -Component plugin -Configuration Release
 ./build.ps1 -Component relay -Configuration Release
-./pack.ps1 -Label release-1.7.15
+./pack.ps1 -Label release-1.7.16
 ```
 
 [Build guide](docs/development/BUILD.md) · [Documentation](docs/README.md) · [Changelog](CHANGELOG.md)
@@ -72,15 +72,15 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 使用时，**游戏需要保持运行，角色也需要在线**。
 
-正在准备 **客户端 1.4.0**，新增好友备注名和主播模式，继续兼容插件 1.7.15。新版还未在线发布，下面的下载链接仍是已发布的 1.3.7。
+**客户端 1.4.0 · 插件 1.7.16**：新增好友备注名、主播模式和游戏符号面板，并修复国服物品链接消息丢失。
 
 [介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
 
 ### 下载与安装
 
-- **客户端 1.3.7**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.3.7/XIVChatNext-Desktop-v1.3.7-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
-- **插件 1.7.15**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip)。
-- **可选中继**：从 [本次发布](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) 取得 Ubuntu x86_64 + 1Panel 离线部署包。
+- **客户端 1.4.0**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/XIVChatNext-Desktop-v1.4.0-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
+- **插件 1.7.16**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip)。
+- **可选中继**：继续使用 [已有部署包](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15)，本次无需更新中继。
 
 客户端包含 .NET 和 Windows App SDK，保留英、日、德、中、法运行库资源，**应用界面为中英文**。网页卡片需要 Microsoft Edge WebView2 Runtime。插件新配置默认英文，可切换中文或跟随系统，已有选择保留。
 

@@ -1,13 +1,13 @@
 # Changelog / 更新说明
 
-## Plugin 1.7.16 — 2026-09-19 (local candidate, not published)
+## Plugin 1.7.16 — 2026-09-19
 
 - 修复国服物品链接整条聊天丢失：装备职业限制读取本服数据，不再要求英文 ClassJob 表。物品或地图附加资料失败时保留聊天文字，并缓存缺失结果，避免相同资料重复报错。
 - 聊天格式化失败时回退到原始消息解析，仍转发并记录消息；无需更换 1.4.0 客户端，之前未被插件记录的消息无法自动追回。
 - Fixed CN item-link messages being lost before forwarding when equipment restrictions requested an unavailable English sheet. Resolve schema job columns from stable row IDs against local sheets. Optional metadata failures degrade to missing card details; rendering failures fall back to original text without changing raw message bytes.
-- Validated the reported CN item IDs 49874 and 50289 against installed CN data, equipment restrictions, the former English-sheet exception, negative caching and fault-injected chat fallback. No online release.
+- Validated the reported CN item IDs 49874 and 50289 against installed CN data, equipment restrictions, the former English-sheet exception, negative caching and fault-injected chat fallback. The user confirmed live retesting passed.
 
-## Desktop 1.4.0 — 2026-09-18 (local candidate, not published)
+## Desktop 1.4.0 — 2026-09-19
 
 ### English
 
@@ -16,7 +16,7 @@
 - Known complete names are masked across formatted chat segments, copied chat and TXT/RTF exports without changing original messages, item/map links or tell routing. Policy changes clear previous app notifications, dismiss identity editors and cancel exports; cancelled file writes preserve existing content.
 - Added schema v6 contact display storage with migration backup and transactional rollback. Restore both the old database and configuration when rolling back to an earlier client.
 - Rewrote Chinese getting-started copy and documented privacy limits: screenshots, unknown free text and input fields are not automatically redacted; original history remains local.
-- Compatible with plugin 1.7.15; no protocol or plugin changes.
+- Compatible with plugin 1.7.15; upgrade to plugin 1.7.16 for the CN item-link fix. No relay update is required.
 - Added an explicit, resize-aware clip to the shared chat list to prevent disconnect messages painting over the return-to-latest button and composer in main/popout windows.
 - Disabled staggered chat-row insertion animations, which temporarily left a newly opened popout blank during message bursts. Expanded the Windows suite to cover drafts, offline send protection, outbound packet guards and off-screen window recovery.
 - Fixed Chinese character names adjacent to generated game prose. Chinese combat actor slots without sender identity now use a neutral alias when hiding others; live chat rendering, history previews and exports share that protection.
@@ -35,7 +35,7 @@ Initial validation: 55 core/storage checks and 25 Windows UI checks, including b
 - 切换隐私设置会清理之前的应用通知、关闭身份编辑框并取消导出。取消导出不会覆盖原有文件。
 - 数据库从 v5 升到 v6，升级前自动备份。回退旧客户端时需一起恢复旧数据库和配置。
 - 中文介绍和安装说明改用直接易懂的说法。游戏截图、未知自由文本和输入框内容不会自动打码，已复制或保存到外部的内容无法撤回。
-- 继续兼容插件 1.7.15，没有修改插件或通信协议。本版本仅为本地候选包，尚未在线发布。
+- 客户端继续兼容插件 1.7.15；国服物品链接修复需要同时更新插件到 1.7.16，无需更新中继。
 - 为主窗口和聊天小窗共用的消息列表补充随尺寸更新的裁剪边界，防止断线消息穿过列表、叠到“回到最新消息”和输入框上。
 - 取消聊天消息逐条入场动画，避免新开小窗在大量消息到达时暂时空白；补测草稿保存、离线发送保护、发送报文校验及屏外窗口恢复。
 - 修复国服中文角色名紧接战斗正文时的主播模式遗漏。没有发送者身份的中文战斗角色位置在隐藏他人时使用通用匿名名称，实时列表、历史预览与导出使用相同规则。

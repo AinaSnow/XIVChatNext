@@ -3,7 +3,7 @@
     "Author": "AinaSnow",
     "Name": "XIVChatNext Server",
     "InternalName": "XIVChatNext",
-    "AssemblyVersion": "1.7.15",
+    "AssemblyVersion": "1.7.16",
     "Description": "Connect FFXIV to the XIVChat Next Windows client. Chat, friends, item/map cards and game screenshots, with optional self-hosted relay. English UI by default; Chinese is available in settings.\n\n将 FFXIV 连接到 XIVChat Next 桌面客户端，支持聊天、好友、物品/地图卡片、游戏截图及可选自建中继。默认英文，可在设置中切换中文。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/AinaSnow/XIVChatNext",
@@ -21,14 +21,14 @@
       "relay"
     ],
     "DownloadCount": 0,
-    "LastUpdate": 1789395650,
-    "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
-    "DownloadLinkTesting": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
-    "TestingAssemblyVersion": "1.7.15",
+    "LastUpdate": 1789803353,
+    "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip",
+    "DownloadLinkTesting": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip",
+    "TestingAssemblyVersion": "1.7.16",
     "TestingDalamudApiLevel": 15,
     "IsTestingExclusive": false,
     "IconUrl": "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/XIVChatPlugin/Resources/icon.png",
-    "Changelog": "New desktop workspace, history, friends, cards, screenshots, popouts and self-hosted relay. Plugin 1.7.15 / Desktop 1.3.6. English by default; Chinese available.\n\n新增桌面工作台、历史、好友、卡片、截图、小窗与自建中继。插件 1.7.15 / 客户端 1.3.6，默认英文，可切中文。"
+    "Changelog": "Plugin 1.7.16 fixes CN item-link messages being lost and preserves chat if optional metadata fails. Desktop 1.4.0 adds contact nicknames, streamer mode and game symbols, with chat layout fixes.\n\n插件 1.7.16 修复国服物品链接丢消息，附加资料失败时仍保留聊天。客户端 1.4.0 新增好友备注名、主播模式和游戏符号面板，并修复聊天显示问题。"
   }
 ]
