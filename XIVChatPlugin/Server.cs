@@ -95,7 +95,8 @@ namespace XIVChatPlugin {
 
         internal Server(Plugin plugin) {
             this._plugin = plugin;
-            this._metadata = new LinkMetadataCache(plugin.DataManager);
+            this._metadata = new LinkMetadataCache(plugin.DataManager,
+                ex => Plugin.Log.Warning(ex, "Could not read optional link metadata; preserving chat text"));
             this.ScreenshotCapture = new ScreenshotCapture(plugin);
             this.Screenshots = new ScreenshotCoordinator(this.ScreenshotCapture.CaptureAsync,
                 ex => Plugin.Log.Warning(ex, "Could not capture game screenshot"));
@@ -192,14 +193,14 @@ namespace XIVChatPlugin {
                     chunks.Add(new TextChunk(format.Before) {
                         FallbackColour = colour,
                     });
-                    chunks.AddRange(ToChunks(sender, colour));
+                    chunks.AddRange(this.SafeChunks(sender, colour));
                     chunks.Add(new TextChunk(format.After) {
                         FallbackColour = colour,
                     });
                 }
             }
 
-            chunks.AddRange(ToChunks(message, colour));
+            chunks.AddRange(this.SafeChunks(message, colour));
 
             var msg = new ServerMessage(
                 DateTime.UtcNow,
@@ -671,6 +672,10 @@ namespace XIVChatPlugin {
             }
             return Task.CompletedTask;
         }
+
+        private IReadOnlyList<Chunk> SafeChunks(SeString message, uint? colour) => ChatChunkFallback.Convert(
+            () => this.ToChunks(message, colour), message.Encode(), colour,
+            ex => Plugin.Log.Warning(ex, "Could not enrich chat message; forwarding original text"));
 
         private IEnumerable<Chunk> ToChunks(SeString msg, uint? defaultColour) {
             var chunks = new List<Chunk>();

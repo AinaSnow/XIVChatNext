@@ -73,6 +73,7 @@ artifacts/
 
 # Local development support is archived outside the product repository.
 tests/*
+!tests/PluginChatRegression/
 !tests/PrivacyRegression/
 !tests/DesktopPrivacySmoke.cs
 !tests/DesktopPrivacySmoke.targets

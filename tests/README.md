@@ -27,3 +27,13 @@ Get-Content (Join-Path (Split-Path $privacyExe) 'privacy-smoke-results.txt')
 Look for `All desktop privacy checks completed.`; any `FAIL` line is a failure. This suite temporarily replaces the Debug entry point. Restore a normal Debug build with `dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Debug -t:Rebuild -p:PublishSingleFile=false` before using that output interactively. Normal Release packaging does not include the test entry point.
 
 这些检查使用虚构角色和独立数据库，不读取日常配置、不连接游戏。控制台检查覆盖存储和显示规则，Windows 检查覆盖主窗口、小窗、通知、导出及中英文设置。它们不能替代实际游戏联调或干净系统上的安装测试。
+
+## CN plugin item-link regression
+
+`PluginChatRegression` reads an installed CN `game/sqpack` directory without starting Dalamud, connecting to the game or sending chat. It checks the two reported items, equipment restrictions without an English sheet, metadata failure caching and chat fallback preserving text/raw bytes. Override `DalamudLibPath` for a different local CN runtime version; pass the same directory at runtime for dependency resolution.
+
+```powershell
+dotnet run --project tests/PluginChatRegression -c Release -- '<game>/sqpack' '<CN Dalamud library directory>'
+```
+
+The 2026-09-19 check passed all seven checks against CN Dalamud 15.0.3.5 and the installed CN data. The unavailable English ClassJob sheet reproduced the same `UnsupportedLanguageException` found in the live plugin log at 15:17:24 and 15:17:55. Original dropped messages never reached desktop storage and cannot be recovered from its history.

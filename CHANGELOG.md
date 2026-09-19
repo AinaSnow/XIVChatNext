@@ -1,5 +1,12 @@
 # Changelog / 更新说明
 
+## Plugin 1.7.16 — 2026-09-19 (local candidate, not published)
+
+- 修复国服物品链接整条聊天丢失：装备职业限制读取本服数据，不再要求英文 ClassJob 表。物品或地图附加资料失败时保留聊天文字，并缓存缺失结果，避免相同资料重复报错。
+- 聊天格式化失败时回退到原始消息解析，仍转发并记录消息；无需更换 1.4.0 客户端，之前未被插件记录的消息无法自动追回。
+- Fixed CN item-link messages being lost before forwarding when equipment restrictions requested an unavailable English sheet. Resolve schema job columns from stable row IDs against local sheets. Optional metadata failures degrade to missing card details; rendering failures fall back to original text without changing raw message bytes.
+- Validated the reported CN item IDs 49874 and 50289 against installed CN data, equipment restrictions, the former English-sheet exception, negative caching and fault-injected chat fallback. No online release.
+
 ## Desktop 1.4.0 — 2026-09-18 (local candidate, not published)
 
 ### English

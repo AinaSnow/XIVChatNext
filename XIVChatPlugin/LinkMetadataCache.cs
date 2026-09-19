@@ -15,6 +15,7 @@ namespace XIVChatPlugin {
 
     internal sealed class LinkMetadataCache {
         private readonly GameSheetSource data;
+        private readonly Action<Exception>? reportFailure;
         private object? gameData;
         private int language = -1;
         private string? version;
@@ -27,8 +28,8 @@ namespace XIVChatPlugin {
         private readonly BoundedCache<(uint Map, uint Territory), MapMetadata> maps = new(512);
         internal (int Items, int Maps, long Hits, long Misses) Usage =>
             (this.items.Count, this.maps.Count, this.items.Hits + this.maps.Hits, this.items.Misses + this.maps.Misses);
-        internal LinkMetadataCache(IDataManager data) : this(new GameSheetSource(data)) { }
-        internal LinkMetadataCache(GameSheetSource data) => this.data = data;
+        internal LinkMetadataCache(IDataManager data, Action<Exception>? reportFailure = null) : this(new GameSheetSource(data), reportFailure) { }
+        internal LinkMetadataCache(GameSheetSource data, Action<Exception>? reportFailure = null) { this.data = data; this.reportFailure = reportFailure; }
 
         // A loaded GameData instance is tied to one installed game-data version. Nothing persists across it.
         internal bool RefreshScope() {
@@ -45,7 +46,10 @@ namespace XIVChatPlugin {
         }
         internal ItemMetadata? Item(uint id, ItemKind kind) {
             this.RefreshScope();
-            return this.items.Get((id, kind), key => this.ReadItem(key.Id, key.Kind));
+            return this.items.Get((id, kind), key => {
+                try { return this.ReadItem(key.Id, key.Kind); }
+                catch (Exception ex) { this.reportFailure?.Invoke(ex); return null; }
+            });
         }
         internal TextChunk? ItemChunk(uint id, ItemKind kind) {
             var item = this.Item(id, kind);
@@ -60,9 +64,11 @@ namespace XIVChatPlugin {
         internal MapMetadata Map(uint map, uint territory) {
             this.RefreshScope();
             return this.maps.Get((map, territory), key => {
+                try {
                 var id = key.Map != 0 ? key.Map : this.data.GetExcelSheet<TerritoryType>().GetRowOrDefault(key.Territory)?.Map.RowId ?? 0;
                 var row = id > 0 ? this.data.GetExcelSheet<Map>().GetRowOrDefault(id) : null;
                 return new MapMetadata(id, row?.Id.ExtractText(), row?.SizeFactor, row?.PlaceName.ValueNullable?.Name.ExtractText());
+                } catch (Exception ex) { this.reportFailure?.Invoke(ex); return new MapMetadata(key.Map, null, null, null); }
             });
         }
         private ItemMetadata? ReadItem(uint id, ItemKind kind) {
@@ -116,8 +122,9 @@ namespace XIVChatPlugin {
             }
             if (row.ClassJobCategory.ValueNullable is { } jobCategory) {
                 // Category column identifiers use English abbreviations, independently of displayed sheet language.
-                details.AllowedJobs = this.data.GameData.Excel.GetSheet<ClassJob>(Lumina.Data.Language.English).Where(job => {
-                    var abbreviation = job.Abbreviation.ExtractText();
+                details.AllowedJobs = this.data.GetExcelSheet<ClassJob>().Where(job => {
+                    var abbreviation = job.RowId < JobColumns.Length ? JobColumns[job.RowId] : "";
+                    if (abbreviation.Length == 0) return false;
                     var column = typeof(ClassJobCategory).GetProperty(abbreviation);
                     // The installed API 14 sheet schema still names the BST (job 43) flag Unknown0.
                     // Prefer the named field when a newer schema exposes it; do not infer other jobs.
@@ -132,5 +139,11 @@ namespace XIVChatPlugin {
                 row.Rarity, row.ItemUICategory.ValueNullable?.Name.ExtractText() ?? "", row.LevelEquip,
                 row.MateriaSlotCount, row.IsAdvancedMeldingPermitted, stats, details, this.Source());
         }
+        // ClassJobCategory column names are schema identifiers, not localized display
+        // abbreviations. CN installations do not contain the English ClassJob sheet.
+        private static readonly string[] JobColumns = {
+            "ADV", "GLA", "PGL", "MRD", "LNC", "ARC", "CNJ", "THM", "CRP", "BSM", "ARM", "GSM", "LTW", "WVR", "ALC", "CUL", "MIN", "BTN", "FSH",
+            "PLD", "MNK", "WAR", "DRG", "BRD", "WHM", "BLM", "ACN", "SMN", "SCH", "ROG", "NIN", "MCH", "DRK", "AST", "SAM", "RDM", "BLU", "GNB", "DNC", "RPR", "SGE", "VPR", "PCT", "BST",
+        };
     }
 }
