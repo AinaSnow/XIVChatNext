@@ -8,6 +8,7 @@ using XIVChatCommon.Message.Server;
 using XIVChatCommon.Presentation;
 using XIVChatStorage;
 
+try {
 var checks = 0;
 void Check(bool condition, string label) { if (!condition) throw new Exception("FAIL: " + label); checks++; }
 void Equal<T>(T actual, T expected, string label) => Check(EqualityComparer<T>.Default.Equals(actual, expected), label + $" (expected {expected}; got {actual})");
@@ -93,8 +94,66 @@ foreach (var sample in new[] {
     Check(!string.Concat(cnView.Chunks("cn-fixture", unseen).OfType<TextChunk>().Select(t => t.Content)).Contains(sample.Item3), "Unregistered combat actor is hidden across rendered chunks: " + sample.Item1);
 }
 var cnSettings = new PrivacySettings { Enabled = true, HideOthers = false };
+// Cross-world marker is a real IconChunk (88), absent from ContentText.
+var worldIcon = new byte[] { 2, 0x12, 2, 89, 3 };
+foreach (var sample in new[] {
+    (ChatType.Action, "", "正在发动“传送”。"),
+    (ChatType.Action, "", "发动了“传送”。"),
+    (ChatType.GainBuff, "  \ue06f 对", "附加了“\ue0bb\ue05c冲刺”的效果。"),
+    (ChatType.LoseBuff, "", "的“\ue0bb\ue05c冲刺”状态效果消失了。"),
+}) {
+    var bytes = Encoding.UTF8.GetBytes(sample.Item2 + "远方旅人").Concat(worldIcon).Concat(Encoding.UTF8.GetBytes("琥珀原" + sample.Item3)).ToArray();
+    var crossWorld = new ServerMessage(DateTime.UtcNow, sample.Item1, Array.Empty<byte>(), bytes, XIVChatCommon.XivString.ToChunks(bytes)) { Owner = cnSelf };
+    var rawBefore = MessagePackSerializer.Serialize(crossWorld);
+    var expected = sample.Item2 + "匿名玩家" + sample.Item3;
+    Equal(string.Concat(cnView.Chunks("cn-fixture", crossWorld).OfType<TextChunk>().Select(c => c.Content)), expected, "Cross-world combat display hides actor and world");
+    Check(!cnView.Chunks("cn-fixture", crossWorld).OfType<IconChunk>().Any(), "Hidden actor's cross-world icon is removed");
+    Equal(cnView.Content("cn-fixture", crossWorld), expected, "Cross-world history uses same projection");
+    Check(cnView.ExportLine("cn-fixture", crossWorld, false).EndsWith(expected), "Cross-world export uses same projection");
+    var selfOnly = new IdentityDisplay(cnSettings, true);
+    Equal(string.Concat(selfOnly.Chunks("cn-fixture", crossWorld).OfType<TextChunk>().Select(c => c.Content)), crossWorld.ContentText, "Visible cross-world actor remains intact in self-only mode");
+    Check(selfOnly.Chunks("cn-fixture", crossWorld).OfType<IconChunk>().Count() == 1, "Visible cross-world actor retains its icon");
+    Check(rawBefore.SequenceEqual(MessagePackSerializer.Serialize(crossWorld)), "Cross-world projection preserves original payload");
+}
 var cnSelfOnly = new IdentityDisplay(cnSettings, true);
+var qualifiedBytes = Encoding.UTF8.GetBytes(cnSelf.Name).Concat(worldIcon).Concat(Encoding.UTF8.GetBytes("Alpha发动了“冲刺”。")).ToArray();
+var qualifiedSelf = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), qualifiedBytes, XIVChatCommon.XivString.ToChunks(qualifiedBytes)) { Owner = cnSelf };
+Equal(cnSelfOnly.Content("cn-fixture", qualifiedSelf), "我发动了“冲刺”。", "Qualified known self retains self alias in history");
+Equal(string.Concat(cnSelfOnly.Chunks("cn-fixture", qualifiedSelf).OfType<TextChunk>().Select(c => c.Content)), "我发动了“冲刺”。", "Qualified known self retains self alias in chat");
+var othersOnly = new IdentityDisplay(new PrivacySettings { Enabled = true, HideSelf = false }, true);
+Equal(othersOnly.Content("cn-fixture", qualifiedSelf), qualifiedSelf.ContentText, "Others-only preserves qualified self");
+Check(othersOnly.Chunks("cn-fixture", qualifiedSelf).OfType<IconChunk>().Count() == 1, "Others-only preserves self world marker");
+var iconAbilityBytes = qualifiedBytes.Take(qualifiedBytes.Length - Encoding.UTF8.GetByteCount("发动了“冲刺”。")).Concat(Encoding.UTF8.GetBytes("发动了“")).Concat(new byte[] { 2, 0x12, 2, 2, 3 }).Concat(Encoding.UTF8.GetBytes("冲刺”。")).ToArray();
+var iconAbility = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), iconAbilityBytes, XIVChatCommon.XivString.ToChunks(iconAbilityBytes)) { Owner = cnSelf };
+Check(cnSelfOnly.Chunks("cn-fixture", iconAbility).OfType<IconChunk>().Select(c => c.index).SequenceEqual(new byte[] { 1 }), "Actor redaction retains unrelated ability icon");
+var prefixedBytes = new byte[] { 2, 0x12, 2, 2, 3 }.Concat(qualifiedBytes).ToArray();
+var prefixed = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), prefixedBytes, XIVChatCommon.XivString.ToChunks(prefixedBytes)) { Owner = cnSelf };
+Equal(string.Concat(cnSelfOnly.Chunks("cn-fixture", prefixed).OfType<TextChunk>().Select(c => c.Content)), "我发动了“冲刺”。", "Leading combat icon does not block actor recognition");
+Check(cnSelfOnly.Chunks("cn-fixture", prefixed).OfType<IconChunk>().Select(c => c.index).SequenceEqual(new byte[] { 1 }), "Leading combat icon remains visible");
 var cnAction = new ServerMessage(DateTime.UtcNow, ChatType.Action, Array.Empty<byte>(), Encoding.UTF8.GetBytes("星野光子发动了“冲刺”。"), new()) { Owner = cnSelf };
+byte[] PlayerLink(string name, bool crossWorld = false) {
+    var nameBytes = Encoding.UTF8.GetBytes(name);
+    var payload = new byte[] { 1, 1, 2, 1, 0xff, (byte)(nameBytes.Length + 1) }.Concat(nameBytes).ToArray();
+    return new byte[] { 2, 0x27, (byte)(payload.Length + 1) }.Concat(payload).Concat(new byte[] { 3 }).Concat(nameBytes)
+        .Concat(new byte[] { 2, 0x27, 7, 0xcf, 1, 1, 1, 0xff, 1, 3 })
+        .Concat(crossWorld ? worldIcon.Concat(Encoding.UTF8.GetBytes("Alpha")) : Array.Empty<byte>()).ToArray();
+}
+foreach (var emoteChannel in new[] { ChatType.StandardEmote, ChatType.CustomEmote }) {
+    var senderBytes = PlayerLink("路过旅人", true);
+    var bodyBytes = Encoding.UTF8.GetBytes("轻轻地给").Concat(PlayerLink("月下客", true)).Concat(Encoding.UTF8.GetBytes("顺了顺毛。")).ToArray();
+    var emote = new ServerMessage(DateTime.UtcNow, emoteChannel, senderBytes, bodyBytes,
+        XIVChatCommon.XivString.ToChunks(senderBytes).Concat(XIVChatCommon.XivString.ToChunks(bodyBytes)).ToList()) { Owner = cnSelf };
+    var beforeEmote = MessagePackSerializer.Serialize(emote);
+    var emoteView = new IdentityDisplay(new PrivacySettings { Enabled = true }, true, id => id == 1 ? "Alpha" : null);
+    var shown = string.Concat(emoteView.Chunks("cn-fixture", emote).OfType<TextChunk>().Select(c => c.Content));
+    Check(!shown.Contains("路过旅人") && !shown.Contains("月下客") && !shown.Contains("Alpha"), "Emote sender, linked target and worlds are hidden: " + emoteChannel);
+    Check(shown.Contains("轻轻地给") && shown.EndsWith("顺了顺毛。"), "Emote action wording remains intact: " + emoteChannel);
+    Check(!emoteView.Content("cn-fixture", emote).Contains("月下客") && !emoteView.ExportLine("cn-fixture", emote, false).Contains("Alpha"), "Emote history and export mask linked target: " + emoteChannel);
+    Check(!emoteView.Chunks("cn-fixture", emote).OfType<IconChunk>().Any(), "Emote world markers hidden: " + emoteChannel);
+    var selfEmoteView = new IdentityDisplay(new PrivacySettings { Enabled = true, HideOthers = false }, true, _ => "Alpha");
+    Equal(string.Concat(selfEmoteView.Chunks("cn-fixture", emote).OfType<TextChunk>().Select(c => c.Content)), emote.SenderText + emote.ContentText, "Self-only preserves other emote actors: " + emoteChannel);
+    Check(beforeEmote.SequenceEqual(MessagePackSerializer.Serialize(emote)), "Emote original bytes preserved: " + emoteChannel);
+}
 Equal(cnSelfOnly.Content("cn-fixture", cnAction), cnAction.ContentText, "Self-only mode leaves a longer unknown combat actor intact");
 var literalChat = new ServerMessage(DateTime.UtcNow, ChatType.Say, Array.Empty<byte>(), Encoding.UTF8.GetBytes("野渡烟发动了“冲刺”。"), new()) { Owner = cnSelf };
 Equal(cnView.Content("cn-fixture", literalChat), literalChat.ContentText, "Combat actor inference never rewrites ordinary chat or quoted prose");
@@ -210,6 +269,11 @@ try {
     SqliteConnection.ClearAllPools();
     // Only delete this test's newly-created, absolute, uniquely-named temporary directory.
     if (Path.GetDirectoryName(Path.GetFullPath(directory)) == Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar)) Directory.Delete(directory, true);
+}
+
+} catch (Exception ex) {
+    Console.Error.WriteLine(ex);
+    Environment.ExitCode = 1;
 }
 
 sealed class CountingWriter : TextWriter {

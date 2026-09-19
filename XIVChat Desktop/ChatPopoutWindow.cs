@@ -27,6 +27,7 @@ public sealed class ChatPopoutWindow : Window {
     private readonly TextBlock status = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Opacity = .8 };
     private readonly TextBlock historyStatus = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Opacity = .75 };
     private readonly Button send = new();
+    private readonly Controls.GameSymbolPicker symbols = new();
     private readonly Button older = new();
     private readonly Button returnMain = new();
     private readonly Button restoreDraft = new();
@@ -65,7 +66,7 @@ public sealed class ChatPopoutWindow : Window {
         Grid.SetRow(heading, 1); root.Children.Add(heading); Grid.SetRow(messages, 2); root.Children.Add(messages);
         var input = new StackPanel { Spacing = 6 }; input.Children.Add(composer); input.Children.Add(status);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
-        actions.Children.Add(restoreDraft); actions.Children.Add(send); input.Children.Add(actions); Grid.SetRow(input, 3); root.Children.Add(input);
+        symbols.Attach(composer); actions.Children.Add(restoreDraft); actions.Children.Add(symbols); actions.Children.Add(send); input.Children.Add(actions); Grid.SetRow(input, 3); root.Children.Add(input);
         Content = root; ThemeHelper.InitializeWindow(this);
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = state.Topmost;
         AppWindow.Changed += (_, e) => { if (e.DidPositionChange || e.DidSizeChange) workspace.ScheduleSave(); };
@@ -112,6 +113,7 @@ public sealed class ChatPopoutWindow : Window {
         privacyStatus.Text = L("Privacy.Active"); privacyStatus.Visibility = app.Presentation.Enabled ? Visibility.Visible : Visibility.Collapsed;
         returnMain.Content = L("Windows.ReturnMain"); older.Content = L("History.LoadOlder"); send.Content = L("Workbench.Send");
         restoreDraft.Content = L("Conversation.RestoreDraft"); composer.PlaceholderText = L("Workbench.TypeMessage");
+        symbols.Localize();
         menu.Flyout = BuildMenu(); messages.UpdateLocalizations(); UpdateReady();
         if (historyStateKey.Length > 0) SetHistoryStatus(historyStateKey, historyDetail);
     }

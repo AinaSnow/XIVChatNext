@@ -86,7 +86,10 @@ internal sealed class DesktopPrivacySmokeApp : App {
         Check(inside > 100 && outside == 0, $"{label}: rendered chat stays inside viewport ({inside} visible, {outside} escaped pixels; {list.ActualWidth} x {list.ActualHeight})");
     }
     private static async Task Capture(Window window, string path) {
-        var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync((FrameworkElement)window.Content);
+        await CaptureElement((FrameworkElement)window.Content, path);
+    }
+    private static async Task CaptureElement(FrameworkElement element, string path) {
+        var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(element);
         var buffer = await bitmap.GetPixelsAsync(); using var reader = DataReader.FromBuffer(buffer);
         var bytes = new byte[buffer.Length]; reader.ReadBytes(bytes); File.WriteAllBytes(path, Array.Empty<byte>());
         var file = await StorageFile.GetFileFromPathAsync(path); using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
@@ -188,6 +191,27 @@ internal sealed class DesktopPrivacySmokeApp : App {
             await Until(() => popout.Content.XamlRoot != null, "popout"); await Task.Delay(200);
             Check(popout.Title.StartsWith(alias) && !VisibleText(popout).Contains(peer.Name) && !VisibleText(popout).Contains(owner.Name), "Popout title, target and message text are masked");
             Check(VisibleText(popout).Contains(LocalizationHelper.GetString("Privacy.Active")), "Popout keeps a visible privacy indicator");
+            var symbolEditor = Control<TextBox>(main, "Composer");
+            var symbolPicker = Control<Controls.GameSymbolPicker>(main, "SymbolPicker");
+            symbolEditor.Text = "前选中后"; symbolEditor.Select(1, 2);
+            symbolPicker.Flyout.ShowAt(symbolPicker); await Task.Delay(120);
+            var symbolPanel = (FrameworkElement)((Flyout)symbolPicker.Flyout).Content;
+            await CaptureElement(symbolPanel, Path.Combine(AppContext.BaseDirectory, "game-symbol-picker.png"));
+            Invoke(Descendants<Button>(symbolPanel).Single(b => b.Tag as string == "\ue037")); await Task.Delay(150);
+            Check(symbolEditor.Text == "前\ue037后" && symbolEditor.SelectionStart == 2 && symbolEditor.SelectionLength == 0, "Symbol picker replaces selection and restores caret");
+            Check(model.Draft == symbolEditor.Text && !Control<Button>(main, "SendButton").IsEnabled, "Symbol selection saves draft without sending");
+            Check(Controls.GameSymbolPicker.Symbols.Distinct().Count() == 167 && Controls.GameSymbolPicker.Symbols.Contains(0xe038), "Catalog contains supported glyphs including new game symbols");
+            symbolEditor.MaxLength = 4; symbolEditor.Text = "1234"; symbolEditor.Select(4, 0);
+            symbolPicker.Flyout.ShowAt(symbolPicker); await Task.Delay(100);
+            Check(!symbolPicker.Insert("\ue048") && symbolEditor.Text == "1234", "Symbol insertion respects editor length limit");
+            symbolPicker.Flyout.Hide(); symbolEditor.MaxLength = 8192; symbolEditor.Text = "";
+            await Task.Delay(150); popout.Activate(); await Task.Delay(100);
+            var popoutPicker = Descendants<Controls.GameSymbolPicker>((DependencyObject)popout.Content).Single();
+            popout.Composer.Text = "小窗"; popout.Composer.Select(2, 0);
+            popoutPicker.Flyout.ShowAt(popoutPicker); await Task.Delay(100);
+            Invoke(Descendants<Button>((FrameworkElement)((Flyout)popoutPicker.Flyout).Content).Single(b => b.Tag as string == "\ue038")); await Task.Delay(100);
+            Check(popout.Composer.Text == "小窗\ue038" && popout.State.Draft == popout.Composer.Text, "Popout symbol picker inserts into its own saved draft");
+            popout.Composer.Text = "";
             var row = (await Session.Store.GetMessageAsync(message.LocalStorageId!))!;
             var history = new HistoryResult(row with { Note = "Ask Alice Snow and Bob Birch" }, "");
             Check(!history.Heading.Contains(owner.Name) && !history.Heading.Contains(peer.Name) && !history.Note.Contains(owner.Name), "History headings, message previews and notes are masked");
@@ -332,21 +356,25 @@ internal sealed class DesktopPrivacySmokeApp : App {
             Session.SetPlayer(new PlayerData("Alpha", "Alpha", "测试区域", cnOwner.Name) { Identity = cnOwner, OwnerEpoch = "cn-login" });
             Workbench.SetContext(Session.Source, cnOwner);
             var cnTab = Tab.Defaults()[1]; cnTab.Name = "国服战斗"; config.Tabs.Add(cnTab);
-            var cnBodies = new[] { "国服测试角色发动了“冲刺”。", "野渡烟正在发动“传送”。", "→ 对野渡烟附加了“冲刺”的效果。", "野渡烟的冲刺状态效果消失了。" };
-            var cnTypes = new[] { ChatType.Action, ChatType.Action, ChatType.GainBuff, ChatType.LoseBuff };
+            var cnBodies = new[] { "国服测试角色发动了“冲刺”。", "野渡烟正在发动“传送”。", "→ 对野渡烟附加了“冲刺”的效果。", "野渡烟的冲刺状态效果消失了。",
+                "远方旅人\ufffc琥珀原正在发动“传送”。", "  \ue06f 对远方旅人\ufffc琥珀原附加了“\ue0bb\ue05c冲刺”的效果。", "远方旅人\ufffc琥珀原的“\ue0bb\ue05c冲刺”状态效果消失了。" };
+            var cnTypes = new[] { ChatType.Action, ChatType.Action, ChatType.GainBuff, ChatType.LoseBuff, ChatType.Action, ChatType.GainBuff, ChatType.LoseBuff };
             for (int i = 0; i < cnBodies.Length; i++) {
-                var cnMessage = new ServerMessage(DateTime.UtcNow, cnTypes[i], Array.Empty<byte>(), Encoding.UTF8.GetBytes(cnBodies[i]),
-                    new() { new TextChunk(cnBodies[i]) }) { Owner = cnOwner, MessageId = "cn-combat-" + i, ServiceId = "cn", RunId = "cn", Sequence = i + 1 };
+                var bytes = cnBodies[i].Split('\ufffc').SelectMany((part, index) => (index == 0 ? Array.Empty<byte>() : new byte[] { 2, 0x12, 2, 89, 3 }).Concat(Encoding.UTF8.GetBytes(part))).ToArray();
+                var cnMessage = new ServerMessage(DateTime.UtcNow, cnTypes[i], Array.Empty<byte>(), bytes,
+                    XIVChatCommon.XivString.ToChunks(bytes)) { Owner = cnOwner, MessageId = "cn-combat-" + i, ServiceId = "cn", RunId = "cn", Sequence = i + 1 };
                 await Session.RecordAsync(cnMessage, "cn-fixture", true); Session.Add(cnMessage);
             }
             main.Navigate("channels"); Control<ListView>(main, "ChannelList").SelectedItem = cnTab; await Task.Delay(250);
             await Capture(main, Path.Combine(AppContext.BaseDirectory, "privacy-cn-battle.png"));
             Check(VisibleText(main).Contains("传送") && !VisibleText(main).Contains(cnOwner.Name) && !VisibleText(main).Contains("野渡烟"),
                 "Chinese Battle view masks self and unregistered actors while retaining ability text");
+            Check(!VisibleText(main).Contains("远方旅人") && !VisibleText(main).Contains("琥珀原"), "Battle hides cross-world actor and world across icon chunks");
             main.Navigate("history");
-            await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Count(r => r.Row.Source == "cn-fixture") == 4, "Chinese combat history");
+            await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Count(r => r.Row.Source == "cn-fixture") == cnBodies.Length, "Chinese combat history");
             await Task.Delay(200);
             Check(!VisibleText(main).Contains(cnOwner.Name) && !VisibleText(main).Contains("野渡烟"), "Chinese history hides actor slots after switching owner/source");
+            Check(!VisibleText(main).Contains("远方旅人") && !VisibleText(main).Contains("琥珀原"), "History hides cross-world actor and world");
             config.Privacy.Enabled = false; config.Save(); await Task.Delay(200);
             Check(VisibleText(main).Contains("野渡烟"), "Disabling streamer mode restores Chinese combat history");
             config.Privacy.Enabled = true; config.Save(); await Task.Delay(200);
@@ -357,8 +385,26 @@ internal sealed class DesktopPrivacySmokeApp : App {
                 displayLine: (r, timestamps) => cnSnapshot.ExportLine(r.Source, r.Message, timestamps));
             var cnExport = File.ReadAllText(file.Path);
             Check(cnExport.Contains("冲刺") && !cnExport.Contains("野渡烟") && !cnExport.Contains(cnOwner.Name), "Chinese combat export uses the same actor protection as the windows");
+            Check(!cnExport.Contains("远方旅人") && !cnExport.Contains("琥珀原"), "Export hides cross-world actor and world");
             var originals = await Session.Store.SearchAsync(new(Source: "cn-fixture"));
-            Check(originals.Count == 4 && originals.All(r => cnBodies.Contains(r.Message.ContentText)), "Chinese history payloads remain original after projection and export");
+            Check(originals.Count == cnBodies.Length && originals.All(r => cnBodies.Select(b => b.Replace("\ufffc", "")).Contains(r.Message.ContentText)), "Chinese history payloads remain original after projection and export");
+            // Real shape of custom emotes: the sender is separate, targets carry player links.
+            byte[] EmotePlayer(string name) {
+                var nameBytes = Encoding.UTF8.GetBytes(name);
+                var payload = new byte[] { 1, 1, 0xf2, 4, 0x52, 1, 0xff, (byte)(nameBytes.Length + 1) }.Concat(nameBytes).ToArray();
+                return new byte[] { 2, 0x27, (byte)(payload.Length + 1) }.Concat(payload).Concat(new byte[] { 3 }).Concat(nameBytes)
+                    .Concat(new byte[] { 2, 0x27, 7, 0xcf, 1, 1, 1, 0xff, 1, 3, 2, 0x12, 2, 89, 3 }).Concat(Encoding.UTF8.GetBytes("静语庄园")).ToArray();
+            }
+            var emoteSender = EmotePlayer("路过旅人");
+            var emoteBody = Encoding.UTF8.GetBytes("轻轻地给").Concat(EmotePlayer("月下客")).Concat(Encoding.UTF8.GetBytes("顺了顺毛。")).ToArray();
+            var emoteMessage = new ServerMessage(DateTime.UtcNow, ChatType.CustomEmote, emoteSender, emoteBody,
+                XIVChatCommon.XivString.ToChunks(emoteSender).Concat(XIVChatCommon.XivString.ToChunks(emoteBody)).ToList()) { Owner = cnOwner, MessageId = "cn-emote", Sequence = 100, ServiceId = "cn", RunId = "cn" };
+            await Session.RecordAsync(emoteMessage, "cn-fixture", true); Session.Add(emoteMessage);
+            main.Navigate("channels"); Control<ListView>(main, "ChannelList").SelectedItem = config.Tabs.First(t => t.Name == "General"); await Task.Delay(200);
+            Check(VisibleText(main).Contains("顺了顺毛") && !VisibleText(main).Contains("月下客") && !VisibleText(main).Contains("路过旅人") && !VisibleText(main).Contains("静语庄园"), "Emote window hides sender, target and cross-world names");
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "privacy-cn-emote.png"));
+            main.Navigate("history"); await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Any(r => r.Row.Message.MessageId == "cn-emote"), "emote history");
+            Check(!VisibleText(main).Contains("月下客") && !VisibleText(main).Contains("静语庄园"), "Emote history uses linked player protection");
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {

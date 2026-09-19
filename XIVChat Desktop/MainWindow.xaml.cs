@@ -110,6 +110,7 @@ namespace XIVChat_Desktop {
             UpdateCardLocalizations();
             GlobalSearch.PlaceholderText = L("Workbench.Search"); ListSearch.PlaceholderText = L("Workbench.Filter");
             SendButton.Content = L("Workbench.Send"); RestoreDraftButton.Content = L("Conversation.RestoreDraft");
+            SymbolPicker.Attach(Composer); SymbolPicker.Localize();
             RefreshFriendsButton.Content = L("FriendList.Refresh");
             ToolTipService.SetToolTip(SettingsButton, L("Menu.Config"));
             ToolTipService.SetToolTip(AddViewButton, L("Workbench.Add"));
@@ -385,6 +386,7 @@ namespace XIVChat_Desktop {
             UpdatePlayerDisplay();
             Composer.PlaceholderText = L("Workbench.TypeMessage");
             Composer.IsEnabled = model != null || connection?.Available == true;
+            SymbolPicker.IsEnabled = Composer.IsEnabled;
             var canTell = model != null && model.State.Source == App.Session.Source && model.State.OwnerKey == player?.Identity?.Key && connection?.Available == true && connection.SupportsDirectedTell;
             SendButton.IsEnabled = !string.IsNullOrWhiteSpace(Composer.Text) && (model != null ? canTell : connection?.Available == true && selectedChannel != null);
             ChannelSwitchButton.Visibility = V(model == null); ChannelSwitchButton.Content = connection?.CurrentChannel ?? L("Workbench.Channel"); ChannelSwitchButton.IsEnabled = connection?.Available == true;

@@ -65,3 +65,15 @@ History content now calls the same message-aware projection used by chat chunks 
 - These tests used synthetic Chinese identities and examples from the supplied screenshot. They do not claim live verification on the user's CN game session. No player chat was sent or online release performed.
 
 Newest local package: `artifacts/desktop-1.4.0-cn-privacy-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip`. SHA-256: `f84c5959ac200dcf238a4471eea6f67fe77f1a3936cb5b7873a44921f679af57`.
+
+## Cross-world names, linked emotes and symbol picker — 2026-09-19
+
+The live CN screenshot and window inspection exposed a missing case: a cross-world icon separates actor and world into different chunks. Plain-text history omitted that icon while chat matching treated it as a barrier. Added an icon-aware actor span and removed the world marker together with hidden names, preserving unrelated ability icons. Linked player payloads now provide exact target boundaries for standard/custom emotes and other linked body text. World IDs resolve through the existing desktop world table; snapshots retain the same resolver. Custom emote sender prefixes are explicitly masked without relying on a whitespace boundary.
+
+- 147 core/storage checks passed, including real icon payload encoding, split rendering, self-only/others-only policies, retained ability icons, linked emote sender/target/worlds, unchanged raw payloads and export consistency.
+- 68 WinUI checks passed in a separate fixture. Verified Battle, history, emotes, exports and original stored data. Symbol-picker checks cover selection replacement, caret restoration, length limits, draft persistence and independent popout editing without sending.
+- A read-only audit of the three actual CN emote records confirmed masked sender/target/worlds with action wording preserved. No original records were edited. The initial audit's sandbox database access failure and the intentionally failing core regression caused two Windows error dialogs; both console programs now catch exceptions and return exit code 1 normally.
+- The symbol picker follows the public Lodestone E000–E11F range, filtering to the bundled font's 165 assigned glyphs plus two brackets. It includes E037/E038. Main/popout composers use the game font and preserve normal insertion/send behavior. Inspected the rendered picker and Chinese emote screenshots. Actual in-game sending of these symbols remains for the user to verify.
+- Restored the normal Debug entry point; the self-contained production package contains no fixture entry point. No plugin/protocol/schema changes, online release or push.
+
+Newest package: `artifacts/desktop-1.4.0-symbols-emote-fix/XIVChatNext-Desktop-v1.4.0-win-x64.zip`. SHA-256: `e412b22ca2881e8631a8a78f886fec0e32c90b9012c9afc42cfda3b4813bb03b`.

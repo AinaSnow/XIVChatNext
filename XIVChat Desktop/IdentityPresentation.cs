@@ -21,7 +21,7 @@ public sealed class IdentityPresentation {
     public bool Enabled => app.Config.Privacy.Enabled;
     public IdentityPresentation(App app) {
         this.app = app;
-        Engine = new(app.Config.Privacy, LocalizationHelper.LanguageCode == "zh-CN");
+        Engine = new(app.Config.Privacy, LocalizationHelper.LanguageCode == "zh-CN", Util.WorldName);
         Engine.ProfileGenerated += profile => {
             if (app.Session.Store is { } store) Track(store.SaveContactPseudonymAsync(profile));
         };

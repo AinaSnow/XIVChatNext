@@ -13,6 +13,8 @@
 - Added an explicit, resize-aware clip to the shared chat list to prevent disconnect messages painting over the return-to-latest button and composer in main/popout windows.
 - Disabled staggered chat-row insertion animations, which temporarily left a newly opened popout blank during message bursts. Expanded the Windows suite to cover drafts, offline send protection, outbound packet guards and off-screen window recovery.
 - Fixed Chinese character names adjacent to generated game prose. Chinese combat actor slots without sender identity now use a neutral alias when hiding others; live chat rendering, history previews and exports share that protection.
+- Fixed cross-world actor names separated by icon chunks, and emote sender/target leaks. Embedded player links now identify targets precisely; their worlds and cross-world markers are hidden with their names.
+- Added a game-symbol picker beside Send in main/popout composers. It inserts supported FFXIV Unicode glyphs at the cursor or replaces the selection, preserving drafts without sending.
 
 Live follow-up: fixed masking of Latin character names adjoining Japanese particles or Chinese prose (for example `Alice Snowの攻撃`). Added seven regression checks, including export/rendering and partial-name safeguards. See [live validation](docs/development/VALIDATION-1.4.0.md).
 
@@ -30,6 +32,8 @@ Initial validation: 55 core/storage checks and 25 Windows UI checks, including b
 - 为主窗口和聊天小窗共用的消息列表补充随尺寸更新的裁剪边界，防止断线消息穿过列表、叠到“回到最新消息”和输入框上。
 - 取消聊天消息逐条入场动画，避免新开小窗在大量消息到达时暂时空白；补测草稿保存、离线发送保护、发送报文校验及屏外窗口恢复。
 - 修复国服中文角色名紧接战斗正文时的主播模式遗漏。没有发送者身份的中文战斗角色位置在隐藏他人时使用通用匿名名称，实时列表、历史预览与导出使用相同规则。
+- 修复跨服图标分隔姓名导致的遗漏，并补齐感情动作发起者和目标的保护；角色链接中的姓名、服务器与跨服标记一起隐藏。
+- 主窗口和聊天小窗的发送按钮左侧新增游戏符号面板，支持在光标处插入或替换选中文字，保存到草稿，不会自动发送。
 
 后续实机检查修复了日文助词、中文正文紧接拉丁角色名时的脱敏遗漏，例如 `Alice Snowの攻撃`。补充 7 项回归检查，覆盖显示、导出和姓名前缀保护，详见[实测记录](docs/development/VALIDATION-1.4.0.md)。
 

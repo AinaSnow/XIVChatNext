@@ -47,6 +47,7 @@ public sealed class IdentityDisplay {
     private readonly object gate = new();
     private PrivacySettings settings;
     private bool chinese;
+    private readonly Func<ushort, string?>? worldName;
     private readonly Dictionary<(string Source, string Owner, string Peer), ContactDisplayProfile> profiles = new();
     private readonly Dictionary<(string Source, string Owner), Dictionary<string, CharacterIdentity>> known = new();
     private readonly Dictionary<(string Source, string Owner), CharacterIdentity> owners = new();
@@ -58,7 +59,8 @@ public sealed class IdentityDisplay {
     public bool Enabled { get { lock (gate) return settings.Enabled; } }
     public string Anonymous { get { lock (gate) return chinese ? "匿名玩家" : "Anonymous player"; } }
 
-    public IdentityDisplay(PrivacySettings settings, bool chinese = false) {
+    public IdentityDisplay(PrivacySettings settings, bool chinese = false, Func<ushort, string?>? worldName = null) {
+        this.worldName = worldName;
         this.settings = settings.Copy(); this.settings.Validate(); this.chinese = chinese;
     }
     public void Configure(PrivacySettings value, bool useChinese) {
@@ -67,7 +69,7 @@ public sealed class IdentityDisplay {
     }
     public IdentityDisplay Snapshot() {
         lock (gate) {
-            var snapshot = new IdentityDisplay(settings, chinese);
+            var snapshot = new IdentityDisplay(settings, chinese, worldName);
             foreach (var profile in profiles.Values) snapshot.Restore(profile);
             foreach (var pair in owners) snapshot.owners[pair.Key] = ConversationIdentity.Copy(pair.Value);
             foreach (var pair in known) snapshot.known[pair.Key] = pair.Value.ToDictionary(p => p.Key, p => ConversationIdentity.Copy(p.Value));
@@ -237,29 +239,33 @@ public sealed class IdentityDisplay {
     // simply because they have never chatted. Unknown actors use the neutral alias.
     private const string CombatNameChars = @"[\p{L}\p{M}\p{Nd}'’·・ .-]";
     private const string CombatName = CombatNameChars + "{1,64}?";
+    private const string CombatActor = @"(?<name>" + CombatName + @")(?:\uFFFC(?<world>" + CombatName + @"))?";
+    private const string CombatStatusActor = @"(?<name>" + CombatNameChars + @"{1,64})(?:\uFFFC(?<world>" + CombatNameChars + @"{1,64}))?";
     private static readonly Regex[] CombatActors = {
-        new(@"^[\s\uFFFC\uE000-\uF8FF→⇒►]*(?<actor>" + CombatName + @")(?=正在发动|发动了|发动[“「]|附加了|失去了|恢复了|的攻击)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
-        new(@"^[\s\uFFFC\uE000-\uF8FF→⇒►]*对(?<actor>" + CombatName + @")(?=附加了|造成了|恢复了)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
-        new(@"^[\s\uFFFC\uE000-\uF8FF→⇒►]*(?<actor>" + CombatNameChars + @"{1,64})的(?=.+(?:状态效果消失了|效果消失了|状态效果延长了))", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
-        new(@"对(?<actor>" + CombatName + @")(?=造成了\d|恢复了\d)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
+        new(@"^[\s\uFFFC\uFFFD\uE000-\uF8FF→⇒►]*(?<actor>" + CombatActor + @")(?=正在发动|发动了|发动[“「]|附加了|失去了|恢复了|的攻击)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
+        new(@"^[\s\uFFFC\uFFFD\uE000-\uF8FF→⇒►]*对(?<actor>" + CombatActor + @")(?=附加了|造成了|恢复了)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
+        new(@"^[\s\uFFFC\uFFFD\uE000-\uF8FF→⇒►]*(?<actor>" + CombatStatusActor + @")的(?=.+(?:状态效果消失了|效果消失了|状态效果延长了))", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
+        new(@"对(?<actor>" + CombatActor + @")(?=造成了\d|恢复了\d)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)),
     };
     private IEnumerable<Edit> CombatEdits(DisplayContext context, string text, ServerMessage message) {
         if (((ushort)message.Channel & 127) is < 41 or > 49) yield break;
         foreach (var pattern in CombatActors) foreach (Match match in pattern.Matches(text)) {
             var slot = match.Groups["actor"];
-            var name = slot.Value.Trim();
+            var name = match.Groups["name"].Value.Trim();
+            var world = match.Groups["world"].Value.Trim();
             if (name.Length == 0) continue;
             var candidates = known.GetValueOrDefault((context.Source, context.OwnerKey))?.Values
-                .Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)).ToArray() ?? Array.Empty<CharacterIdentity>();
+                .Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase) &&
+                    (world.Length == 0 || string.Equals(p.HomeWorld, world, StringComparison.OrdinalIgnoreCase))).ToArray() ?? Array.Empty<CharacterIdentity>();
             bool hidden = candidates.Length == 0 ? settings.HideOthers : candidates.Any(p => Hidden(context, p));
-            string replacement = name;
+            string replacement = slot.Value;
             if (hidden) {
                 var labels = candidates.Select(p => Identity(context, p, false).Name).Distinct().ToArray();
                 replacement = labels.Length == 1 ? labels[0] : Anonymous;
             }
             // Include visible actors as well: a longer name must win over a shorter
             // known name that happens to be its prefix, including self-only mode.
-            yield return new(slot.Index + slot.Value.IndexOf(name, StringComparison.Ordinal), name.Length, replacement);
+            yield return new(slot.Index, slot.Length, replacement);
         }
     }
     private List<Edit> Edits(DisplayContext context, string text, ServerMessage? message = null) {
@@ -275,11 +281,38 @@ public sealed class IdentityDisplay {
             }
             if (message != null) foreach (var actor in CombatEdits(context, text, message)) {
                 result.RemoveAll(e => e.Start < actor.Start + actor.Length && actor.Start < e.Start + e.Length);
-                result.Add(actor);
+                if (actor.Text != text.Substring(actor.Start, actor.Length)) result.Add(actor);
+            }
+            if (message != null) foreach (var linked in LinkedEdits(context, text, message)) {
+                result.RemoveAll(e => e.Start < linked.Start + linked.Length && linked.Start < e.Start + e.Length);
+                if (linked.Text != text.Substring(linked.Start, linked.Length)) result.Add(linked);
             }
         } catch (RegexMatchTimeoutException) { return new() { new(0, text.Length, Anonymous) }; }
         result.Sort((a, b) => a.Start.CompareTo(b.Start));
         return result;
+    }
+    private IEnumerable<Edit> LinkedEdits(DisplayContext context, string text, ServerMessage message) {
+        var body = ChunkText(XivString.ToChunks(message.Content));
+        if (!text.EndsWith(body, StringComparison.Ordinal)) yield break;
+        int bodyStart = text.Length - body.Length;
+        // Custom emotes concatenate the sender with prose without a word boundary.
+        if (bodyStart > 0 && (ChatType)((ushort)message.Channel & 127) is ChatType.StandardEmote or ChatType.CustomEmote && Sender(context, message) is { } sender) {
+            int at = text.IndexOf(sender.Name, StringComparison.Ordinal);
+            if (at >= 0 && at + sender.Name.Length <= bodyStart && Hidden(context, sender)) {
+                int length = sender.Name.Length;
+                var world = sender.HomeWorld.Length > 0 ? sender.HomeWorld : worldName?.Invoke(sender.HomeWorldId) ?? "";
+                if (world.Length > 0 && text.AsSpan(at + length).StartsWith(("\ufffc" + world).AsSpan(), StringComparison.Ordinal)) length += world.Length + 1;
+                yield return new(at, length, Identity(context, sender, false).Name);
+            }
+        }
+        foreach (var link in LinkedPlayerText.Read(message.Content, worldName)) {
+            int at = bodyStart + link.Start, length = link.Length;
+            if (at + length > text.Length || text.Substring(at, length) != link.Player.Name) continue;
+            var world = link.Player.HomeWorld;
+            if (world.Length > 0 && text.AsSpan(at + length).StartsWith(("\ufffc" + world).AsSpan(), StringComparison.Ordinal)) length += world.Length + 1;
+            var label = Hidden(context, link.Player) ? Identity(context, link.Player, false).Name : text.Substring(at, length);
+            yield return new(at, length, label);
+        }
     }
     private static string Apply(string text, IEnumerable<Edit> edits, int start, int length) {
         var result = new StringBuilder(); int cursor = start, end = start + length;
@@ -301,9 +334,28 @@ public sealed class IdentityDisplay {
     public string Content(string source, ServerMessage message) {
         lock (gate) {
             var context = Observe(source, message);
-            var text = message.ContentText;
-            return Apply(text, Edits(context, text, message), 0, text.Length);
+            if (!settings.Enabled) return message.ContentText;
+            // Preserve icon boundaries while matching, then omit icons from plain text.
+            // ContentText alone joins a cross-world name directly to its world name.
+            return string.Concat(ProjectChunks(context, XivString.ToChunks(message.Content), message).OfType<TextChunk>().Select(c => c.Content));
         }
+    }
+    private static string ChunkText(IEnumerable<Chunk> chunks) => string.Concat(chunks.Select(c => c is TextChunk t ? t.Content : c is IconChunk { index: 88 } ? "\ufffc" : "\ufffd"));
+    private IReadOnlyList<Chunk> ProjectChunks(DisplayContext context, IReadOnlyList<Chunk> source, ServerMessage message) {
+        var text = ChunkText(source);
+        return ApplyChunks(source, text, Edits(context, text, message));
+    }
+    private static IReadOnlyList<Chunk> ApplyChunks(IReadOnlyList<Chunk> source, string text, List<Edit> edits) {
+        var chunks = new List<Chunk>(); int offset = 0;
+        foreach (var chunk in source) {
+            if (chunk is TextChunk part) { chunks.Add(part.WithContent(Apply(text, edits, offset, part.Content.Length))); offset += part.Content.Length; }
+            else {
+                // A redacted actor includes its cross-world icon; unrelated icons survive.
+                if (!edits.Any(e => e.Start <= offset && offset < e.Start + e.Length)) chunks.Add(chunk);
+                offset++;
+            }
+        }
+        return chunks;
     }
     public string SenderLabel(DisplayContext context, ServerMessage message, bool nickname = true) {
         lock (gate) {
@@ -316,7 +368,7 @@ public sealed class IdentityDisplay {
         lock (gate) {
             var context = Observe(source, message);
             // Icon separators prevent joining characters across an actual visible icon.
-            var text = string.Concat(message.Chunks.Select(c => c is TextChunk t ? t.Content : "\ufffc"));
+            var text = ChunkText(message.Chunks);
             var edits = Edits(context, text, message);
             var sender = Sender(context, message);
             if (sender != null && !Hidden(context, sender)) {
@@ -327,12 +379,7 @@ public sealed class IdentityDisplay {
                     edits.Add(new(at, sender.Name.Length, name));
             }
             edits.Sort((a, b) => a.Start.CompareTo(b.Start));
-            var chunks = new List<Chunk>(); int offset = 0;
-            foreach (var chunk in message.Chunks) {
-                if (chunk is TextChunk part) { chunks.Add(part.WithContent(Apply(text, edits, offset, part.Content.Length))); offset += part.Content.Length; }
-                else { chunks.Add(chunk); offset++; }
-            }
-            return chunks;
+            return ApplyChunks(message.Chunks, text, edits);
         }
     }
     public string ExportLine(string source, ServerMessage message, bool timestamps) {
