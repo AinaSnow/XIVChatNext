@@ -784,4 +784,24 @@
   <data name="Contact.NicknameHelp" xml:space="preserve"><value>Shown only on this computer. Up to 64 characters; clear to restore the character name.</value></data>
   <data name="Contact.SaveFailed" xml:space="preserve"><value>Nickname was not saved. Use a single line of up to 64 characters and check that local data is writable.</value></data>
   <data name="Conversation.TargetPrivate" xml:space="preserve"><value>Tell target: {0}</value></data>
+  <data name="Update.Title" xml:space="preserve"><value>Updates</value></data>
+  <data name="Update.CurrentVersion" xml:space="preserve"><value>Current client: {0}</value></data>
+  <data name="Update.Automatic" xml:space="preserve"><value>Check for updates at startup</value></data>
+  <data name="Update.Help" xml:space="preserve"><value>Checks public GitHub releases. No chat or character information is sent. You can turn off startup checks and check manually.</value></data>
+  <data name="Update.Check" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="Update.Checking" xml:space="preserve"><value>Checking for updates…</value></data>
+  <data name="Update.Current" xml:space="preserve"><value>No newer client version is available.</value></data>
+  <data name="Update.Failed" xml:space="preserve"><value>Could not check for updates. Check your connection and try again later. Chat is unaffected.</value></data>
+  <data name="Update.Found" xml:space="preserve"><value>A new client version is available.</value></data>
+  <data name="Update.Idle" xml:space="preserve"><value>Check for a newer client version.</value></data>
+  <data name="Update.Available" xml:space="preserve"><value>Client {0} is available</value></data>
+  <data name="Update.Details" xml:space="preserve"><value>View update</value></data>
+  <data name="Update.BannerHint" xml:space="preserve"><value>Review what changed and download when convenient.</value></data>
+  <data name="Update.Download" xml:space="preserve"><value>Download Windows client</value></data>
+  <data name="Update.ReleasePage" xml:space="preserve"><value>Open release page</value></data>
+  <data name="Update.InstallHint" xml:space="preserve"><value>Download and extract to a new folder. Close the current client before running the new one. Your local settings and history are kept.</value></data>
+  <data name="Update.Notes" xml:space="preserve"><value>Release notes</value></data>
+  <data name="Update.NoNotes" xml:space="preserve"><value>See the release page for details.</value></data>
+  <data name="Update.SaveFailed" xml:space="preserve"><value>Could not save this preference. The previous setting was restored.</value></data>
+  <data name="Update.OpenFailed" xml:space="preserve"><value>Could not open the browser. Please try again.</value></data>
 </root>

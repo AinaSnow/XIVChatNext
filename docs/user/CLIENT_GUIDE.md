@@ -43,6 +43,12 @@ The same display rules apply to known complete names in chat text, previews, his
 
 **This is not automatic image or free-text redaction.** Game screenshots remain unchanged. Unknown nicknames, unrecognized names, images, search fields and text you type may still identify someone. Turn streamer mode off to edit stored notes, nicknames or avatar mappings; an open identity editor closes when it is enabled. The database keeps original messages. Check the actual screen or export before sharing.
 
+### Update checks (Desktop 1.4.1 preview)
+
+The client checks public GitHub releases shortly after startup. If a newer Windows client is available, a dismissible banner opens **Settings → Updates**, where you can read the release notes and open the download. This page also shows the current version and a **Check for updates** button. Turn off **Check for updates at startup** to use manual checks only; the preference saves immediately. Failed checks do not interrupt chat.
+
+Only stable Windows desktop packages are compared, independently of plugin version tags. Checking sends no chat or character information. Downloads open in your browser; extract into a new folder and close the current client before starting the new version. The client does not replace itself automatically.
+
 ### Data and upgrades
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
@@ -99,6 +105,12 @@ Live sending, friends and screenshots require the game, logged-in character and 
 点击发送按钮左侧的笑脸可打开“游戏符号”，主窗口和聊天小窗都支持。选中符号会插入光标位置，或替换输入框中的选中文字；随后仍需自己发送。面板收录当前字体可显示的 165 个游戏专用字符和《》两个括号，含 Lodestone 所述的新字符；未分配的空位不列入候选。范围参考 [Lodestone 符号清单](https://jp.finalfantasyxiv.com/lodestone/character/52670623/blog/5654118/)，游戏内最终显示取决于游戏版本。
 
 **游戏截图不会自动打码。** 未知昵称、无法识别的姓名、图片、搜索框和你正在输入的内容仍可能包含身份信息。主播模式开启时不能编辑备注名、原有备注或头像绑定，已经打开的相关编辑框会关闭。本地数据库仍保留原始消息。分享前请检查实际画面或导出文件。
+
+### 更新检查（客户端 1.4.1 测试版）
+
+客户端启动后会在后台检查 GitHub 上的公开版本。发现新版 Windows 客户端时，主窗口显示可关闭的提示，点击后进入“设置 → 更新”，查看更新说明或打开下载。这一页也会显示当前版本，并提供“检查更新”按钮。关闭“启动时检查更新”后只保留手动检查，选项立即保存；检查失败不影响聊天。
+
+只比较正式发布的 Windows 客户端安装包，不会把插件版本号当成客户端更新，也不发送聊天或角色信息。下载在浏览器中打开，解压到新文件夹后，先关闭当前客户端再启动新版；程序不会自动覆盖自己。
 
 ### 数据与升级
 

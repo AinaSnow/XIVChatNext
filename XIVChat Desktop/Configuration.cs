@@ -64,6 +64,7 @@ namespace XIVChat_Desktop {
         // Zero means keep forever. Turning history off stops new persistence.
         public int HistoryRetentionDays { get; set; } = 90;
         public bool OnlineAvatars { get; set; } = true;
+        public bool CheckForUpdatesOnStartup { get; set; } = true;
         public XIVChatCommon.Presentation.PrivacySettings Privacy { get; set; } = new();
 
         private double opacity = 1.0;

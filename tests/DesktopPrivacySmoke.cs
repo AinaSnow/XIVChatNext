@@ -150,14 +150,20 @@ internal sealed class DesktopPrivacySmokeApp : App {
             config.Privacy.Enabled = true; config.Privacy.SelfName = "Host";
             config.NotificationOptions.LoginLogout = true;
             typeof(App).GetProperty(nameof(Config))!.SetValue(this, config);
+            int updateCalls = 0;
+            var updateResponse = new TaskCompletionSource<DesktopRelease>();
+            var updates = new DesktopUpdates(new Version(1, 4, 1), _ => { updateCalls++; return updateResponse.Task; });
+            typeof(App).GetField("updates", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(this, updates);
             LocalizationHelper.Initialize(AppLanguage.English);
             config.Save();
             var deserialize = typeof(Configuration).GetMethod("Deserialize", BindingFlags.Static | BindingFlags.NonPublic)!;
             var reloaded = (Configuration)deserialize.Invoke(null, new object[] { File.ReadAllText(config.FilePathOverride!) })!;
             Check(reloaded.Privacy.Enabled && reloaded.Privacy.Seed == config.Privacy.Seed && reloaded.Privacy.SelfName == "Host", "Saved privacy settings restore before the first window");
             var legacy = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(config.FilePathOverride!)); legacy.Remove("Privacy");
+            legacy.Remove("CheckForUpdatesOnStartup");
             var upgraded = (Configuration)deserialize.Invoke(null, new object[] { legacy.ToString() })!;
             Check(!upgraded.Privacy.Enabled && upgraded.Privacy.HideSelf && upgraded.Privacy.HideOthers, "Old configs receive safe opt-in defaults");
+            Check(upgraded.CheckForUpdatesOnStartup, "Existing configs receive the default startup update check");
             Session.Store = await HistoryStore.OpenAsync(Path.Combine(fixture, "history.sqlite3"));
             await Presentation.InitializeAsync();
             var owner = new CharacterIdentity { ContentId = 7101, Name = "Alice Snow", HomeWorldId = 1, HomeWorld = "Alpha" };
@@ -405,6 +411,40 @@ internal sealed class DesktopPrivacySmokeApp : App {
             await Capture(main, Path.Combine(AppContext.BaseDirectory, "privacy-cn-emote.png"));
             main.Navigate("history"); await Until(() => Control<ListView>(main, "HistoryList").Items.OfType<HistoryResult>().Any(r => r.Row.Message.MessageId == "cn-emote"), "emote history");
             Check(!VisibleText(main).Contains("月下客") && !VisibleText(main).Contains("静语庄园"), "Emote history uses linked player protection");
+            var updateWindow = new ConfigWindow(config); updateWindow.ShowUpdates(); updateWindow.Activate();
+            await Task.Delay(200);
+            Check(Control<TextBlock>(updateWindow, "UpdateCurrentVersion").Text == "当前客户端：1.4.1", "Update settings show the actual desktop version in Chinese");
+            Check(!Control<InfoBar>(main, "UpdateBanner").IsOpen, "No update banner is shown before a newer desktop is known");
+            Invoke(Control<Button>(updateWindow, "CheckUpdatesButton")); await Task.Delay(100);
+            Check(!Control<Button>(updateWindow, "CheckUpdatesButton").IsEnabled && Control<TextBlock>(updateWindow, "UpdateStatus").Text == "正在检查更新…", "Manual update check shows progress and disables repeat clicks");
+            var secondSettings = new ConfigWindow(config); secondSettings.ShowUpdates(); secondSettings.Activate(); await Task.Delay(100);
+            Check(!Control<Button>(secondSettings, "CheckUpdatesButton").IsEnabled && updateCalls == 1, "Multiple settings windows share the ongoing request");
+            updateResponse.SetResult(new DesktopRelease(new Version(1, 4, 2, 0), new Uri("https://github.com/AinaSnow/XIVChatNext/releases/tag/desktop-1.4.2"),
+                new Uri("https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.4.2/XIVChatNext-Desktop-v1.4.2-win-x64.zip"), "测试更新说明：更新检测与窗口改进。\nTest release notes."));
+            await Until(() => Control<InfoBar>(main, "UpdateBanner").IsOpen, "update banner");
+            Check(Control<StackPanel>(updateWindow, "UpdateAvailablePanel").Visibility == Visibility.Visible
+                && Control<TextBlock>(updateWindow, "UpdateReleaseNotes").Text.Contains("测试更新说明"), "Settings show the new version, notes and download controls");
+            Check(Control<InfoBar>(main, "UpdateBanner").Title == "客户端 1.4.2 可更新", "Main window shows a nonmodal Chinese update banner");
+            Control<CheckBox>(updateWindow, "AutoUpdateCheck").IsChecked = false;
+            var savedUpdateConfig = (Configuration)deserialize.Invoke(null, new object[] { File.ReadAllText(config.FilePathOverride!) })!;
+            Check(!savedUpdateConfig.CheckForUpdatesOnStartup && Control<CheckBox>(secondSettings, "AutoUpdateCheck").IsChecked == false, "Automatic-check preference saves immediately and synchronizes open settings");
+            secondSettings.Close(); updateWindow.Activate(); await Task.Delay(200);
+            await Capture(updateWindow, Path.Combine(AppContext.BaseDirectory, "updates-settings-zh.png"));
+            main.Activate(); await Task.Delay(200);
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "updates-banner-zh.png"));
+            var closeUpdate = Descendants<Button>(Control<InfoBar>(main, "UpdateBanner")).Single(b => b.Name == "CloseButton");
+            Invoke(closeUpdate); await Task.Delay(100);
+            Check(!Control<InfoBar>(main, "UpdateBanner").IsOpen, "Update reminder can be dismissed without opening settings or downloading");
+            LocalizationHelper.ApplyLanguage(AppLanguage.English); await Task.Delay(100);
+            Check(Control<TextBlock>(updateWindow, "UpdateCurrentVersion").Text == "Current client: 1.4.1"
+                && Control<InfoBar>(main, "UpdateBanner").Title == "Client 1.4.2 is available", "Update settings and banner change language together");
+            Check(!Control<InfoBar>(main, "UpdateBanner").IsOpen, "Changing language does not reopen a dismissed reminder");
+            updateWindow.Activate(); await Task.Delay(100);
+            await Capture(updateWindow, Path.Combine(AppContext.BaseDirectory, "updates-settings-en.png"));
+            updateWindow.Close();
+            updateResponse = new TaskCompletionSource<DesktopRelease>();
+            var failedUpdate = updates.CheckAsync(); updateResponse.SetException(new System.Net.Http.HttpRequestException("test offline")); await failedUpdate;
+            Check(updates.State == UpdateCheckState.Failed && updates.HasUpdate && !Control<InfoBar>(main, "UpdateBanner").IsOpen, "Closed settings unsubscribe and a failed recheck retains the known update without reopening a dismissed banner");
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {

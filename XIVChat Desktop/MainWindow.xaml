@@ -14,7 +14,7 @@
                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="8,6"/>
             </Style>
         </Grid.Resources>
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border Padding="10,8" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -52,7 +52,10 @@
                 </Button>
             </Grid>
         </Border>
-        <Grid Grid.Row="1">
+        <InfoBar x:Name="UpdateBanner" Grid.Row="1" IsOpen="False" Severity="Informational" IsClosable="True" Closed="UpdateBanner_Closed">
+            <InfoBar.ActionButton><Button x:Name="UpdateDetailsButton" Click="UpdateDetails_Click"/></InfoBar.ActionButton>
+        </InfoBar>
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions><ColumnDefinition Width="66"/><ColumnDefinition x:Name="SidebarColumn" Width="252"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0" Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
                 <Grid Margin="3,12,3,8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -176,7 +179,7 @@
                 <ProgressRing x:Name="Busy" Width="28" Height="28" IsActive="False" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"/>
             </Grid>
         </Grid>
-        <Border Grid.Row="2" Padding="14,5" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+        <Border Grid.Row="3" Padding="14,5" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <TextBlock x:Name="FooterStatus" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><TextBlock x:Name="LoggedInAsSeparator" Visibility="Collapsed" Text="|"/><TextBlock x:Name="CurrentWorld" FontSize="11"/><TextBlock x:Name="CurrentWorldSeparator" Visibility="Collapsed" Text="|"/><HyperlinkButton x:Name="LocationBtn" Click="LocationBtn_Click" Padding="2,0" Visibility="Collapsed"><TextBlock x:Name="Location" FontSize="11"/></HyperlinkButton></StackPanel>

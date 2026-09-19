@@ -13,6 +13,7 @@ namespace XIVChat_Desktop {
             this.Config = config;
 
             this.InitializeComponent();
+            InitializeUpdates();
             LoadPrivacySettings();
             ((App)Application.Current).Presentation.PolicyChanged += LoadPrivacySettings;
             this.Closed += (_, _) => ((App)Application.Current).Presentation.PolicyChanged -= LoadPrivacySettings;
@@ -37,6 +38,7 @@ namespace XIVChat_Desktop {
         }
 
         public void UpdateLocalizations() {
+            RefreshUpdates();
             this.ThemeChooser.SelectionChanged -= ThemeChooser_SelectionChanged;
             this.ThemeChooser.ItemsSource = Enum.GetValues<Theme>().Select(t => LocalizationHelper.GetString("Theme." + t)).ToList();
             this.ThemeChooser.SelectedIndex = Array.IndexOf(Enum.GetValues<Theme>(), this.Config.Theme);

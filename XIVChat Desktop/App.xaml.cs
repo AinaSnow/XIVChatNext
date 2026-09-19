@@ -13,6 +13,8 @@ namespace XIVChat_Desktop {
     public partial class App : INotifyPropertyChanged {
         public MainWindow Window { get; private set; } = null!;
         public Configuration Config { get; private set; } = null!;
+        private DesktopUpdates? updates;
+        public DesktopUpdates Updates => updates ??= new DesktopUpdates(typeof(App).Assembly.GetName().Version ?? new Version(1, 4, 1));
         private IdentityPresentation? presentation;
         public IdentityPresentation Presentation => presentation ??= new IdentityPresentation(this);
         private ChatSession? session;
@@ -146,6 +148,7 @@ namespace XIVChat_Desktop {
             await this.Presentation.InitializeAsync();
             this.Notifier.InitializePlatform();
             this.InitialiseWindow();
+            _ = this.Updates.CheckAtStartupAsync(() => this.Config.CheckForUpdatesOnStartup);
             if (this.Session.StorageError != null) this.Window.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + this.Session.StorageError.Message);
             this.Session.PersistenceFailed += ex => this.Dispatch(() => this.Window?.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + ex.Message));
         }

@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Title="配置"
         d:DataContext="{d:DesignInstance local:ConfigWindow}">
-    <TabView x:Name="ConfigTabs" IsAddTabButtonVisible="False" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <TabView x:Name="ConfigTabs" IsAddTabButtonVisible="False" TabWidthMode="SizeToContent" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <TabViewItem x:Name="TabServers" Header="服务器" IsClosable="False">
             <cc:SavedServers ItemsSource="{x:Bind Config.Servers, Mode=OneWay}"
                              ItemDoubleClick="SavedServers_ItemDoubleClick"
@@ -176,6 +176,28 @@
                 <StackPanel Orientation="Horizontal" Spacing="10"><Button local:Localize.Content="Dialog.Save" Click="Save_Click"/><Button local:Localize.Content="Notify.Test" Click="NotificationTest_Click"/></StackPanel>
                 <TextBlock x:Name="NotificationPlatformStatus" TextWrapping="Wrap" Opacity="0.65" FontSize="12"/>
             </StackPanel></ScrollViewer>
+        </TabViewItem>
+        <TabViewItem x:Name="TabUpdates" IsClosable="False" local:Localize.Header="Update.Title">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+                <StackPanel Spacing="14" Padding="18">
+                    <TextBlock x:Name="UpdateCurrentVersion" FontSize="18" FontWeight="SemiBold"/>
+                    <CheckBox x:Name="AutoUpdateCheck" local:Localize.Content="Update.Automatic" Checked="AutoUpdateCheck_Changed" Unchecked="AutoUpdateCheck_Changed"/>
+                    <TextBlock local:Localize.Text="Update.Help" TextWrapping="Wrap" Opacity="0.7"/>
+                    <Button x:Name="CheckUpdatesButton" local:Localize.Content="Update.Check" Click="CheckUpdates_Click"/>
+                    <TextBlock x:Name="UpdateStatus" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                    <TextBlock x:Name="UpdateActionStatus" TextWrapping="Wrap"/>
+                    <StackPanel x:Name="UpdateAvailablePanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock x:Name="UpdateAvailableVersion" FontSize="18" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button local:Localize.Content="Update.Download" Click="DownloadUpdate_Click" Style="{ThemeResource AccentButtonStyle}"/>
+                            <Button local:Localize.Content="Update.ReleasePage" Click="ReleasePage_Click"/>
+                        </StackPanel>
+                        <TextBlock local:Localize.Text="Update.InstallHint" TextWrapping="Wrap" Opacity="0.7"/>
+                        <TextBlock local:Localize.Text="Update.Notes" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="UpdateReleaseNotes" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </TabViewItem>
     </TabView>
 </Window>

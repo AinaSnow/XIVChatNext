@@ -62,6 +62,7 @@ namespace XIVChat_Desktop {
             ChannelList.ItemsSource = App.Config.Tabs;
             App.Config.Tabs.CollectionChanged += TabsChanged;
             App.Config.Saved += ConfigSaved;
+            App.Updates.Changed += UpdateReleaseBanner;
             App.Presentation.Changed += UpdatePrivacyDisplay;
             App.PropertyChanged += AppChanged;
             App.Workbench.Changed += WorkbenchChanged;
@@ -124,6 +125,7 @@ namespace XIVChat_Desktop {
             foreach (var view in channelViews.Values) view.UpdateLocalizations();
             conversationView?.UpdateLocalizations(); UpdateHistoryLocalizations();
             RefreshFriendRows(); UpdateNavigation(); UpdateReady(); UpdatePrivacyDisplay();
+            UpdateReleaseBanner();
         }
         private void ConfigSaved() { if (initialized) { UpdateLocalizations(); UpdateReady(); if (section == "channels" && selectedChannel != null) ChatTitle.Text = App.Presentation.Text(selectedChannel.Name); } }
         private void AppChanged(object? sender, PropertyChangedEventArgs e) {
@@ -463,6 +465,7 @@ namespace XIVChat_Desktop {
             return flyout;
         }
         private void DisposeViews() {
+            App.Updates.Changed -= UpdateReleaseBanner;
             eventLoadVersion++;
             App.Notifier.EventsChanged -= EventsChanged;
             App.Cards.FavoritesChanged -= FavoritesChanged; favoritesVersion++;

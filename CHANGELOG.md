@@ -1,5 +1,12 @@
 # Changelog / 更新说明
 
+## Desktop 1.4.1 — Unreleased / 尚未发布
+
+- Added a background update check after startup and a bilingual Updates settings page with a manual check, current version, release notes and Windows download link. Startup checks can be disabled; failures do not interrupt chat. Available updates use a dismissible, nonmodal main-window banner.
+- Compare numeric desktop ZIP versions from public GitHub releases, rather than plugin release tags. Ignore drafts, prereleases and plugin-only releases; requests time out, share one in-flight check and send no character or chat information. Downloads open in the browser and never replace a running client automatically.
+- 新增启动后后台更新检查，以及中英文“更新”设置页，可手动检查、查看当前版本和更新说明、下载 Windows 客户端。可关闭启动检查，失败不影响聊天；发现新版时在主窗口显示可关闭的提示。
+- 按客户端 ZIP 的版本比较，避免把插件发布标签误认为客户端版本；排除草稿、预发布和仅插件更新。检查不发送角色或聊天信息，点击下载后打开浏览器。
+
 ## Plugin 1.7.16 — 2026-09-19
 
 - 修复国服物品链接整条聊天丢失：装备职业限制读取本服数据，不再要求英文 ClassJob 表。物品或地图附加资料失败时保留聊天文字，并缓存缺失结果，避免相同资料重复报错。

@@ -784,4 +784,24 @@
   <data name="Contact.NicknameHelp" xml:space="preserve"><value>只在本机显示，最多 64 个字符；清空后恢复角色名。</value></data>
   <data name="Contact.SaveFailed" xml:space="preserve"><value>备注名未保存。请使用 64 字符以内的单行文字，并检查本地数据是否可写。</value></data>
   <data name="Conversation.TargetPrivate" xml:space="preserve"><value>私聊目标：{0}</value></data>
+  <data name="Update.Title" xml:space="preserve"><value>更新</value></data>
+  <data name="Update.CurrentVersion" xml:space="preserve"><value>当前客户端：{0}</value></data>
+  <data name="Update.Automatic" xml:space="preserve"><value>启动时检查更新</value></data>
+  <data name="Update.Help" xml:space="preserve"><value>从 GitHub 查询公开版本，不发送聊天或角色信息。可关闭启动检查，随时手动检查。</value></data>
+  <data name="Update.Check" xml:space="preserve"><value>检查更新</value></data>
+  <data name="Update.Checking" xml:space="preserve"><value>正在检查更新…</value></data>
+  <data name="Update.Current" xml:space="preserve"><value>未发现更新的客户端版本。</value></data>
+  <data name="Update.Failed" xml:space="preserve"><value>暂时无法检查更新，请检查网络后重试，不影响聊天。</value></data>
+  <data name="Update.Found" xml:space="preserve"><value>发现新的客户端版本。</value></data>
+  <data name="Update.Idle" xml:space="preserve"><value>可检查是否有新版客户端。</value></data>
+  <data name="Update.Available" xml:space="preserve"><value>客户端 {0} 可更新</value></data>
+  <data name="Update.Details" xml:space="preserve"><value>查看更新</value></data>
+  <data name="Update.BannerHint" xml:space="preserve"><value>查看更新说明，方便时再下载。</value></data>
+  <data name="Update.Download" xml:space="preserve"><value>下载 Windows 客户端</value></data>
+  <data name="Update.ReleasePage" xml:space="preserve"><value>打开发布页面</value></data>
+  <data name="Update.InstallHint" xml:space="preserve"><value>下载后解压到新文件夹，关闭当前客户端再启动新版。本地配置和历史会保留。</value></data>
+  <data name="Update.Notes" xml:space="preserve"><value>更新说明</value></data>
+  <data name="Update.NoNotes" xml:space="preserve"><value>请在发布页面查看详细说明。</value></data>
+  <data name="Update.SaveFailed" xml:space="preserve"><value>更新检查设置未能保存，已恢复之前的选项。</value></data>
+  <data name="Update.OpenFailed" xml:space="preserve"><value>未能打开浏览器，请重试。</value></data>
 </root>
