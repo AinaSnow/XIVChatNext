@@ -18,7 +18,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
             10.0.x
       - name: Build desktop
         run: dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Release
@@ -36,7 +35,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
             10.0.x
       - name: Download Dalamud reference assemblies
         shell: pwsh

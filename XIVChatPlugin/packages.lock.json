@@ -40,12 +40,6 @@
           "libsodium": "1.0.19"
         }
       },
-      "System.Threading.Channels": {
-        "type": "Direct",
-        "requested": "[9.0.3, )",
-        "resolved": "9.0.3",
-        "contentHash": "Ao0iegVONKYVw0eWxJv0ArtMVfkFjgyyYKtUXru6xX5H95flSZWW3QCavD4PAgwpc0ETP38kGHaYbPzSE7sw2w=="
-      },
       "WebSocketSharp-netstandard": {
         "type": "Direct",
         "requested": "[1.0.1, )",

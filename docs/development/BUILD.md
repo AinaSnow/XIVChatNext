@@ -11,7 +11,7 @@
 | `deploy/relay` | Docker deployment |
 | `assets/branding` | Selected artwork |
 
-Desktop builds need Windows x64, .NET 9 or a compatible newer SDK, and Windows SDK/WinUI tools. The target is `net9.0-windows10.0.26100.0`. Plugin builds need compatible installed Dalamud development libraries and the toolchain selected by `Dalamud.NET.Sdk/14.0.1`. The manifest targets Dalamud API 15; the SDK package and API level use different version identifiers. Relay builds need .NET 10 or Docker and work on Linux without game/Dalamud/WinUI files.
+Desktop builds need Windows x64, the .NET 10 SDK, and Windows SDK/WinUI tools. The target is `net10.0-windows10.0.26100.0`. Plugin builds need compatible installed Dalamud development libraries and the toolchain selected by `Dalamud.NET.Sdk/14.0.1`. The manifest targets Dalamud API 15; the SDK package and API level use different version identifiers. Relay builds need .NET 10 or Docker and work on Linux without game/Dalamud/WinUI files.
 
 ```powershell
 ./build.ps1 -Component desktop -Configuration Release
@@ -30,7 +30,7 @@ Relay CI builds the Linux solution and checks container startup with a read-only
 
 目录包含 Windows 客户端、Dalamud 插件、共享协议、本地存储、中继服务、部署和品牌资源，具体见上表。
 
-客户端需要 Windows x64、.NET 9 或兼容更新 SDK、Windows SDK/WinUI 工具，目标为 `net9.0-windows10.0.26100.0`。插件需要匹配的 Dalamud 开发库及 `Dalamud.NET.Sdk/14.0.1` 所选工具链；清单对应 API 15，构建 SDK 与 API 级别编号不同。中继需要 .NET 10 或 Docker，可在 Linux 独立构建。
+客户端需要 Windows x64、.NET 10 SDK、Windows SDK/WinUI 工具，目标为 `net10.0-windows10.0.26100.0`。插件需要匹配的 Dalamud 开发库及 `Dalamud.NET.Sdk/14.0.1` 所选工具链；清单对应 API 15，构建 SDK 与 API 级别编号不同。中继需要 .NET 10 或 Docker，可在 Linux 独立构建。
 
 使用上方命令构建。打包支持 `desktop`、`plugin`、`all`，创建忽略目录 `artifacts/<label>`，拒绝覆盖同名目录。客户端包含 .NET 和 Windows App SDK，由 SDK 选择初始化；运行库保留英日德中法，应用界面为中英文。原生 MUI 与托管语言资源分别精简。
 

@@ -1,5 +1,10 @@
 # Changelog / 更新说明
 
+## Unreleased
+
+- Moved the desktop client, shared libraries, relay protocol/transport and regression suites from .NET 9 to .NET 10 LTS ahead of .NET 9 end of support on 2026-11-10. The plugin and relay server already targeted .NET 10. The packaged desktop ZIP remains self-contained, so users do not need to install a runtime.
+- 客户端、共享库、中继协议/传输层和回归测试从 .NET 9 升级到 .NET 10 LTS（.NET 9 于 2026-11-10 停止支持）。插件和中继服务端原本已使用 .NET 10。客户端 ZIP 仍自带运行时，用户无需另外安装。
+
 ## Desktop 1.4.1 — 2026-09-19
 
 - Added a background update check after startup and a bilingual Updates settings page with a manual check, current version, release notes and Windows download link. Startup checks can be disabled; failures do not interrupt chat. Available updates use a dismissible, nonmodal main-window banner.

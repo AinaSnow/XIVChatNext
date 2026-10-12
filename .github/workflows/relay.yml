@@ -14,7 +14,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
             10.0.x
       - run: dotnet build XIVChat.Relay.slnx -c Release
       - run: docker build -f deploy/relay/Dockerfile -t xivchat-relay:ci .
