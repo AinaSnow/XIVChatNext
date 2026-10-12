@@ -1,0 +1,47 @@
+name: Windows
+on:
+  push:
+    paths-ignore: ['docs/**', '**/*.md', 'deploy/**', 'assets/**']
+  pull_request:
+    paths-ignore: ['docs/**', '**/*.md', 'deploy/**', 'assets/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+      - name: Build desktop
+        run: dotnet build 'XIVChat Desktop/XIVChat Desktop.csproj' -c Release
+      - name: Privacy and storage regression
+        run: dotnet run --project tests/PrivacyRegression/PrivacyRegression.csproj -c Release
+      - name: Update check regression
+        run: dotnet run --project tests/UpdateRegression/UpdateRegression.csproj -c Release
+
+  plugin:
+    runs-on: windows-latest
+    env:
+      DALAMUD_HOME: ${{ github.workspace }}\.dalamud\
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+      - name: Download Dalamud reference assemblies
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile dalamud.zip
+          Expand-Archive dalamud.zip -DestinationPath $env:DALAMUD_HOME -Force
+      - name: Build plugin
+        run: dotnet build XIVChatPlugin/XIVChatPlugin.csproj -c Release

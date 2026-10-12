@@ -1,5 +1,7 @@
 # Desktop regression checks
 
+The `Windows` GitHub Actions workflow builds the desktop client and plugin and runs the two console suites below on every push. The WinUI suite and `PluginChatRegression` need a desktop session or a local CN game install and stay manual.
+
 Run from the repository root with the SDKs described in [BUILD](../docs/development/BUILD.md).
 
 ```powershell
