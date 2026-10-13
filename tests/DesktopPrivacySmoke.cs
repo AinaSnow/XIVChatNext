@@ -164,6 +164,26 @@ internal sealed class DesktopPrivacySmokeApp : App {
             var upgraded = (Configuration)deserialize.Invoke(null, new object[] { legacy.ToString() })!;
             Check(!upgraded.Privacy.Enabled && upgraded.Privacy.HideSelf && upgraded.Privacy.HideOthers, "Old configs receive safe opt-in defaults");
             Check(upgraded.CheckForUpdatesOnStartup, "Existing configs receive the default startup update check");
+            var savedJson = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(config.FilePathOverride!));
+            var privateHex = Convert.ToHexString(config.KeyPair.PrivateKey);
+            Check(savedJson["KeyPair"] == null && savedJson.Value<string>("ProtectedPrivateKey")!.StartsWith("dpapi:", StringComparison.Ordinal)
+                && !File.ReadAllText(config.FilePathOverride!).Contains(Convert.ToBase64String(config.KeyPair.PrivateKey)), "Device private key is saved only in protected form");
+            Check(reloaded.KeyPair.PublicKey.SequenceEqual(config.KeyPair.PublicKey) && Convert.ToHexString(reloaded.KeyPair.PrivateKey) == privateHex,
+                "Protected device key restores the same identity");
+            var plainText = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(config.FilePathOverride!));
+            plainText.Remove("PublicKey"); plainText.Remove("ProtectedPrivateKey");
+            plainText["KeyPair"] = Newtonsoft.Json.Linq.JToken.FromObject(config.KeyPair);
+            var plainPath = Path.Combine(fixture, "plain-key-config.json");
+            File.WriteAllText(plainPath, plainText.ToString()); File.WriteAllText(plainPath + ".bak", plainText.ToString());
+            var migrated = (Configuration)deserialize.Invoke(null, new object[] { File.ReadAllText(plainPath) })!;
+            migrated.FilePathOverride = plainPath; migrated.Save();
+            Check(Convert.ToHexString(migrated.KeyPair.PrivateKey) == privateHex && !File.ReadAllText(plainPath).Contains("\"KeyPair\"")
+                && !File.ReadAllText(plainPath + ".bak").Contains("\"KeyPair\""), "Plain-text device keys migrate and leave no plain-text backup");
+            var foreign = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(config.FilePathOverride!));
+            foreign["ProtectedPrivateKey"] = "dpapi:" + Convert.ToBase64String(new byte[64]);
+            var reset = (Configuration)deserialize.Invoke(null, new object[] { foreign.ToString() })!;
+            Check(reset.IdentityReset && reset.KeyPair.PrivateKey.Length == 32 && !reset.KeyPair.PublicKey.SequenceEqual(config.KeyPair.PublicKey)
+                && reset.Servers.Count == config.Servers.Count, "An unreadable device key creates a new identity and keeps other settings");
             Session.Store = await HistoryStore.OpenAsync(Path.Combine(fixture, "history.sqlite3"));
             await Presentation.InitializeAsync();
             var owner = new CharacterIdentity { ContentId = 7101, Name = "Alice Snow", HomeWorldId = 1, HomeWorld = "Alpha" };

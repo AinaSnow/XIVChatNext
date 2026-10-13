@@ -300,6 +300,7 @@
   <data name="History.Retention" xml:space="preserve"><value>Days to keep (0 = forever)</value></data>
   <data name="History.RetentionHelp" xml:space="preserve"><value>Favorites, bookmarks and annotated messages are retained. Disabling history stops saving new messages.</value></data>
   <data name="History.Unavailable" xml:space="preserve"><value>Local history is unavailable. Chat continues without persistence:</value></data>
+  <data name="Config.IdentityReset" xml:space="preserve"><value>This device key could not be read on this Windows account, so a new key was created. Confirm trust again in the plugin when you connect.</value></data>
   <data name="History.Gap" xml:space="preserve"><value>Some history could not be recovered: the service restarted or records were cleared.</value></data>
   <data name="FriendList.Updated" xml:space="preserve"><value>Friend list updated: {0} friends.</value></data>
   <data name="FriendList.Failed" xml:space="preserve"><value>Friend refresh failed. The last complete snapshot was kept.</value></data>

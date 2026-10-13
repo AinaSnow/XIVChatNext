@@ -10,6 +10,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using XIVChatCommon.Message;
 using XIVChatCommon.Message.Server;
@@ -23,7 +25,53 @@ namespace XIVChat_Desktop {
 
         public string? LicenceKey { get; set; }
 
-        public KeyPair KeyPair { get; set; } = PublicKeyBox.GenerateKeyPair();
+        [JsonIgnore] public KeyPair KeyPair { get; set; } = PublicKeyBox.GenerateKeyPair();
+
+        // On disk the public key stays readable and the private key is protected for the current Windows user.
+        // Files written before 1.5.0 stored the whole pair in plain text under "KeyPair"; it is read once and never written.
+        [JsonProperty("KeyPair", NullValueHandling = NullValueHandling.Ignore)]
+        private KeyPair? LegacyKeyPair { get => null; set => this.legacyKeyPair = value; }
+        [JsonProperty("PublicKey")]
+        private byte[]? StoredPublicKey { get => this.KeyPair.PublicKey; set => this.storedPublicKey = value; }
+        [JsonProperty("ProtectedPrivateKey")]
+        private string? StoredPrivateKey { get => this.ProtectPrivateKey(); set => this.storedPrivateKey = value; }
+        private KeyPair? legacyKeyPair, protectedFor;
+        private byte[]? storedPublicKey;
+        private string? storedPrivateKey;
+        private string? protectedPrivateKey;
+        /// <summary>The file held a plain-text key that the next save replaces, including in the backup.</summary>
+        [JsonIgnore] internal bool MigratedPlainTextKey { get; private set; }
+        /// <summary>The saved key could not be decrypted on this Windows account, so a new identity was created.</summary>
+        [JsonIgnore] internal bool IdentityReset { get; private set; }
+
+        private string ProtectPrivateKey() {
+            if (!ReferenceEquals(this.protectedFor, this.KeyPair) || this.protectedPrivateKey == null) {
+                this.protectedPrivateKey = XIVChat.Relay.Transport.WindowsSecret.Protect(Convert.ToBase64String(this.KeyPair.PrivateKey));
+                this.protectedFor = this.KeyPair;
+            }
+            return this.protectedPrivateKey;
+        }
+
+        [OnDeserialized]
+        private void RestoreKeyPair(StreamingContext context) {
+            if (this.storedPublicKey != null && this.storedPrivateKey != null) {
+                try {
+                    var privateKey = Convert.FromBase64String(XIVChat.Relay.Transport.WindowsSecret.Unprotect(this.storedPrivateKey));
+                    this.KeyPair = new KeyPair(this.storedPublicKey, privateKey);
+                    this.protectedFor = this.KeyPair;
+                    this.protectedPrivateKey = this.storedPrivateKey;
+                } catch (Exception ex) when (ex is CryptographicException or FormatException or ArgumentException) {
+                    // Copied from another Windows account or machine. Keep settings and history; devices must be trusted again.
+                    this.IdentityReset = true;
+                }
+            } else if (this.legacyKeyPair != null) {
+                this.KeyPair = this.legacyKeyPair;
+                this.MigratedPlainTextKey = true;
+            } else {
+                throw new InvalidDataException("Configuration is missing the device key.");
+            }
+            this.legacyKeyPair = null; this.storedPublicKey = null; this.storedPrivateKey = null;
+        }
 
         public ObservableCollection<SavedServer> Servers { get; set; } = new ObservableCollection<SavedServer>();
         public SavedServer? LastSuccessfulConnection { get; set; }
@@ -165,6 +213,11 @@ namespace XIVChat_Desktop {
         public void Save() {
             var contents = JsonConvert.SerializeObject(this, Formatting.Indented);
             ConfigurationFile.Save(FilePathOverride ?? FilePath(), contents, text => { _ = Deserialize(text); });
+            if (this.MigratedPlainTextKey) {
+                // The first save rotates the plain-text file into the backup; a second save replaces that backup too.
+                ConfigurationFile.Save(FilePathOverride ?? FilePath(), contents, text => { _ = Deserialize(text); });
+                this.MigratedPlainTextKey = false;
+            }
             this.Saved?.Invoke();
         }
 

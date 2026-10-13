@@ -149,6 +149,7 @@ namespace XIVChat_Desktop {
             this.Notifier.InitializePlatform();
             this.InitialiseWindow();
             _ = this.Updates.CheckAtStartupAsync(() => this.Config.CheckForUpdatesOnStartup);
+            if (this.Config.IdentityReset) this.Window.AddSystemMessage(LocalizationHelper.GetString("Config.IdentityReset"));
             if (this.Session.StorageError != null) this.Window.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + this.Session.StorageError.Message);
             this.Session.PersistenceFailed += ex => this.Dispatch(() => this.Window?.AddSystemMessage(LocalizationHelper.GetString("History.Unavailable") + " " + ex.Message));
         }
