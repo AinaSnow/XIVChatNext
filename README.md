@@ -6,7 +6,7 @@
 
 A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
-**Desktop 1.4.1 · Plugin 1.7.16** includes startup and manual update checks, contact nicknames, streamer mode and a game-symbol picker, plus the CN item-link message fix.
+**Desktop 1.5.0 · Plugin 1.7.17** adds an optional tray icon and a global show/hide shortcut, protects the device key with Windows DPAPI, moves the client to .NET 10, and makes the plugin accept same-PC connections only unless LAN access is enabled.
 
 [Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
@@ -14,8 +14,8 @@ A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://x
 
 | Component | Version | Download |
 | --- | --- | --- |
-| Windows x64 desktop client | **1.4.1** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.4.1/XIVChatNext-Desktop-v1.4.1-win-x64.zip) |
-| Dalamud plugin | **1.7.16** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip) |
+| Windows x64 desktop client | **1.5.0** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/XIVChatNext-Desktop-v1.5.0-win-x64.zip) |
+| Dalamud plugin | **1.7.17** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip) |
 | Optional self-hosted relay | Unchanged | [Existing relay package](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
 The desktop ZIP includes .NET and Windows App SDK dependencies. Runtime language resources are limited to English, Japanese, German, Chinese and French; the application UI supports **English and Simplified Chinese**. Web-based cards use Microsoft Edge WebView2 Runtime.
@@ -30,7 +30,7 @@ The desktop ZIP includes .NET and Windows App SDK dependencies. Runtime language
 
 2. Install **XIVChatNext Server**, log in to a character and enable your connection in the plugin settings. New plugin configurations default to English; Chinese and System are available.
 3. Extract the desktop ZIP and run **XIVChat Desktop.exe**. Follow the first-run guide to choose language, connection and notifications.
-4. On the same computer, connect to **127.0.0.1:14777**, unless the plugin port was changed. On a reachable network, use the game PC's address.
+4. On the same computer, connect to **127.0.0.1:14777**, unless the plugin port was changed. To connect from another computer on your network, turn on **Allow LAN connections** in the plugin's Connection settings and use the game PC's address. Configurations from plugin 1.7.16 or earlier keep LAN access turned on.
 5. Compare device fingerprints and confirm trust on both ends. Afterwards, clicking the Logo connects to the most recently successful target.
 
 Without direct access to the game PC, use your own HTTPS relay. It includes an English/Chinese web administration page for devices, invitations, sessions and revocation. **Normal restarts do not need new invitations** once credentials and trust have been saved.
@@ -45,6 +45,8 @@ Without direct access to the game PC, use your own HTTPS relay. It includes an E
 - Chat popouts, saved layouts and event notifications.
 - Direct connections or an optional self-hosted relay.
 
+Desktop 1.5.0 can keep running in the notification area when the main window closes, and can register a global shortcut (Ctrl+Alt+X by default) that shows the window with the message box focused. Both are off by default; see **Settings → Window**. The device private key is now encrypted for your Windows account, so after upgrading, keep a backup of the previous configuration if you may roll back to 1.4.x.
+
 Desktop 1.4.0 adds local contact nicknames and a streamer-mode switch for names, worlds and avatars, including copied chat and text exports. See the [scope and limitations](docs/user/CLIENT_GUIDE.md#contact-nicknames-and-streamer-mode-desktop-140) before sharing your screen.
 
 **Keep the game running and your character logged in for live chat, friends and screenshots.** Local history remains accessible offline. Presence/game data depend on the installed game and Dalamud version. Upgrade the client and plugin together. New self-hosted relay credentials are not compatible with legacy public-relay codes.
@@ -55,7 +57,7 @@ Desktop 1.4.0 adds local contact nicknames and a streamer-mode switch for names,
 ./build.ps1 -Component desktop -Configuration Release
 ./build.ps1 -Component plugin -Configuration Release
 ./build.ps1 -Component relay -Configuration Release
-./pack.ps1 -Label release-1.7.16
+./pack.ps1 -Label release-1.7.17
 ```
 
 [Build guide](docs/development/BUILD.md) · [Documentation](docs/README.md) · [Changelog](CHANGELOG.md)
@@ -72,14 +74,14 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 使用时，**游戏需要保持运行，角色也需要在线**。
 
-**客户端 1.4.1 · 插件 1.7.16**：新增启动与手动更新检查，包含好友备注名、主播模式、游戏符号面板及国服物品链接消息修复。
+**客户端 1.5.0 · 插件 1.7.17**：新增可选的托盘图标和全局快捷键，本设备密钥改用 Windows DPAPI 加密保存，客户端升级到 .NET 10；插件默认只允许本机连接，可在设置中开启局域网连接。
 
 [介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
 
 ### 下载与安装
 
-- **客户端 1.4.1**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.4.1/XIVChatNext-Desktop-v1.4.1-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
-- **插件 1.7.16**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.16/latest.zip)。
+- **客户端 1.5.0**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/XIVChatNext-Desktop-v1.5.0-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
+- **插件 1.7.17**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip)。
 - **可选中继**：继续使用 [已有部署包](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15)，本次无需更新中继。
 
 客户端包含 .NET 和 Windows App SDK，保留英、日、德、中、法运行库资源，**应用界面为中英文**。网页卡片需要 Microsoft Edge WebView2 Runtime。插件新配置默认英文，可切换中文或跟随系统，已有选择保留。
@@ -88,7 +90,7 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 1. 在 Dalamud 中添加上面的插件仓库，安装 **XIVChatNext Server**，登录游戏并在插件里启用连接。
 2. 下载并解压客户端，运行 `XIVChat Desktop.exe`，按提示设置语言、连接和通知。
-3. 客户端和游戏在同一台电脑时，地址填 `127.0.0.1`，默认端口是 `14777`。如果改过插件端口，两边要填一致。局域网连接则填游戏电脑的地址。
+3. 客户端和游戏在同一台电脑时，地址填 `127.0.0.1`，默认端口是 `14777`。如果改过插件端口，两边要填一致。从局域网里的另一台电脑连接时，先在插件“连接”设置中开启“允许局域网设备连接”，再填游戏电脑的地址。插件 1.7.16 及更早版本的配置升级后会自动保持开启。
 4. 核对两端显示的指纹，确认是自己的设备后允许连接。以后点击 Logo 就能连接上次成功使用的目标。
 5. 如果无法直接连接，可以在自己的服务器上部署 HTTPS 中继。后台可以添加设备、生成邀请和撤销授权；正常重启不需要重新邀请。中继需要自己部署，不是公共服务。
 
@@ -100,6 +102,8 @@ An independent community project based on XIVChat, originally created by Anna. N
 - **从好友列表直接开始聊天**：查看游戏里的好友和能获取到的在线状态，选中好友就能打开私聊。
 - **消息里的物品和坐标可以点开看**：查看物品资料、地图位置和支持的装备对比。
 - **在客户端查看游戏截图**：让游戏电脑截图，再预览、保存或复制。需要先在插件里允许截图。
+
+1.5.0 可以在关闭主窗口后保留在托盘，并支持全局快捷键（默认 Ctrl+Alt+X）呼出窗口、直接聚焦输入框，两项默认关闭，在“设置 → 窗口”中开启。本设备私钥改为按 Windows 账户加密保存；如果之后可能退回 1.4.x，请先备份旧配置。
 
 1.4.0 可以给好友设置独立的备注名，也能打开主播模式，把需要隐藏的角色改成化名，并隐藏服务器和头像。复制聊天、导出 TXT/RTF 时也按同样规则处理。**游戏截图不会自动打码**，正文里的未知昵称和输入框内容也不会自动隐藏。详细范围见[客户端指南](docs/user/CLIENT_GUIDE.md#备注名和主播模式客户端-140)。
 

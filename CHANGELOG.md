@@ -1,6 +1,6 @@
 # Changelog / 更新说明
 
-## Unreleased
+## Desktop 1.5.0 · Plugin 1.7.17 — 2026-10-13
 
 - Desktop: optional notification-area icon. With **Keep running in the notification area** on, closing the main window hides it; click the icon to show it again or right-click to exit. The tooltip shows unread tells.
 - Desktop: optional global shortcut (Ctrl+Alt+X by default, configurable) that shows the main window with the composer focused and hides it when it is already in front. Conflicts with other applications are reported in settings. Both features are off by default.
