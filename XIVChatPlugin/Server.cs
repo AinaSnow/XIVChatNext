@@ -59,6 +59,8 @@ namespace XIVChatPlugin {
         internal IReadOnlyDictionary<Guid, BaseClient> Clients => this._clients;
         internal readonly Channel<Tuple<BaseClient, Channel<bool>>> PendingClients = Channel.CreateBounded<Tuple<BaseClient, Channel<bool>>>(32);
         private readonly object _clientGate = new();
+        private readonly ConnectionGate _connectionGate = new();
+        internal (int Handshakes, int PendingTrust) GateUsage => this._connectionGate.Usage;
 
         internal FriendListCoordinator FriendLists { get; }
         private FriendPresenceCoordinator FriendPresence { get; }
@@ -129,7 +131,9 @@ namespace XIVChatPlugin {
 
 
         internal void Spawn() {
-            var listener = new TcpListener(IPAddress.Any, this._plugin.Config.Port);
+            // Same-PC clients are the common case; listening on every interface is opt-in.
+            var address = this._plugin.Config.AllowLanConnections ? IPAddress.Any : IPAddress.Loopback;
+            var listener = new TcpListener(address, this._plugin.Config.Port);
             this._listener = listener;
             try {
                 listener.Start();
@@ -317,8 +321,15 @@ namespace XIVChatPlugin {
         internal void SpawnClientTask(BaseClient client, bool requiresMagic) {
             var id = Guid.NewGuid();
             client.OnFailure = reason => { this.LastError = reason; Plugin.Log.Warning("Client {Id} disconnected: {Reason}", id, reason); };
+            // Relay sessions are already authenticated by the relay and carry no remote address.
+            var source = client.Remote?.ToString();
+            if (source != null && !this._connectionGate.TryBeginHandshake(source)) {
+                client.Disconnect($"Too many unauthenticated connections from {source}.");
+                return;
+            }
             lock (this._clientGate) {
                 if (this._tokenSource.IsCancellationRequested || this._clients.Count >= 32) {
+                    if (source != null) this._connectionGate.EndHandshake(source);
                     client.Disconnect("Connection limit reached or server stopped.");
                     return;
                 }
@@ -327,6 +338,8 @@ namespace XIVChatPlugin {
 
             _ = Task.Run(async () => {
                 Task? listen = null;
+                var handshaking = source != null;
+                var trustRequested = false;
                 using var stopRegistration = this._tokenSource.Token.Register(() => client.Disconnect());
                 try {
                     using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
@@ -343,6 +356,13 @@ namespace XIVChatPlugin {
 
                     if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(handshake.RemotePublicKey))) {
                         if (!this._plugin.Config.AcceptNewClients) return;
+                        if (source != null) {
+                            if (!this._connectionGate.TryBeginTrustRequest(source)) {
+                                Plugin.Log.Warning("Ignored a trust request from {Source}: one is already pending or the per-minute limit was reached", source);
+                                return;
+                            }
+                            trustRequested = true;
+                        }
                         var accepted = Channel.CreateBounded<bool>(1);
                         using var trustTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
                         trustTimeout.CancelAfter(TimeSpan.FromSeconds(60));
@@ -350,6 +370,8 @@ namespace XIVChatPlugin {
                         if (!await accepted.Reader.ReadAsync(trustTimeout.Token)) return;
                     }
 
+                    if (handshaking) { this._connectionGate.EndHandshake(source!); handshaking = false; }
+                    if (trustRequested) { this._connectionGate.EndTrustRequest(source!); trustRequested = false; }
                     client.Connected = true;
                     client.Ready = true;
                     this._awaitingState[id] = 0;
@@ -383,6 +405,8 @@ namespace XIVChatPlugin {
                 } catch (Exception ex) {
                     Plugin.Log.Error($"Client connection failed: {ex.Message}");
                 } finally {
+                    if (handshaking) this._connectionGate.EndHandshake(source!);
+                    if (trustRequested) this._connectionGate.EndTrustRequest(source!);
                     this.RemoveClient(id);
                     if (listen != null) {
                         try {

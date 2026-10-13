@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Plugin: new configurations listen on this computer only (127.0.0.1). A new **Allow LAN connections** setting listens on all interfaces; configurations saved by earlier versions turn it on automatically so existing LAN setups keep working. Relay connections are unaffected.
+- Plugin: each remote address may hold at most 4 unauthenticated connections, one pending trust prompt and 3 trust prompts per minute, so an untrusted device on the network cannot flood approval windows. Diagnostics show the current counts.
+- 插件：新配置默认只允许本机（127.0.0.1）直接连接；新增“允许局域网设备连接”开关。旧版本保存的配置会自动开启该开关，已有局域网连接不受影响；中继连接不受影响。
+- 插件：每个来源地址最多 4 个未认证连接、同时 1 个待确认信任请求、每分钟最多 3 个信任请求，避免网络中未信任设备反复弹出确认窗口。诊断页显示当前计数。
 - Moved the desktop client, shared libraries, relay protocol/transport and regression suites from .NET 9 to .NET 10 LTS ahead of .NET 9 end of support on 2026-11-10. The plugin and relay server already targeted .NET 10. The packaged desktop ZIP remains self-contained, so users do not need to install a runtime.
 - 客户端、共享库、中继协议/传输层和回归测试从 .NET 9 升级到 .NET 10 LTS（.NET 9 于 2026-11-10 停止支持）。插件和中继服务端原本已使用 .NET 10。客户端 ZIP 仍自带运行时，用户无需另外安装。
 

@@ -223,6 +223,17 @@ namespace XIVChatPlugin {
             return error;
         }
 
+        internal string? ApplyLanConnections(bool allow) {
+            var previous = this.Config.AllowLanConnections;
+            this.Config.AllowLanConnections = allow;
+            this.RelaunchServer();
+            if (this.Server.Running) { this.Config.Save(); return null; }
+            var error = this.Server.LastError ?? "Listener did not start.";
+            this.Config.AllowLanConnections = previous;
+            this.RelaunchServer();
+            return error;
+        }
+
         private void OnCommand(string command, string args) {
             this.Ui.OpenSettings();
         }

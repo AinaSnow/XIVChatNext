@@ -25,6 +25,8 @@ jobs:
         run: dotnet run --project tests/PrivacyRegression/PrivacyRegression.csproj -c Release
       - name: Update check regression
         run: dotnet run --project tests/UpdateRegression/UpdateRegression.csproj -c Release
+      - name: Plugin network regression
+        run: dotnet run --project tests/PluginNetworkRegression/PluginNetworkRegression.csproj -c Release
 
   plugin:
     runs-on: windows-latest

@@ -1,6 +1,6 @@
 # Desktop regression checks
 
-The `Windows` GitHub Actions workflow builds the desktop client and plugin and runs the two console suites below on every push. The WinUI suite and `PluginChatRegression` need a desktop session or a local CN game install and stay manual.
+The `Windows` GitHub Actions workflow builds the desktop client and plugin and runs the console suites below on every push. The WinUI suite and `PluginChatRegression` need a desktop session or a local CN game install and stay manual.
 
 Run from the repository root with the SDKs described in [BUILD](../docs/development/BUILD.md).
 
@@ -45,3 +45,7 @@ dotnet run --project tests/PluginChatRegression -c Release -- '<game>/sqpack' '<
 ```
 
 The 2026-09-19 check passed all seven checks against CN Dalamud 15.0.3.5 and the installed CN data. The unavailable English ClassJob sheet reproduced the same `UnsupportedLanguageException` found in the live plugin log at 15:17:24 and 15:17:55. Original dropped messages never reached desktop storage and cannot be recovered from its history.
+
+## Plugin network limits
+
+`dotnet run --project tests/PluginNetworkRegression -c Release` checks the plugin's per-address limits on unauthenticated handshakes and trust prompts with a fake clock. It opens no sockets and does not need Dalamud.

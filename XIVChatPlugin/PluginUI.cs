@@ -102,6 +102,7 @@ namespace XIVChatPlugin {
 
         private int portDraft;
         private string? portError;
+        private string? lanError;
         private bool Chinese => this.Plugin.Config.UiLanguage == 1 ||
             (this.Plugin.Config.UiLanguage == 0 && System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase));
         private string T(string chinese, string english) => this.Chinese ? chinese : english;
@@ -152,6 +153,16 @@ namespace XIVChatPlugin {
             ImGui.TextWrapped(this.T("点击应用会重启监听并断开当前连接。请同时更新客户端连接端口。", "Apply restarts the listener and disconnects current clients. Update the client connection port too."));
             if (!validPort) ImGui.TextUnformatted(this.T("端口范围为 1–65535。", "Port must be between 1 and 65535."));
             if (this.portError != null) ImGui.TextWrapped(this.T("应用失败，已恢复原端口：", "Apply failed; the previous port was restored: ") + this.portError);
+            ImGui.Separator();
+            var allowLan = this.Plugin.Config.AllowLanConnections;
+            if (ImGui.Checkbox(this.T("允许局域网设备连接", "Allow LAN connections") + "##allow-lan", ref allowLan)) {
+                this.lanError = this.Plugin.ApplyLanConnections(allowLan);
+            }
+            if (this.lanError != null) ImGui.TextWrapped(this.T("切换失败，已恢复原设置：", "Change failed; the previous setting was restored: ") + this.lanError);
+            ImGui.TextWrapped(allowLan
+                ? this.T("正在监听所有网卡，同一网络中的设备可以发起连接。仅在需要从其他电脑连接时开启。", "Listening on all network interfaces; devices on your network can connect. Enable only when another computer needs to connect.")
+                : this.T("仅本机（127.0.0.1）可以直接连接。中继连接不受影响。", "Only this computer (127.0.0.1) can connect directly. Relay connections are unaffected."));
+            ImGui.TextWrapped(this.T("更改会重启监听并断开当前连接。", "Changing this restarts the listener and disconnects current clients."));
             ImGui.Separator();
             var acceptNew = this.Plugin.Config.AcceptNewClients;
             if (ImGui.Checkbox(this.T("允许新设备请求连接", "Allow new device requests") + "##accept-new", ref acceptNew)) {
@@ -276,7 +287,10 @@ namespace XIVChatPlugin {
 
         private void DrawDiagnostics() {
             var server = this.Plugin.Server;
-            ImGui.TextUnformatted(this.T("监听：", "Listener: ") + (server.Running ? this.T("运行中", "Running") : this.T("已停止", "Stopped")) + " · " + this.Plugin.Config.Port);
+            ImGui.TextUnformatted(this.T("监听：", "Listener: ") + (server.Running ? this.T("运行中", "Running") : this.T("已停止", "Stopped")) + " · " + this.Plugin.Config.Port
+                + " · " + (this.Plugin.Config.AllowLanConnections ? this.T("局域网", "LAN") : this.T("仅本机", "This PC only")));
+            var gate = server.GateUsage;
+            ImGui.TextUnformatted(this.T("未认证来源 / 待确认请求：", "Unauthenticated sources / pending trust: ") + $"{gate.Handshakes} / {gate.PendingTrust}");
             ImGui.TextUnformatted(this.T("设备（含协商中）：", "Devices (including handshakes): ") + server.Clients.Count + " / 32");
             var history = server.BacklogUsage;
             ImGui.TextUnformatted(this.T("内存历史：", "Memory history: ") + $"{history.Count} · {history.Bytes / 1048576d:F2} MiB");

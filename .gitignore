@@ -76,6 +76,7 @@ tests/*
 !tests/UpdateRegression/
 !tests/PluginChatRegression/
 !tests/PrivacyRegression/
+!tests/PluginNetworkRegression/
 !tests/DesktopPrivacySmoke.cs
 !tests/DesktopPrivacySmoke.targets
 !tests/README.md
