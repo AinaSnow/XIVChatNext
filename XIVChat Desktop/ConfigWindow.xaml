@@ -47,6 +47,15 @@
                                   IsChecked="{x:Bind Config.AlwaysOnTop, Mode=TwoWay}"
                                   Checked="AlwaysOnTop_Checked"
                                   Unchecked="AlwaysOnTop_Unchecked" />
+                        <CheckBox x:Name="ChkCloseToTray" local:Localize.Content="Config.CloseToTray" Click="CloseToTray_Click" />
+                        <StackPanel Spacing="6">
+                            <CheckBox x:Name="ChkHotkey" local:Localize.Content="Config.Hotkey" Click="Hotkey_Click" />
+                            <TextBox x:Name="HotkeyBox" IsReadOnly="True" Width="200" HorizontalAlignment="Left"
+                                     PreviewKeyDown="HotkeyBox_PreviewKeyDown" local:Localize.Header="Config.HotkeyKeys" />
+                            <TextBlock x:Name="HotkeyStatus" TextWrapping="Wrap" Visibility="Collapsed"
+                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                            <TextBlock local:Localize.Text="Config.HotkeyHint" TextWrapping="Wrap" Opacity="0.7" MaxWidth="520" HorizontalAlignment="Left" />
+                        </StackPanel>
                         <CheckBox x:Name="ChkCompactMode" Content="精简模式"
                                   IsChecked="{x:Bind Config.CompactMode, Mode=TwoWay}" />
                         <ComboBox x:Name="ThemeChooser"

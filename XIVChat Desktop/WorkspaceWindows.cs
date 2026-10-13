@@ -40,6 +40,7 @@ public sealed class WorkspaceWindows {
             // Keep an unreadable saved layout intact; this session can still use temporary windows.
             saveAllowed = false; Report(ex);
         } finally { initialized = true; }
+        try { app.Shell.Attach(app.Window); } catch (Exception ex) { Report(ex); }
         app.Window.AppWindow.Changed += (_, e) => { if (e.DidPositionChange || e.DidSizeChange) ScheduleSave(); };
         displays = DisplayArea.CreateWatcher();
         displays.Updated += (_, _) => FitAll(); displays.Removed += (_, _) => FitAll(); displays.Start();
@@ -84,19 +85,19 @@ public sealed class WorkspaceWindows {
     public async Task CloseMainAsync() {
         if (Stopping) return;
         app.Window.CaptureWorkspaceComposer();
-        if (windows.Count == 0) { await ShutdownAsync(); return; }
+        if (windows.Count == 0 && !app.Shell.TrayVisible) { await ShutdownAsync(); return; }
         if (IsNormal(app.Window)) layout.MainBounds = BoundsOf(app.Window); layout.MainVisible = false;
         app.Window.SetWorkspaceVisible(false); await SaveAsync();
     }
     public async Task ClosePopoutAsync(ChatPopoutWindow window) {
         if (Stopping) return;
-        if (!MainVisible && windows.Count == 1) { await ShutdownAsync(); return; }
+        if (!MainVisible && windows.Count == 1 && !app.Shell.TrayVisible) { await ShutdownAsync(); return; }
         window.Capture(); window.State.Open = false;
         windows.Remove(window.State.Key); window.CloseForWorkspace(); await SaveAsync();
     }
     public async Task ShutdownAsync() {
         if (Stopping) return;
-        Capture(); Stopping = true; debounce?.Cancel(); displays?.Stop();
+        Capture(); Stopping = true; debounce?.Cancel(); displays?.Stop(); app.Shell.Dispose();
         app.Window.CaptureWorkspaceComposer();
         try { await app.StopSessionAsync(); }
         finally {

@@ -465,10 +465,47 @@ internal sealed class DesktopPrivacySmokeApp : App {
             updateResponse = new TaskCompletionSource<DesktopRelease>();
             var failedUpdate = updates.CheckAsync(); updateResponse.SetException(new System.Net.Http.HttpRequestException("test offline")); await failedUpdate;
             Check(updates.State == UpdateCheckState.Failed && updates.HasUpdate && !Control<InfoBar>(main, "UpdateBanner").IsOpen, "Closed settings unsubscribe and a failed recheck retains the known update without reopening a dismissed banner");
+            Check(ShellIntegration.FormatShortcut(ShellIntegration.ModControl | ShellIntegration.ModAlt, 0x58) == "Ctrl+Alt+X"
+                && ShellIntegration.IsValidShortcut(ShellIntegration.ModControl, 0x41) && !ShellIntegration.IsValidShortcut(ShellIntegration.ModShift, 0x41)
+                && !ShellIntegration.IsValidShortcut(ShellIntegration.ModControl, 0x11), "Shortcuts need Ctrl, Alt or Win plus a non-modifier key");
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(Window);
+            config.CloseToTray = true; Shell.Apply();
+            Check(Shell.TrayVisible, "Close-to-tray adds a notification-area icon");
+            await Workspace.CloseMainAsync(); await Task.Delay(100);
+            Check(!Workspace.Stopping && !Window.AppWindow.IsVisible && !Workspace.MainVisible, "Closing the main window with the tray enabled hides it instead of exiting");
+            ShellNative.SendMessage(hwnd, 0x8051, IntPtr.Zero, (IntPtr)0x0202); await Task.Delay(100);
+            Check(Window.AppWindow.IsVisible && Workspace.MainVisible, "Clicking the tray icon shows the hidden main window");
+            const uint unusedKey = 0x87; // F24
+            const uint allModifiers = ShellIntegration.ModControl | ShellIntegration.ModAlt | ShellIntegration.ModShift;
+            config.GlobalHotkeyEnabled = true; config.GlobalHotkeyModifiers = allModifiers; config.GlobalHotkeyKey = unusedKey; Shell.Apply();
+            Check(!Shell.HotkeyFailed, "An unused global shortcut registers");
+            await Workspace.CloseMainAsync(); await Task.Delay(100);
+            ShellNative.SendMessage(hwnd, 0x0312, (IntPtr)0x5843, IntPtr.Zero); await Task.Delay(100);
+            Check(Window.AppWindow.IsVisible && Workspace.MainVisible, "The global shortcut brings back the hidden main window");
+            Check(ShellNative.RegisterHotKey(IntPtr.Zero, 0x5844, allModifiers | 0x4000, 0x86), "Fixture reserves a shortcut");
+            config.GlobalHotkeyKey = 0x86; Shell.Apply(); // F23, now owned by this thread's registration
+            Check(Shell.HotkeyFailed, "A shortcut owned by someone else is reported instead of silently ignored");
+            ShellNative.UnregisterHotKey(IntPtr.Zero, 0x5844);
+            config.GlobalHotkeyEnabled = false; config.CloseToTray = false; Shell.Apply();
+            Check(!Shell.TrayVisible && !Shell.HotkeyFailed, "Disabling the tray and shortcut removes both");
+            LocalizationHelper.ApplyLanguage(AppLanguage.ChineseSimplified);
+            config.CloseToTray = true; config.GlobalHotkeyEnabled = true; config.GlobalHotkeyModifiers = ShellIntegration.ModControl | ShellIntegration.ModAlt; config.GlobalHotkeyKey = 0x58;
+            var shellSettings = new ConfigWindow(config); Control<TabView>(shellSettings, "ConfigTabs").SelectedItem = Control<TabViewItem>(shellSettings, "TabWindow");
+            shellSettings.Activate(); await Task.Delay(300);
+            Check(Control<CheckBox>(shellSettings, "ChkCloseToTray").IsChecked == true && Control<TextBox>(shellSettings, "HotkeyBox").Text == "Ctrl+Alt+X",
+                "Window settings show the tray option and the configured shortcut");
+            await Capture(shellSettings, Path.Combine(AppContext.BaseDirectory, "tray-settings-zh.png"));
+            shellSettings.Close(); config.CloseToTray = false; config.GlobalHotkeyEnabled = false; Shell.Apply();
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {
             results.Add("FAIL " + ex); File.WriteAllLines(output, results); Environment.ExitCode = 1; Exit();
         }
     }
+}
+
+internal static class ShellNative {
+    [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hwnd, int id);
 }

@@ -22,6 +22,8 @@ namespace XIVChat_Desktop {
         private WorkbenchSession? workbench;
         private WorkspaceWindows? workspace;
         public WorkspaceWindows Workspace => workspace ??= new WorkspaceWindows(this);
+        private ShellIntegration? shell;
+        public ShellIntegration Shell => shell ??= new ShellIntegration(this);
         private GameCardSession? cards;
         private ScreenshotSession? screenshots;
         public ScreenshotSession Screenshots => this.screenshots ??= new ScreenshotSession(this);

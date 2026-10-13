@@ -12,7 +12,7 @@ Add `https://raw.githubusercontent.com/AinaSnow/FFXIV-Dalamud-Plugins/main/plugi
 
 The first-run guide sets language, connection and notifications; reopen it from Settings. The desktop supports English, Simplified Chinese and System. New plugin configurations default to English and have an independent language setting.
 
-Use **127.0.0.1:14777** on the same PC, unless the port was changed. On a reachable network, use the game PC's address. Ports must match. Compare fingerprints and confirm trust on both ends.
+Use **127.0.0.1:14777** on the same PC, unless the port was changed. On a reachable network, use the game PC's address; from plugin 1.7.17, first turn on **Allow LAN connections** in the plugin's Connection settings (new plugin configurations accept only same-PC connections, existing ones keep LAN access). Ports must match. Compare fingerprints and confirm trust on both ends.
 
 Without direct access, choose **Self-hosted relay**, paste a fresh invitation from your relay administrator, independently compare the endpoint fingerprint with the plugin and save. Complete the chat-device trust confirmation too. Saved pairing survives normal restarts; re-pair after loss, revocation or identity changes. See [Relay](SELF_HOSTED_RELAY.md).
 
@@ -49,6 +49,12 @@ The client checks public GitHub releases shortly after startup. If a newer Windo
 
 Only stable Windows desktop packages are compared, independently of plugin version tags. Checking sends no chat or character information. Downloads open in your browser; extract into a new folder and close the current client before starting the new version. The client does not replace itself automatically.
 
+### Tray and global shortcut (Desktop 1.5.0)
+
+In **Settings → Window**, turn on **Keep running in the notification area** to close the main window without exiting. Click the tray icon to show or hide the window; right-click it for **Exit**. Hover the icon to see unread tells.
+
+Turn on **Global shortcut** and press a combination in the shortcut field (Ctrl+Alt+X by default). The shortcut shows the window with the message box focused, and hides it again when the window is already in front. It works while the game is focused, so pick a combination the game does not use. If another application already owns it, the settings page says so.
+
 ### Data and upgrades
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
@@ -71,7 +77,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 首次引导设置语言、连接与通知，可在设置中重开。客户端支持英文、简体中文及跟随系统；插件新配置默认英文，可独立设置语言。
 
-同机默认 **127.0.0.1:14777**，以插件设置为准；局域网使用游戏电脑地址。端口一致，核对指纹并在两端确认信任。
+同机默认 **127.0.0.1:14777**，以插件设置为准；局域网使用游戏电脑地址；插件 1.7.17 起需先在插件“连接”设置中开启“允许局域网设备连接”（新配置默认只允许本机，已有配置保持开启）。端口一致，核对指纹并在两端确认信任。
 
 无法直连时，选择“自建中继”，粘贴有效邀请，与插件独立核对端点指纹后保存，再完成聊天设备信任。正常重启保留配对，授权丢失、撤销或身份变化等情况才需重新配对。详见 [中继指南](SELF_HOSTED_RELAY.md#简体中文)。
 
@@ -111,6 +117,12 @@ Live sending, friends and screenshots require the game, logged-in character and 
 客户端启动后会在后台检查 GitHub 上的公开版本。发现新版 Windows 客户端时，主窗口显示可关闭的提示，点击后进入“设置 → 更新”，查看更新说明或打开下载。这一页也会显示当前版本，并提供“检查更新”按钮。关闭“启动时检查更新”后只保留手动检查，选项立即保存；检查失败不影响聊天。
 
 只比较正式发布的 Windows 客户端安装包，不会把插件版本号当成客户端更新，也不发送聊天或角色信息。下载在浏览器中打开，解压到新文件夹后，先关闭当前客户端再启动新版；程序不会自动覆盖自己。
+
+### 托盘和全局快捷键（客户端 1.5.0）
+
+在“设置 → 窗口”中开启“关闭主窗口时保留在通知区域（托盘）”，关闭主窗口后程序继续运行。单击托盘图标显示或隐藏窗口，右键可退出；鼠标悬停可看到未读私聊数。
+
+开启“使用全局快捷键”，在快捷键框中按下组合键（默认 Ctrl+Alt+X）。按下后显示窗口并聚焦输入框；窗口已在最前时再按一次会隐藏。快捷键在游戏中同样生效，请避开游戏里正在使用的按键；如果已被其他程序占用，设置页会提示。
 
 ### 数据与升级
 

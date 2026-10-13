@@ -420,6 +420,9 @@ namespace XIVChat_Desktop {
                 if (!App.Workbench.Send(conversation, Composer.Text)) ComposerStatus.Text = L("Conversation.NotSent");
             } else if (App.Connection?.SendMessage(Composer.Text) == true) Composer.Text = "";
         }
+        internal void FocusComposer() {
+            if (ComposerPanel.Visibility == Visibility.Visible) Composer.Focus(FocusState.Programmatic);
+        }
         public TextBox? GetCurrentInputBox() => ComposerPanel.Visibility == Visibility.Visible ? Composer : null;
         public void InsertTellCommand(string name, string world, bool focus = true) {
             var worldId = Enumerable.Range(1, ushort.MaxValue).Select(i => (ushort)i).FirstOrDefault(id => string.Equals(Util.WorldName(id), world, StringComparison.OrdinalIgnoreCase));

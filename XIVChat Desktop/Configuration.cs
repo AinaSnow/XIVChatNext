@@ -89,6 +89,12 @@ namespace XIVChat_Desktop {
 
         public bool AlwaysOnTop { get; set; }
 
+        /// <summary>Closing the main window keeps the app running in the notification area.</summary>
+        public bool CloseToTray { get; set; }
+        public bool GlobalHotkeyEnabled { get; set; }
+        public uint GlobalHotkeyModifiers { get; set; } = ShellIntegration.ModControl | ShellIntegration.ModAlt;
+        public uint GlobalHotkeyKey { get; set; } = 0x58; // X
+
         private double fontSize = 14d;
 
         public double FontSize {

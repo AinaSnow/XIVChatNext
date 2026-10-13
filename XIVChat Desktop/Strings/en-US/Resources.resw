@@ -300,6 +300,14 @@
   <data name="History.Retention" xml:space="preserve"><value>Days to keep (0 = forever)</value></data>
   <data name="History.RetentionHelp" xml:space="preserve"><value>Favorites, bookmarks and annotated messages are retained. Disabling history stops saving new messages.</value></data>
   <data name="History.Unavailable" xml:space="preserve"><value>Local history is unavailable. Chat continues without persistence:</value></data>
+  <data name="Config.CloseToTray" xml:space="preserve"><value>Keep running in the notification area when the main window is closed</value></data>
+  <data name="Config.Hotkey" xml:space="preserve"><value>Global shortcut to show or hide the main window</value></data>
+  <data name="Config.HotkeyKeys" xml:space="preserve"><value>Shortcut (click, then press keys)</value></data>
+  <data name="Config.HotkeyInUse" xml:space="preserve"><value>This shortcut is already used by another application. Choose a different one.</value></data>
+  <data name="Config.HotkeyHint" xml:space="preserve"><value>Use Ctrl, Alt or Win with another key. The shortcut works everywhere, including in the game, so choose one that the game does not use.</value></data>
+  <data name="Tray.Show" xml:space="preserve"><value>Show XIVChat Next</value></data>
+  <data name="Tray.Exit" xml:space="preserve"><value>Exit</value></data>
+  <data name="Tray.Unread" xml:space="preserve"><value>{0} unread</value></data>
   <data name="Config.IdentityReset" xml:space="preserve"><value>This device key could not be read on this Windows account, so a new key was created. Confirm trust again in the plugin when you connect.</value></data>
   <data name="History.Gap" xml:space="preserve"><value>Some history could not be recovered: the service restarted or records were cleared.</value></data>
   <data name="FriendList.Updated" xml:space="preserve"><value>Friend list updated: {0} friends.</value></data>

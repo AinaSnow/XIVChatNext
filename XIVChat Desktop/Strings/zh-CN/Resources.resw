@@ -300,6 +300,14 @@
   <data name="History.Retention" xml:space="preserve"><value>保留天数（0 为永久）</value></data>
   <data name="History.RetentionHelp" xml:space="preserve"><value>收藏、书签和带备注的消息始终保留。关闭后停止保存新消息。</value></data>
   <data name="History.Unavailable" xml:space="preserve"><value>本地历史不可用，本次继续临时聊天：</value></data>
+  <data name="Config.CloseToTray" xml:space="preserve"><value>关闭主窗口时保留在通知区域（托盘）</value></data>
+  <data name="Config.Hotkey" xml:space="preserve"><value>使用全局快捷键显示或隐藏主窗口</value></data>
+  <data name="Config.HotkeyKeys" xml:space="preserve"><value>快捷键（点击后按下组合键）</value></data>
+  <data name="Config.HotkeyInUse" xml:space="preserve"><value>该快捷键已被其他程序占用，请换一个。</value></data>
+  <data name="Config.HotkeyHint" xml:space="preserve"><value>需要包含 Ctrl、Alt 或 Win 中的至少一个。快捷键在游戏中同样生效，请避开游戏里正在使用的按键。</value></data>
+  <data name="Tray.Show" xml:space="preserve"><value>显示 XIVChat Next</value></data>
+  <data name="Tray.Exit" xml:space="preserve"><value>退出</value></data>
+  <data name="Tray.Unread" xml:space="preserve"><value>{0} 条未读</value></data>
   <data name="Config.IdentityReset" xml:space="preserve"><value>无法在当前 Windows 账户下读取本设备密钥，已生成新密钥。连接时请在插件中重新确认信任。</value></data>
   <data name="History.Gap" xml:space="preserve"><value>部分历史无法补齐：服务已重载或记录已清理。</value></data>
   <data name="FriendList.Updated" xml:space="preserve"><value>好友列表已更新：{0} 人。</value></data>
