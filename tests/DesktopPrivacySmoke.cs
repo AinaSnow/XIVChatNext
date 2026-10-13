@@ -465,6 +465,37 @@ internal sealed class DesktopPrivacySmokeApp : App {
             updateResponse = new TaskCompletionSource<DesktopRelease>();
             var failedUpdate = updates.CheckAsync(); updateResponse.SetException(new System.Net.Http.HttpRequestException("test offline")); await failedUpdate;
             Check(updates.State == UpdateCheckState.Failed && updates.HasUpdate && !Control<InfoBar>(main, "UpdateBanner").IsOpen, "Closed settings unsubscribe and a failed recheck retains the known update without reopening a dismissed banner");
+            // Website captures: fictional identities and messages, streamer mode off, fixed window size.
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(200);
+            Session.SetPlayer(new PlayerData("Alpha", "Alpha", "Shirogane", owner.Name) { Identity = owner, OwnerEpoch = "fixture-login" });
+            Workbench.SetContext(Session.Source, owner);
+            async Task<ConversationModel> SiteConversation(CharacterIdentity contact, long sequence, params (bool Incoming, string Text)[] lines) {
+                var at = DateTime.UtcNow.AddMinutes(-lines.Length);
+                foreach (var (incoming, text) in lines) {
+                    var prefix = incoming ? $"[Tell] {contact.Name}: " : $">> {contact.Name}: ";
+                    var line = new ServerMessage(at = at.AddMinutes(1), incoming ? ChatType.TellIncoming : ChatType.TellOutgoing,
+                        Encoding.UTF8.GetBytes(incoming ? contact.Name : owner.Name), Encoding.UTF8.GetBytes(text), new() { new TextChunk(prefix), new TextChunk(text) }) {
+                        Owner = owner, TellPeer = contact, MessageId = $"site-{sequence}", Sequence = sequence++, ServiceId = "fixture", RunId = "fixture",
+                    };
+                    await Session.RecordAsync(line, Session.Source, true); Session.Add(line);
+                }
+                await Workbench.FlushAsync();
+                return Workbench.Open(contact)!;
+            }
+            var siteEn = await SiteConversation(new CharacterIdentity { ContentId = 7301, Name = "Maple Leaf", HomeWorldId = 1, HomeWorld = "Alpha" }, 9001,
+                (true, "Are you still around the Shirogane docks?"), (false, "Yes! The sunset here is worth a detour."),
+                (true, "Send me the coordinates, I'll come by after my roulette."), (false, "On my way to the aetheryte ✨"));
+            var siteZh = await SiteConversation(new CharacterIdentity { ContentId = 7302, Name = "松风", HomeWorldId = 1, HomeWorld = "Alpha" }, 9101,
+                (true, "你还在白银乡码头吗？"), (false, "在呢！这里的日落也太好看了。"), (true, "把坐标发我，随机任务打完就过来。"), (false, "好，我在以太之光旁边等你 ✨"));
+            main.AppWindow.Resize(new Windows.Graphics.SizeInt32(1240, 780));
+            foreach (var (language, conversation, captureName) in new[] { (AppLanguage.English, siteEn, "site-main-en.png"), (AppLanguage.ChineseSimplified, siteZh, "site-main-zh.png") }) {
+                LocalizationHelper.ApplyLanguage(language);
+                main.Navigate("conversations"); main.ShowConversation(conversation); main.Activate();
+                await Task.Delay(600);
+                await Capture(main, Path.Combine(AppContext.BaseDirectory, captureName));
+            }
+            Check(File.Exists(Path.Combine(AppContext.BaseDirectory, "site-main-en.png")) && File.Exists(Path.Combine(AppContext.BaseDirectory, "site-main-zh.png")),
+                "Website captures of the main window are saved");
             Check(ShellIntegration.FormatShortcut(ShellIntegration.ModControl | ShellIntegration.ModAlt, 0x58) == "Ctrl+Alt+X"
                 && ShellIntegration.IsValidShortcut(ShellIntegration.ModControl, 0x41) && !ShellIntegration.IsValidShortcut(ShellIntegration.ModShift, 0x41)
                 && !ShellIntegration.IsValidShortcut(ShellIntegration.ModControl, 0x11), "Shortcuts need Ctrl, Alt or Win plus a non-modifier key");
