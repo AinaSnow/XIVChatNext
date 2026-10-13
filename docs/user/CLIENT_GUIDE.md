@@ -31,7 +31,7 @@ Click the Logo to reconnect to the most recently successful target. Interrupted 
 
 Open conversations as popouts and save/restore layouts. They share conversation state and preserve disconnected drafts. Reading another character's history does not switch the live sender.
 
-Select item/map links to inspect cards; comparisons depend on available data/equipment. Allow screenshots in the plugin, request one from the client and preview/save/copy the result.
+Select item/map links to inspect cards; comparisons depend on available data/equipment. Request a screenshot from the client, then preview, save or copy it. Any trusted client can request screenshots while the game and plugin are running.
 
 ### Contact nicknames and streamer mode (Desktop 1.4.0)
 
@@ -108,7 +108,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 聊天可以打开为独立小窗，窗口位置可以保存并在下次恢复。主窗口和小窗使用同一段会话，断线后草稿会保留。查看其他角色的历史记录，不会切换当前发消息的角色。
 
-点击消息里的物品或坐标可以看详情。装备对比需要游戏提供相应数据。截图需要先在插件里允许，然后在客户端请求截图，收到后可以预览、保存或复制。
+点击消息里的物品或坐标可以看详情。装备对比需要游戏提供相应数据。在客户端请求截图，收到后可以预览、保存或复制。游戏和插件运行时，所有已信任的客户端都可以请求截图。
 
 点击发送按钮左侧的笑脸可以打开“游戏符号”，主窗口和小窗都能用。选中的符号会插入到光标位置，或替换选中的文字，之后仍需要你自己发送。面板收录当前字体能显示的 165 个游戏专用字符和《》，范围参考 [Lodestone 符号清单](https://jp.finalfantasyxiv.com/lodestone/character/52670623/blog/5654118/)，游戏里最终怎么显示取决于游戏版本。
 
