@@ -29,6 +29,9 @@ namespace XIVChatPlugin {
         // Listen on all interfaces instead of loopback only. Defaults off; configurations from before version 2 keep it on.
         public bool AllowLanConnections { get; set; }
 
+        // Trusted clients may capture the game window. On by default so the existing feature keeps working.
+        public bool AllowScreenshots { get; set; } = true;
+
         public bool AllowRelayConnections { get; set; }
         public string? RelayAuth { get; set; }
         public string RelayUrl { get; set; } = "";

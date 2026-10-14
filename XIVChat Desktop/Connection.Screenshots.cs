@@ -22,6 +22,8 @@ namespace XIVChat_Desktop {
             internal readonly IProgress<ScreenshotProgress>? Progress = progress;
         }
         public bool SupportsScreenshots => this.capabilities?.Screenshots == true;
+        /// <summary>The plugin can take screenshots but its owner turned them off.</summary>
+        public bool ScreenshotsDisabled => this.capabilities?.ScreenshotsDisabled == true;
         private bool ScreenshotOwnerMatches(ClientScreenshot request) => this.Available && ReferenceEquals(this.app.Connection, this) &&
             !this.cancel.IsCancellationRequested && this.commandPlayer?.Identity?.Key == request.OwnerKey && this.commandPlayer.OwnerEpoch == request.OwnerEpoch;
 

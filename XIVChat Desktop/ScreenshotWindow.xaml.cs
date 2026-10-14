@@ -71,7 +71,9 @@ namespace XIVChat_Desktop {
             this.StateText.Text = this.Session.StateKey == "Screenshot.Receiving"
                 ? string.Format(L("Screenshot.Receiving"), (int)this.TransferProgress.Value) : L(this.Session.StateKey);
             if (!this.Session.Busy && !this.Session.CanCapture)
-                this.StateText.Text = L(this.App.Connection?.Available == true && this.App.Connection.SupportsScreenshots == false ? "Screenshot.UpgradeRequired" : "Screenshot.ConnectRequired");
+                this.StateText.Text = L(this.App.Connection is not { Available: true } connection ? "Screenshot.ConnectRequired"
+                    : connection.ScreenshotsDisabled ? "Screenshot.Disabled"
+                    : connection.SupportsScreenshots ? "Screenshot.ConnectRequired" : "Screenshot.UpgradeRequired");
             if (this.Session.Preview is { } preview && !ReferenceEquals(this.displayed, preview) && !ReferenceEquals(this.loading, preview)) _ = this.LoadImageAsync(preview);
             bool hasImage = this.displayed != null;
             this.EmptyPanel.Visibility = hasImage ? Visibility.Collapsed : Visibility.Visible;

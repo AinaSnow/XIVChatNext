@@ -15,6 +15,8 @@ namespace XIVChatCommon.Message.Server {
         [Key(9)] public bool GameEvents { get; set; }
         [Key(10)] public bool GameCards { get; set; }
         [Key(11)] public bool Screenshots { get; set; }
+        /// <summary>The plugin supports screenshots but its owner turned them off. Older clients only see Screenshots = false.</summary>
+        [Key(12)] public bool ScreenshotsDisabled { get; set; }
         [IgnoreMember] protected override byte Code => (byte)ServerOperation.Capabilities;
         protected override byte[] PayloadEncode() => MessagePackSerializer.Serialize(this);
         public static ServerCapabilities Decode(byte[] bytes) => MessagePackSerializer.Deserialize<ServerCapabilities>(bytes);

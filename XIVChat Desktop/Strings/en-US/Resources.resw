@@ -320,6 +320,7 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>Command was not sent: invalid request or more than 8 KiB of text.</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>Command cancelled: the connection ended.</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>Command could not be applied: this game channel is unavailable.</value></data>
+  <data name="Workbench.ConversationsShort" xml:space="preserve"><value>Chats</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>Conversations</value></data>
   <data name="Workbench.Channels" xml:space="preserve"><value>Channels</value></data>
   <data name="Workbench.Friends" xml:space="preserve"><value>Friends</value></data>
@@ -731,6 +732,7 @@
   <data name="Screenshot.TimedOut" xml:space="preserve"><value>Screenshot timed out. Restore the game window and try again.</value></data>
   <data name="Screenshot.Cancelled" xml:space="preserve"><value>Screenshot cancelled.</value></data>
   <data name="Screenshot.TooLarge" xml:space="preserve"><value>The image exceeded the size limit. Try Standard quality.</value></data>
+  <data name="Screenshot.Disabled" xml:space="preserve"><value>Screenshots are turned off in the game plugin. Turn on “Allow clients to request game screenshots” in its Messages settings to use this.</value></data>
   <data name="Screenshot.UpgradeRequired" xml:space="preserve"><value>This plugin does not support screenshots. Update the game plugin to use this feature.</value></data>
   <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>Connect to a logged-in game to capture a screenshot.</value></data>
   <data name="Screenshot.Saved" xml:space="preserve"><value>Image saved.</value></data>

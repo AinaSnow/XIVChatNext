@@ -521,12 +521,7 @@ namespace XIVChatPlugin {
                     var hadWorkbench = client.GetPreference(ClientPreference.WorkbenchSupport, false);
                     client.Subscription = new ChannelSubscription(preferences.Channels);
                     client.Preferences = preferences;
-                    if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) {
-                        client.Send(new ServerCapabilities {
-                            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
-                            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true, GameCards = true, Screenshots = true,
-                        });
-                    }
+                    if (!hadWorkbench && client.GetPreference(ClientPreference.WorkbenchSupport, false)) client.Send(this.Capabilities());
 
                     // immediately queue housing location
                     if (client.GetPreference(ClientPreference.HousingLocationSupport, false)) {
@@ -537,6 +532,11 @@ namespace XIVChatPlugin {
                 case ClientOperation.Screenshot:
                     if (!client.GetPreference(ClientPreference.ScreenshotSupport, false) || payload.Length > 1024) break;
                     var screenshot = ClientScreenshot.Decode(payload);
+                    if (!this._plugin.Config.AllowScreenshots) {
+                        if (screenshot.Valid) client.Send(new ServerScreenshot { RequestId = screenshot.RequestId, OwnerKey = screenshot.OwnerKey,
+                            OwnerEpoch = screenshot.OwnerEpoch, Status = ScreenshotStatus.Unavailable });
+                        break;
+                    }
                     if (screenshot.Valid) _ = this.Screenshots.RequestAsync(id, screenshot, client.TokenSource.Token,
                         (packet, bulk) => bulk ? client.TrySendScreenshot(packet.Encode()) : client.Send(packet));
                     break;
@@ -565,6 +565,18 @@ namespace XIVChatPlugin {
 
                     break;
             }
+        }
+
+        private ServerCapabilities Capabilities() => new() {
+            ServiceId = this._plugin.Config.ServiceId, RunId = this._runId, CursorBacklog = true, FriendSnapshots = true,
+            ChannelSubscriptions = true, GuardedCommands = true, DirectedTell = true, FriendPresence = true, GameEvents = true, GameCards = true,
+            Screenshots = this._plugin.Config.AllowScreenshots, ScreenshotsDisabled = !this._plugin.Config.AllowScreenshots,
+        };
+
+        /// <summary>Tell connected clients that the screenshot setting changed, and stop any capture in progress.</summary>
+        internal void ApplyScreenshotSetting() {
+            if (!this._plugin.Config.AllowScreenshots) this.Screenshots.CancelAll();
+            this.BroadcastMessage(this.Capabilities(), ClientPreference.WorkbenchSupport);
         }
 
         private GameCommandContext? CommandContext(Guid id, BaseClient client, string? request, string? owner,

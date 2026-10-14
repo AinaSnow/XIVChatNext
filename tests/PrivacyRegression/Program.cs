@@ -264,6 +264,12 @@ try {
         command.CommandText = "SELECT count(*) FROM messages WHERE id='original-message'";
         Equal(Convert.ToInt32(command.ExecuteScalar()), 1, "failed migration preserves history");
     }
+    // Capabilities from plugins before the screenshot switch have no key 12; new fields must default safely.
+    var legacyCapabilities = MessagePackSerializer.Serialize(new object[] { "service", "run", true, true, true, true, true, true, true, true, true, true });
+    var legacy = ServerCapabilities.Decode(legacyCapabilities);
+    Check(legacy.Screenshots && !legacy.ScreenshotsDisabled, "older capabilities decode with screenshots enabled and not disabled");
+    var disabled = ServerCapabilities.Decode(MessagePackSerializer.Serialize(new ServerCapabilities { Screenshots = false, ScreenshotsDisabled = true }));
+    Check(!disabled.Screenshots && disabled.ScreenshotsDisabled, "disabled screenshots round-trip in capabilities");
     Console.WriteLine($"PASS: {checks} privacy and storage checks.");
 } finally {
     SqliteConnection.ClearAllPools();

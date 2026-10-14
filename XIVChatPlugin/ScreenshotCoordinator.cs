@@ -37,6 +37,12 @@ namespace XIVChatPlugin {
                 if (this.active is { } operation) { operation.CancelReason = ScreenshotStatus.Stale; operation.Lifetime.Cancel(); }
             }
         }
+        /// <summary>Cancels the capture in progress, if any, reporting it as unavailable.</summary>
+        internal void CancelAll() {
+            lock (this.gate) {
+                if (this.active is { } operation) { operation.CancelReason = ScreenshotStatus.Unavailable; operation.Lifetime.Cancel(); }
+            }
+        }
         internal async Task<ScreenshotStatus> RequestAsync(Guid client, ClientScreenshot request, CancellationToken connectionToken, Func<ServerScreenshot, bool, bool> send) {
             if (!request.Valid || connectionToken.IsCancellationRequested) return ScreenshotStatus.Cancelled;
             Operation? operation = null;

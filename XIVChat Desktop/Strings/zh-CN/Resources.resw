@@ -320,6 +320,7 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
+  <data name="Workbench.ConversationsShort" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Channels" xml:space="preserve"><value>频道</value></data>
   <data name="Workbench.Friends" xml:space="preserve"><value>好友</value></data>
@@ -731,6 +732,7 @@
   <data name="Screenshot.TimedOut" xml:space="preserve"><value>截图超时，请恢复游戏窗口后重试。</value></data>
   <data name="Screenshot.Cancelled" xml:space="preserve"><value>已取消截图。</value></data>
   <data name="Screenshot.TooLarge" xml:space="preserve"><value>图片超过大小限制，请改用标准清晰度重试。</value></data>
+  <data name="Screenshot.Disabled" xml:space="preserve"><value>游戏插件中已关闭截图。如需使用，请在插件“消息”设置中开启“允许客户端请求游戏截图”。</value></data>
   <data name="Screenshot.UpgradeRequired" xml:space="preserve"><value>当前插件不支持截图，请更新游戏内插件后使用。</value></data>
   <data name="Screenshot.ConnectRequired" xml:space="preserve"><value>请连接已登录角色的游戏，再截取画面。</value></data>
   <data name="Screenshot.Saved" xml:space="preserve"><value>图片已保存。</value></data>

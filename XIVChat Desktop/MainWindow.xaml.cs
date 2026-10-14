@@ -105,7 +105,10 @@ namespace XIVChat_Desktop {
             ToolTipService.SetToolTip(ScreenshotButton, L("Screenshot.Title"));
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ScreenshotButton, L("Screenshot.Title"));
             MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
-            NavConversationsText.Text = L("Workbench.Conversations"); NavChannelsText.Text = L("Workbench.Channels");
+            // The rail is 60 px wide; use a short label there and keep the full name for tooltips and screen readers.
+            NavConversationsText.Text = L("Workbench.ConversationsShort"); NavChannelsText.Text = L("Workbench.Channels");
+            ToolTipService.SetToolTip(NavConversations, L("Workbench.Conversations"));
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(NavConversations, L("Workbench.Conversations"));
             NavFriendsText.Text = L("Workbench.Friends"); NavHistoryText.Text = L("Workbench.History");
             UpdateEventLocalizations();
             UpdateCardLocalizations();

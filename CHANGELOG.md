@@ -1,5 +1,12 @@
 # Changelog / 更新说明
 
+## Unreleased
+
+- Plugin: new **Allow clients to request game screenshots** setting in the Messages tab (on by default). Turning it off rejects new requests, stops a capture in progress and tells connected clients, which show that screenshots are turned off rather than asking for a plugin update.
+- Desktop: the navigation rail shows **Chats** instead of a truncated "Conversations" in English; the full name remains in the tooltip and for screen readers.
+- 插件：“消息”页新增“允许客户端请求游戏截图”（默认开启）。关闭后会拒绝新请求、停止正在进行的截图并通知已连接的客户端，客户端会提示截图已被关闭，而不是要求更新插件。
+- 客户端：英文界面左侧导航不再把 “Conversations” 截断，改为显示 “Chats”，完整名称保留在提示和读屏信息中。
+
 ## Desktop 1.5.0 · Plugin 1.7.17 — 2026-10-13
 
 - Desktop: optional notification-area icon. With **Keep running in the notification area** on, closing the main window hides it; click the icon to show it again or right-click to exit. The tooltip shows unread tells.

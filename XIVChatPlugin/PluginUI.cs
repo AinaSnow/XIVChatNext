@@ -253,6 +253,13 @@ namespace XIVChatPlugin {
                 this.Plugin.Config.SendBattle = battle; this.SaveMessageSettings();
             }
             ImGui.TextWrapped(this.T("战斗过滤仅影响新消息；历史中的已有记录保留。其他频道按客户端历史、视图和通知需要订阅。", "Battle filtering affects new messages; existing history remains. Other channels follow client history, view and notification subscriptions."));
+            ImGui.Separator();
+            var screenshots = this.Plugin.Config.AllowScreenshots;
+            if (ImGui.Checkbox(this.T("允许客户端请求游戏截图", "Allow clients to request game screenshots") + "##screenshots", ref screenshots)) {
+                this.Plugin.Config.AllowScreenshots = screenshots; this.Plugin.Config.Save(); this.Plugin.Server.ApplyScreenshotSetting();
+            }
+            ImGui.TextWrapped(this.T("开启后，已信任的客户端可以截取游戏画面。关闭后会立即停止正在进行的截图。", "When on, trusted clients can capture the game window. Turning it off also stops a capture in progress."));
+            ImGui.Separator();
             var input = this.Plugin.Config.MessagesCountAsInput;
             if (ImGui.Checkbox(this.T("发送消息重置离席计时", "Sending messages resets the AFK timer") + "##input", ref input)) {
                 this.Plugin.Config.MessagesCountAsInput = input; this.Plugin.Config.Save();
