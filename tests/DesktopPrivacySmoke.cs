@@ -527,6 +527,48 @@ internal sealed class DesktopPrivacySmokeApp : App {
                 "Window settings show the tray option and the configured shortcut");
             await Capture(shellSettings, Path.Combine(AppContext.BaseDirectory, "tray-settings-zh.png"));
             shellSettings.Close(); config.CloseToTray = false; config.GlobalHotkeyEnabled = false; Shell.Apply();
+            // Encryption negotiation against loopback fake plugins. Nothing leaves this computer.
+            async Task<(Connection Connection, int ServedProtocol)> ConnectToFakePlugin(Sodium.KeyPair pluginKey, bool supportsV2) {
+                var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); listener.Start();
+                var port = (ushort)((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+                var served = Task.Run(async () => {
+                    try {
+                        for (var attempt = 0; attempt < 2; attempt++) {
+                            using var socket = await listener.AcceptTcpClientAsync();
+                            var stream = socket.GetStream();
+                            var magic = new byte[3]; await stream.ReadExactlyAsync(magic);
+                            XIVChatCommon.ISecureChannel channel;
+                            if (magic.SequenceEqual(XIVChatCommon.KeyExchangeV2.Magic)) {
+                                if (!supportsV2) continue; // what a protocol 1 plugin does: close
+                                channel = (await XIVChatCommon.KeyExchangeV2.ServerHandshake(pluginKey, stream)).Channel;
+                            } else {
+                                channel = new XIVChatCommon.LegacySecureChannel((await XIVChatCommon.KeyExchange.ServerHandshake(pluginKey, stream)).Keys);
+                            }
+                            // The client's preferences packet; a client that refuses the connection hangs up instead.
+                            try { await channel.ReadAsync(stream); } catch (EndOfStreamException) { return 0; } catch (IOException) { return 0; }
+                            return channel.Protocol;
+                        }
+                        return 0;
+                    } finally { listener.Stop(); }
+                });
+                var connection = new Connection(this, "127.0.0.1", port);
+                var run = connection.Connect();
+                var protocol = await served.WaitAsync(TimeSpan.FromSeconds(20));
+                await run.WaitAsync(TimeSpan.FromSeconds(20));
+                return (connection, protocol);
+            }
+            var v2Plugin = Sodium.PublicKeyBox.GenerateKeyPair();
+            config.TrustedKeys.Add(new TrustedKey("fixture v2 plugin", v2Plugin.PublicKey));
+            var modern = await ConnectToFakePlugin(v2Plugin, true); await Task.Delay(200);
+            Check(modern.ServedProtocol == 2 && modern.Connection.Protocol == 2, "The client negotiates encryption v2 with an updated plugin");
+            Check(config.TrustedKeys.Single(k => k.Key.SequenceEqual(v2Plugin.PublicKey)).Protocol == 2, "The client remembers that the plugin supports encryption v2");
+            var downgrade = await ConnectToFakePlugin(v2Plugin, false);
+            Check(downgrade.ServedProtocol == 0 && downgrade.Connection.Protocol == 0 && downgrade.Connection.FailureMessage?.Contains("v2") == true,
+                "A plugin that used v2 before is not accepted over the old encryption");
+            var v1Plugin = Sodium.PublicKeyBox.GenerateKeyPair();
+            config.TrustedKeys.Add(new TrustedKey("fixture v1 plugin", v1Plugin.PublicKey));
+            var old = await ConnectToFakePlugin(v1Plugin, false);
+            Check(old.ServedProtocol == 1 && old.Connection.Protocol == 1, "The client falls back to the old encryption for a plugin that never offered v2");
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {

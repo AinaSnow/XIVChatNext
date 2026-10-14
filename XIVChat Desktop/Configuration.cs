@@ -311,6 +311,8 @@ namespace XIVChat_Desktop {
     public class TrustedKey {
         public string Name { get; set; }
         public byte[] Key { get; set; }
+        /// <summary>Highest protocol this plugin has completed. Once 2, a protocol 1 fallback is refused as a possible downgrade.</summary>
+        public int Protocol { get; set; } = 1;
 
         public TrustedKey(string name, byte[] key) {
             this.Name = name;

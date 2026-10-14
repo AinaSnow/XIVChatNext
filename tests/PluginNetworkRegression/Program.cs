@@ -1,3 +1,7 @@
+using System.Net;
+using System.Net.Sockets;
+using Sodium;
+using XIVChatCommon;
 using XIVChatPlugin;
 
 internal static class Program {
@@ -6,7 +10,28 @@ internal static class Program {
         if (!value) throw new Exception(name);
         Console.WriteLine("PASS " + name); checks++;
     }
-    public static int Main() {
+    /// <summary>Runs the plugin's negotiation against a client over loopback TCP.</summary>
+    private static async Task<(ProtocolNegotiation.Outcome Plugin, Exception? ClientError)> Negotiate(
+        byte[] magic, KeyPair client, KeyPair plugin, bool allowLegacy, Func<byte[], bool> usedProtocol2) {
+        var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
+        using var clientSocket = new TcpClient();
+        var accept = listener.AcceptTcpClientAsync();
+        await clientSocket.ConnectAsync(IPAddress.Loopback, ((IPEndPoint)listener.LocalEndpoint).Port);
+        using var serverSocket = await accept; listener.Stop();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var pluginSide = ProtocolNegotiation.AcceptAsync(serverSocket.GetStream(), plugin, allowLegacy, usedProtocol2, timeout.Token);
+        Exception? clientError = null;
+        try {
+            var stream = clientSocket.GetStream();
+            await stream.WriteAsync(magic, timeout.Token);
+            if (magic.SequenceEqual(KeyExchangeV2.Magic)) await KeyExchangeV2.ClientHandshake(client, stream, timeout.Token);
+            else if (magic.SequenceEqual(KeyExchangeV2.LegacyMagic)) await KeyExchange.ClientHandshake(client, stream, timeout.Token);
+        } catch (Exception ex) { clientError = ex; }
+        var outcome = await pluginSide;
+        return (outcome, clientError);
+    }
+
+    public static async Task<int> Main() {
         try {
             long now = 0;
             var window = (long)ConnectionGate.TrustWindow.TotalMilliseconds;
@@ -45,10 +70,24 @@ internal static class Program {
             Check(gate.TryBeginTrustRequest("192.168.0.1"), "Many short-lived sources do not block a later request");
             Check(gate.Usage.PendingTrust == 1, "Pending trust count reflects open prompts only");
 
+            var pluginKey = PublicKeyBox.GenerateKeyPair();
+            var clientKey = PublicKeyBox.GenerateKeyPair();
+            bool Never(byte[] _) => false;
+            bool Always(byte[] _) => true;
+            var modern = await Negotiate(KeyExchangeV2.Magic, clientKey, pluginKey, false, Never);
+            Check(modern.Plugin.Accepted && modern.Plugin.Channel!.Protocol == 2 && modern.Plugin.RemoteKey!.SequenceEqual(clientKey.PublicKey),
+                "The plugin accepts encryption v2 even when v1 is turned off");
+            var legacy = await Negotiate(KeyExchangeV2.LegacyMagic, clientKey, pluginKey, true, Never);
+            Check(legacy.Plugin.Accepted && legacy.Plugin.Channel!.Protocol == 1, "The plugin accepts an older client while v1 is allowed");
+            Check(!(await Negotiate(KeyExchangeV2.LegacyMagic, clientKey, pluginKey, false, Never)).Plugin.Accepted, "The plugin refuses v1 when it is turned off");
+            var downgrade = await Negotiate(KeyExchangeV2.LegacyMagic, clientKey, pluginKey, true, Always);
+            Check(!downgrade.Plugin.Accepted && downgrade.Plugin.Refusal!.Contains("protocol 2"), "The plugin refuses v1 from a client that has used v2");
+            Check(!(await Negotiate([1, 2, 3], clientKey, pluginKey, true, Never)).Plugin.Accepted, "The plugin refuses an unknown protocol magic");
+
             Console.WriteLine($"All {checks} plugin network checks passed.");
             return 0;
         } catch (Exception ex) {
-            Console.Error.WriteLine("FAIL " + ex.Message);
+            Console.Error.WriteLine("FAIL " + ex);
             return 1;
         }
     }

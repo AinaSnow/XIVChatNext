@@ -169,6 +169,12 @@ namespace XIVChatPlugin {
                 this.Plugin.Config.AcceptNewClients = acceptNew; this.Plugin.Config.Save();
             }
             ImGui.TextWrapped(this.T("新设备仍需要核对公钥并确认信任。关闭后仅允许已信任设备。", "New devices still require matching public keys and trust approval. When disabled, only trusted devices can connect."));
+            var legacy = this.Plugin.Config.AllowLegacyProtocol;
+            if (ImGui.Checkbox(this.T("允许旧版加密 (v1) 的客户端", "Allow clients using old encryption (v1)") + "##legacy-protocol", ref legacy)) {
+                this.Plugin.Config.AllowLegacyProtocol = legacy; this.Plugin.Config.Save();
+            }
+            ImGui.TextWrapped(this.T("客户端 1.6.0 起使用加密 v2：每次连接使用新密钥，并拒绝重放的消息。旧客户端只支持 v1。所有设备都更新后，建议关闭此项。用过 v2 的设备不会再被接受以 v1 连接。",
+                "Desktop 1.6.0 and later use encryption v2: new keys for every connection and rejection of replayed packets. Older clients only support v1. Turn this off once every device is updated. A device that has used v2 is never accepted over v1 again."));
             if (ImGui.CollapsingHeader(this.T("中继连接", "Relay") + "###relay")) {
                 var allowRelay = this.Plugin.Config.AllowRelayConnections;
                 if (ImGui.Checkbox(this.T("启用中继", "Enable relay") + "##allow-relay", ref allowRelay)) {
@@ -272,8 +278,8 @@ namespace XIVChatPlugin {
             var clients = this.Plugin.Server.Clients.Where(c => c.Value.Ready).ToArray();
             if (clients.Length == 0) ImGui.TextUnformatted(this.T("无", "None"));
             foreach (var entry in clients) {
-                var trusted = this.Plugin.Config.TrustedKeys.Values.FirstOrDefault(k => entry.Value.Handshake != null && k.Item2.SequenceEqual(entry.Value.Handshake.RemotePublicKey));
-                ImGui.TextUnformatted((trusted?.Item1 ?? this.T("未命名", "Unnamed")) + " · " + entry.Value.Remote);
+                var trusted = this.Plugin.Config.TrustedKeys.Values.FirstOrDefault(k => entry.Value.RemotePublicKey != null && k.Item2.SequenceEqual(entry.Value.RemotePublicKey));
+                ImGui.TextUnformatted((trusted?.Item1 ?? this.T("未命名", "Unnamed")) + " · " + (entry.Value.Remote?.ToString() ?? this.T("中继", "Relay")) + " · " + this.ProtocolLabel(entry.Value.Protocol));
                 ImGui.SameLine();
                 if (ImGui.Button(this.T("断开", "Disconnect") + "##" + entry.Key)) this.Plugin.Server.RemoveClient(entry.Key);
             }
@@ -281,16 +287,23 @@ namespace XIVChatPlugin {
             TextWhite(this.T("已信任设备", "Trusted devices"));
             if (this.Plugin.Config.TrustedKeys.Count == 0) ImGui.TextUnformatted(this.T("无", "None"));
             foreach (var entry in this.Plugin.Config.TrustedKeys.ToArray()) {
-                ImGui.TextUnformatted(entry.Value.Item1);
+                var secure = this.Plugin.Config.SecureClientKeys.ContainsKey(Convert.ToHexString(entry.Value.Item2));
+                ImGui.TextUnformatted(entry.Value.Item1 + " · " + this.ProtocolLabel(secure ? 2 : 1));
                 if (ImGui.IsItemHovered()) {
                     ImGui.BeginTooltip(); ImGui.TextUnformatted(entry.Value.Item2.ToHexString(true)); ImGui.EndTooltip();
                 }
                 ImGui.SameLine();
                 if (ImGui.Button(this.T("取消信任", "Untrust") + "##" + entry.Key)) {
-                    this.Plugin.Config.TrustedKeys.TryRemove(entry.Key, out _); this.Plugin.Config.Save();
+                    this.Plugin.Config.TrustedKeys.TryRemove(entry.Key, out _);
+                    this.Plugin.Config.SecureClientKeys.TryRemove(Convert.ToHexString(entry.Value.Item2), out _);
+                    this.Plugin.Config.Save();
                 }
             }
         }
+
+        private string ProtocolLabel(int protocol) => protocol == 2
+            ? this.T("加密 v2", "Encryption v2")
+            : this.T("旧版加密 v1，请更新客户端", "Old encryption v1 - update the client");
 
         private void DrawDiagnostics() {
             var server = this.Plugin.Server;
@@ -358,7 +371,7 @@ namespace XIVChatPlugin {
         private bool DrawPending(Guid id, BaseClient client, Channel<bool, bool> accepted) {
             var ret = false;
 
-            var clientPublic = client.Handshake!.RemotePublicKey;
+            var clientPublic = client.RemotePublicKey!;
             var clientPublicHex = clientPublic.ToHexString(upper: true);
             var serverPublic = this.Plugin.Config.KeyPair!.PublicKey;
             var serverPublicHex = serverPublic.ToHexString(upper: true);
@@ -405,7 +418,7 @@ namespace XIVChatPlugin {
             ImGui.TextUnformatted(this.T("两个公钥是否都一致？", "Do both keys match?"));
             if (WithWhiteText(() => ImGui.Button(this.T("是，信任", "Yes, trust")))) {
                 accepted.Writer.TryWrite(true);
-                this.Plugin.Config.TrustedKeys[Guid.NewGuid()] = Tuple.Create(name, client.Handshake.RemotePublicKey);
+                this.Plugin.Config.TrustedKeys[Guid.NewGuid()] = Tuple.Create(name, client.RemotePublicKey!);
                 this.Plugin.Config.Save();
                 this._pendingNames.Remove(id);
                 ret = true;

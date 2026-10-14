@@ -76,6 +76,7 @@ namespace XIVChatPlugin {
         private readonly GameEventQueue _pendingDutyEvents = new();
 
         private TcpListener? _listener;
+        private volatile bool _saveConfig;
 
         private bool _sendPlayerData;
         private readonly ConcurrentDictionary<Guid, byte> _awaitingState = new();
@@ -231,6 +232,8 @@ namespace XIVChatPlugin {
 
         internal void OnFrameworkUpdate(IFramework framework) {
             if (this._tokenSource.IsCancellationRequested) return;
+            // Configuration is saved on the framework thread; connection tasks only flag the change.
+            if (this._saveConfig) { this._saveConfig = false; this._plugin.Config.Save(); }
             if (!this._awaitingState.IsEmpty || this._toGame.Usage.Count > 0 || Environment.TickCount64 >= this._nextHousingCheck)
                 this._plugin.Functions.RefreshChatChannel();
             this.RefreshGameContext();
@@ -314,9 +317,6 @@ namespace XIVChatPlugin {
             }
         }
 
-        private static readonly IReadOnlyList<byte> Magic = new byte[] {
-            14, 20, 67,
-        };
 
         internal void SpawnClientTask(BaseClient client, bool requiresMagic) {
             var id = Guid.NewGuid();
@@ -344,17 +344,17 @@ namespace XIVChatPlugin {
                 try {
                     using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
                     handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
-                    if (requiresMagic) {
-                        var magic = new byte[Magic.Count];
-                        await client.ReadExactlyAsync(magic, 0, magic.Length, handshakeTimeout.Token);
-                        if (!magic.SequenceEqual(Magic)) return;
-                    }
-
-                    var handshake = await KeyExchange.ServerHandshake(this._plugin.Config.KeyPair!, client, handshakeTimeout.Token);
-                    client.Handshake = handshake;
+                    if (!requiresMagic) { client.Disconnect("Connections must start with a protocol magic."); return; }
+                    var outcome = await ProtocolNegotiation.AcceptAsync(client, this._plugin.Config.KeyPair!, this._plugin.Config.AllowLegacyProtocol,
+                        key => this._plugin.Config.SecureClientKeys.ContainsKey(Convert.ToHexString(key)), handshakeTimeout.Token);
+                    if (!outcome.Accepted) { client.Disconnect(outcome.Refusal); return; }
+                    var remoteKey = outcome.RemoteKey!;
+                    var channel = outcome.Channel!;
+                    client.Channel = channel;
+                    client.RemotePublicKey = remoteKey;
                     handshakeTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
 
-                    if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(handshake.RemotePublicKey))) {
+                    if (!this._plugin.Config.TrustedKeys.Values.Any(entry => entry.Item2.SequenceEqual(remoteKey))) {
                         if (!this._plugin.Config.AcceptNewClients) return;
                         if (source != null) {
                             if (!this._connectionGate.TryBeginTrustRequest(source)) {
@@ -372,6 +372,7 @@ namespace XIVChatPlugin {
 
                     if (handshaking) { this._connectionGate.EndHandshake(source!); handshaking = false; }
                     if (trustRequested) { this._connectionGate.EndTrustRequest(source!); trustRequested = false; }
+                    if (client.Protocol == 2 && this._plugin.Config.SecureClientKeys.TryAdd(Convert.ToHexString(remoteKey), 0)) this._saveConfig = true;
                     client.Connected = true;
                     client.Ready = true;
                     this._awaitingState[id] = 0;
@@ -379,7 +380,7 @@ namespace XIVChatPlugin {
                     listen = Task.Run(async () => {
                         try {
                             while (!client.TokenSource.IsCancellationRequested) {
-                                var msg = await SecretMessage.ReadSecretMessage(client, handshake.Keys.rx, client.TokenSource.Token);
+                                var msg = await channel.ReadAsync(client, client.TokenSource.Token);
                                 await this.ProcessMessage(id, client, msg);
                             }
                         } finally {
@@ -394,7 +395,7 @@ namespace XIVChatPlugin {
                         using var writeTimeout = CancellationTokenSource.CreateLinkedTokenSource(client.TokenSource.Token);
                         writeTimeout.CancelAfter(TimeSpan.FromSeconds(10));
                         try {
-                            await SecretMessage.SendSecretMessage(client, handshake.Keys.tx, packet.Bytes, writeTimeout.Token);
+                            await channel.WriteAsync(client, packet.Bytes, writeTimeout.Token);
                         } catch (OperationCanceledException) when (!client.TokenSource.IsCancellationRequested) {
                             client.Disconnect("Outgoing write timed out after 10 seconds.");
                         }

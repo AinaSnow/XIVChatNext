@@ -14,7 +14,7 @@ These folders contain chat history and connection secrets. Do not share them pub
 ### Connections
 
 - **First connection:** the client and the plugin each show a fingerprint. Compare them and approve on both ends. Only approve devices you recognise; remove old ones in the plugin's Devices tab.
-- **Encryption:** chat traffic between the client and the plugin is encrypted, whether you connect directly or through a relay.
+- **Encryption:** chat traffic between the client and the plugin is encrypted, whether you connect directly or through a relay. From Desktop 1.6.0 and plugin 1.8.0 (encryption v2), every connection uses new keys, recorded traffic cannot be replayed, and past sessions stay private if a device key later leaks. Older versions use the original encryption (v1) without these protections; the plugin's Devices tab shows which devices still use it. See [Chat encryption v2](https://github.com/AinaSnow/XIVChatNext/blob/main/docs/protocol/CHAT_V2.md).
 - **Direct connections:** from plugin 1.7.17, new plugin configurations accept connections from this computer only. Turn on **Allow LAN connections** only if another computer on your network needs to connect. The plugin limits repeated connection attempts and trust prompts from unknown devices.
 - **Relay:** a relay you host sees connection addresses, timing, device identifiers and traffic sizes. It does not hold device private keys and does not store chats. See [Self-hosted relay](SELF_HOSTED_RELAY.md).
 
@@ -51,7 +51,7 @@ XIVChat Next 没有账号，不做统计，也没有项目方运营的云服务�
 ### 连接安全
 
 - **第一次连接：**客户端和插件都会显示设备指纹。核对一致后，在两边都确认允许。只允许你认识的设备；不再使用的设备可以在插件“设备”页删除。
-- **加密：**无论直连还是经过中继，客户端和插件之间的聊天数据都是加密传输的。
+- **加密：**无论直连还是经过中继，客户端和插件之间的聊天数据都是加密传输的。客户端 1.6.0 和插件 1.8.0 起使用加密 v2：每次连接使用新密钥，录下的数据无法重放，设备密钥以后泄露也不影响过去的会话。更早的版本使用没有这些保护的旧版加密 (v1)，插件“设备”页会标出仍在使用旧版加密的设备。详见 [聊天加密 v2](https://github.com/AinaSnow/XIVChatNext/blob/main/docs/protocol/CHAT_V2.md#简体中文)。
 - **直连：**插件 1.7.17 起，新配置只允许本机直接连接。只有需要从局域网里另一台电脑连接时，才开启“允许局域网设备连接”。插件会限制陌生设备反复连接和弹出确认窗口。
 - **中继：**你自己部署的中继能看到连接地址、时间、设备标识和流量大小，但不持有设备私钥，也不保存聊天记录。详见 [自建中继](SELF_HOSTED_RELAY.md#简体中文)。
 

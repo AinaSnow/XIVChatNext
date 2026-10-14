@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Encryption v2 between the desktop client and the plugin (Desktop 1.6.0, Plugin 1.8.0). Each connection adds fresh X25519 keys, both ends prove ownership of their long-term keys, and packets use per-direction counters. Protocol 1 reused the same session keys on every connection and accepted replayed packets, so someone who recorded encrypted traffic could replay a client's commands into a new connection; v2 rejects that and adds forward secrecy. Fingerprints are unchanged. See docs/protocol/CHAT_V2.md.
+- Compatibility: the client tries v2 first and falls back to v1 for older plugins with a warning. After a plugin has used v2, the client refuses v1 for it; the plugin likewise refuses v1 from a client key that has used v2. The plugin's **Allow clients using old encryption (v1)** setting (on by default) can turn v1 off entirely, and the Devices tab labels each device's encryption.
+- 客户端与插件之间改用加密 v2（客户端 1.6.0、插件 1.8.0）。每次连接增加新的 X25519 临时密钥，双方证明持有自己的长期私钥，数据包使用分方向的计数器。v1 每次连接都使用相同的会话密钥，并且接受重放的数据包，录下加密流量的人可以把客户端的指令重放到新连接中；v2 会拒绝这种重放，并提供前向保密。设备指纹不变。详见 docs/protocol/CHAT_V2.md。
+- 兼容：客户端先尝试 v2，遇到旧插件时回退到 v1 并提示更新。插件用过 v2 后，客户端会拒绝再用 v1 连接它；插件同样拒绝用过 v2 的客户端以 v1 连接。插件新增“允许旧版加密 (v1) 的客户端”（默认开启），可完全关闭 v1；“设备”页会标出每台设备使用的加密版本。
 - Plugin: new **Allow clients to request game screenshots** setting in the Messages tab (on by default). Turning it off rejects new requests, stops a capture in progress and tells connected clients, which show that screenshots are turned off rather than asking for a plugin update.
 - Desktop: the navigation rail shows **Chats** instead of a truncated "Conversations" in English; the full name remains in the tooltip and for screen readers.
 - 插件：“消息”页新增“允许客户端请求游戏截图”（默认开启）。关闭后会拒绝新请求、停止正在进行的截图并通知已连接的客户端，客户端会提示截图已被关闭，而不是要求更新插件。

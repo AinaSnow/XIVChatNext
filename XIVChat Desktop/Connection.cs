@@ -48,6 +48,8 @@ namespace XIVChat_Desktop {
         public bool SupportsGuardedCommands => this.capabilities?.GuardedCommands == true;
         public bool SupportsDirectedTell => this.capabilities?.DirectedTell == true;
         public bool SupportsGameEvents => this.capabilities?.GameEvents == true;
+        /// <summary>Negotiated encryption protocol (1 or 2), or 0 before the handshake.</summary>
+        public int Protocol { get; private set; }
         public event Action<ServerCommandResult>? CommandResult;
         private readonly Channel<byte> cancelChannel = Channel.CreateBounded<byte>(1);
 
@@ -167,35 +169,55 @@ namespace XIVChat_Desktop {
         public async Task Connect() {
             Task? receiver = null;
             try {
-                if (Target.Relay is { } relay) {
-                    transport = await RelayEndpoint.ConnectAsync(relay.Server, WindowsSecret.Unprotect(relay.ProtectedCredential), relay.Fingerprint, this.cancel.Token);
-                } else {
-                    this.client = new TcpClient();
-                    using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(this.cancel.Token);
-                    connectTimeout.CancelAfter(TimeSpan.FromSeconds(15));
-                    await this.client.ConnectAsync(this.host, this.port, connectTimeout.Token);
-                    transport = this.client.GetStream();
+                async Task<Stream> Open() {
+                    transport?.Dispose(); this.client?.Dispose(); this.client = null;
+                    if (Target.Relay is { } relay) {
+                        transport = await RelayEndpoint.ConnectAsync(relay.Server, WindowsSecret.Unprotect(relay.ProtectedCredential), relay.Fingerprint, this.cancel.Token);
+                    } else {
+                        this.client = new TcpClient();
+                        using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(this.cancel.Token);
+                        connectTimeout.CancelAfter(TimeSpan.FromSeconds(15));
+                        await this.client.ConnectAsync(this.host, this.port, connectTimeout.Token);
+                        transport = this.client.GetStream();
+                    }
+                    return transport;
                 }
-                var stream = transport;
+                var stream = await Open();
 
-                // write the magic bytes
-                await stream.WriteAsync(new byte[] {
-                    14, 20, 67,
-                }, this.cancel.Token);
-
-                // do the handshake
+                // Protocol 2 first. A protocol 1 plugin closes the connection when it sees the new magic.
                 using var handshakeTimeout = CancellationTokenSource.CreateLinkedTokenSource(this.cancel.Token);
                 handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
-                var handshake = await KeyExchange.ClientHandshake(this.app.Config.KeyPair, stream, handshakeTimeout.Token);
+                byte[] remoteKey;
+                ISecureChannel channel;
+                try {
+                    await stream.WriteAsync(KeyExchangeV2.Magic, handshakeTimeout.Token);
+                    var secure = await KeyExchangeV2.ClientHandshake(this.app.Config.KeyPair, stream, handshakeTimeout.Token);
+                    remoteKey = secure.RemotePublicKey; channel = secure.Channel;
+                } catch (KeyExchangeV2.NotSupportedByPeerException) {
+                    stream = await Open();
+                    handshakeTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                    await stream.WriteAsync(KeyExchangeV2.LegacyMagic, handshakeTimeout.Token);
+                    var legacy = await KeyExchange.ClientHandshake(this.app.Config.KeyPair, stream, handshakeTimeout.Token);
+                    remoteKey = legacy.RemotePublicKey; channel = new LegacySecureChannel(legacy.Keys);
+                    if (this.app.Config.TrustedKeys.Any(trusted => trusted.Protocol >= 2 && trusted.Key.SequenceEqual(remoteKey))) {
+                        FailureMessage = SetupText.T("这个插件以前使用加密 v2，这次却只接受旧版加密。可能有人在拦截连接，或插件被换成了旧版本。已停止连接。",
+                            "This plugin used encryption v2 before but now only offers the old encryption. The connection may be intercepted, or the plugin was downgraded. Connection stopped.");
+                        goto Close;
+                    }
+                    this.DispatchIfCurrent(() => this.app.Window.AddSystemMessage(SetupText.T(
+                        "游戏插件使用旧版加密 (v1)。请把插件更新到 1.8.0 或以上，以获得每次连接独立的密钥和防重放保护。",
+                        "The game plugin uses the old encryption (v1). Update the plugin to 1.8.0 or later for per-connection keys and replay protection.")));
+                }
                 handshakeTimeout.CancelAfter(Timeout.InfiniteTimeSpan);
-                this.source = Convert.ToHexString(handshake.RemotePublicKey);
+                this.Protocol = channel.Protocol;
+                this.source = Convert.ToHexString(remoteKey);
 
                 // check for trust and prompt if not
-                if (!this.app.Config.TrustedKeys.Any(trusted => trusted.Key.SequenceEqual(handshake.RemotePublicKey))) {
+                if (!this.app.Config.TrustedKeys.Any(trusted => trusted.Key.SequenceEqual(remoteKey))) {
                     var trustChannel = Channel.CreateBounded<bool>(1);
 
                     this.DispatchIfCurrent(() => {
-                        new TrustDialog(trustChannel.Writer, handshake.RemotePublicKey).Activate();
+                        new TrustDialog(trustChannel.Writer, remoteKey).Activate();
                     });
 
                     var trusted = await trustChannel.Reader.ReadAsync(this.cancel.Token);
@@ -205,6 +227,13 @@ namespace XIVChat_Desktop {
                         goto Close;
                     }
                 }
+                // Recorded even if another connection has since become current: the plugin did complete protocol 2.
+                if (channel.Protocol >= 2) this.app.Dispatch(() => {
+                    var entry = this.app.Config.TrustedKeys.FirstOrDefault(trusted => trusted.Key.SequenceEqual(remoteKey));
+                    if (entry == null || entry.Protocol >= channel.Protocol) return;
+                    entry.Protocol = channel.Protocol;
+                    try { this.app.Config.Save(); } catch (Exception) { /* Recorded again after the next protocol 2 connection. */ }
+                });
 
                 // clear messages if connecting to a different host
                 var currentHost = Target.Relay is { } relayTarget ? relayTarget.Server + "/" + relayTarget.DeviceId : $"{this.host}:{this.port}";
@@ -222,7 +251,7 @@ namespace XIVChat_Desktop {
                 });
 
                 // tell the server our preferences
-                await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, this.preferences, this.cancel.Token);
+                await channel.WriteAsync(stream, this.preferences, this.cancel.Token);
                 this.established = true;
 
                 // check if backlog or catch-up is needed
@@ -232,7 +261,7 @@ namespace XIVChat_Desktop {
                     if (lastRealMessage != null) {
                         _backlogSequence += 1;
                         var catchUp = new ClientCatchUp(lastRealMessage.Timestamp);
-                        await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, catchUp, this.cancel.Token);
+                        await channel.WriteAsync(stream, catchUp, this.cancel.Token);
                     }
                 } else if (this.app.Config.BacklogMessages > 0) {
                     // backlog
@@ -240,14 +269,14 @@ namespace XIVChat_Desktop {
                     var backlogReq = new ClientBacklog {
                         Amount = this.app.Config.BacklogMessages,
                     };
-                    await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, backlogReq, this.cancel.Token);
+                    await channel.WriteAsync(stream, backlogReq, this.cancel.Token);
                 }
 
                 // start a task for accepting incoming messages and sending them down the channel
                 receiver = Task.Run(async () => {
                     try {
                         while (!this.cancel.IsCancellationRequested) {
-                            var rawMessage = await SecretMessage.ReadSecretMessage(stream, handshake.Keys.rx, this.cancel.Token);
+                            var rawMessage = await channel.ReadAsync(stream, this.cancel.Token);
                             if (!ready.Task.IsCompleted && rawMessage.Length != 0) {
                                 ready.TrySetResult(true);
                                 this.DispatchIfCurrent(() => { if (RememberTarget) this.app.RememberSuccessfulConnection(Target, TargetWasSaved); this.OnPropertyChanged(nameof(SessionReady)); });
@@ -278,7 +307,7 @@ namespace XIVChat_Desktop {
                         outgoingMessage = this.outgoingMessages.Reader.ReadAsync().AsTask();
 
                         try {
-                            await SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, toSend, this.cancel.Token);
+                            await channel.WriteAsync(stream, toSend, this.cancel.Token);
                         } catch (Exception ex) {
                             this.DispatchIfCurrent(() => {
                                 this.app.Window.AddSystemMessage("Error sending message.");
@@ -304,7 +333,7 @@ namespace XIVChat_Desktop {
                 });
 
                 // wait up to a second to send the shutdown packet
-                await Task.WhenAny(Task.Delay(1_000), SecretMessage.SendSecretMessage(stream, handshake.Keys.tx, ClientShutdown.Instance));
+                await Task.WhenAny(Task.Delay(1_000), channel.WriteAsync(stream, ClientShutdown.Instance));
 
             Close:
                 try {
@@ -317,6 +346,7 @@ namespace XIVChat_Desktop {
                         SocketException socket when socket.SocketErrorCode is SocketError.HostNotFound or SocketError.NoData or SocketError.TryAgain => SetupText.T("无法解析游戏电脑地址，请检查 IP 或主机名。", "The game computer address could not be resolved. Check its IP or hostname."),
                         SocketException socket when socket.SocketErrorCode == SocketError.ConnectionRefused => SetupText.T("连接被拒绝，请检查插件是否运行，以及两端端口是否一致。", "Connection refused. Check that the plugin is running and both ports match."),
                         OperationCanceledException => SetupText.T("连接或加密握手超时，请检查网络和插件状态。", "The connection or encrypted handshake timed out. Check the network and plugin."),
+                        System.Security.Cryptography.CryptographicException => SetupText.T("游戏插件没有通过加密验证。请核对两端指纹，确认连接的是你自己的插件。", "The game plugin failed the encryption check. Compare both fingerprints and make sure you are connecting to your own plugin."),
                         System.Security.Authentication.AuthenticationException => SetupText.T("中继端点指纹或证书验证失败，请与游戏插件重新核对。", "The relay endpoint fingerprint or certificate failed verification. Compare it with the game plugin again."),
                         _ => ex.Message,
                     };

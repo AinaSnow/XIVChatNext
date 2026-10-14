@@ -16,7 +16,10 @@ namespace XIVChatPlugin {
     internal abstract class BaseClient : Stream {
         internal virtual bool Connected { get; set; }
 
-        internal HandshakeInfo? Handshake { get; set; }
+        internal byte[]? RemotePublicKey { get; set; }
+        internal ISecureChannel? Channel { get; set; }
+        /// <summary>Negotiated protocol, or 0 before the handshake completes.</summary>
+        internal int Protocol => this.Channel?.Protocol ?? 0;
 
         internal ClientPreferences? Preferences { get; set; }
 

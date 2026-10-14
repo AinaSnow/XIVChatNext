@@ -27,6 +27,8 @@ jobs:
         run: dotnet run --project tests/UpdateRegression/UpdateRegression.csproj -c Release
       - name: Plugin network regression
         run: dotnet run --project tests/PluginNetworkRegression/PluginNetworkRegression.csproj -c Release
+      - name: Encryption protocol regression
+        run: dotnet run --project tests/ProtocolRegression/ProtocolRegression.csproj -c Release
 
   plugin:
     runs-on: windows-latest

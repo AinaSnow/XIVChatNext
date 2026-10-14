@@ -32,6 +32,11 @@ namespace XIVChatPlugin {
         // Trusted clients may capture the game window. On by default so the existing feature keeps working.
         public bool AllowScreenshots { get; set; } = true;
 
+        // Accept clients that only speak protocol 1 (fixed session keys, no replay protection). On until older clients are rare.
+        public bool AllowLegacyProtocol { get; set; } = true;
+        // Upper-case hex public keys of clients that have completed a protocol 2 handshake. They are never accepted over protocol 1 again.
+        public ConcurrentDictionary<string, byte> SecureClientKeys { get; set; } = new();
+
         public bool AllowRelayConnections { get; set; }
         public string? RelayAuth { get; set; }
         public string RelayUrl { get; set; } = "";
