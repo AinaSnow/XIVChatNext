@@ -49,5 +49,28 @@ try {
     var following = ChatChunkFallback.Convert(() => new[] { new XIVChatCommon.Message.TextChunk("33") }, System.Text.Encoding.UTF8.GetBytes("33"), null, fallbackErrors.Add);
     if (following.OfType<XIVChatCommon.Message.TextChunk>().Single().Content != "33" || fallbackErrors.Count != 1) throw new Exception("Fallback affects subsequent messages");
     Console.WriteLine("PASS Following chat is unaffected");
+    // The converter that the plugin runs for every chat message, on payloads that need no running game.
+    var bed = items.First(i => i.Name.ExtractText() == "陆行鸟充气床");
+    var line = new Dalamud.Game.Text.SeStringHandling.SeString(new List<Dalamud.Game.Text.SeStringHandling.Payload> {
+        new Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload("看看 "),
+        new Dalamud.Game.Text.SeStringHandling.Payloads.ItemPayload(bed.RowId, false),
+        new Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload("陆行鸟充气床"),
+        Dalamud.Game.Text.SeStringHandling.Payloads.RawPayload.LinkTerminator,
+        new Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload(" 好看吗"),
+        new Dalamud.Game.Text.SeStringHandling.Payloads.IconPayload(Dalamud.Game.Text.SeStringHandling.BitmapFontIcon.CrossWorld),
+        Dalamud.Game.Text.SeStringHandling.Payloads.EmphasisItalicPayload.ItalicsOn,
+        new Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload("斜体"),
+        Dalamud.Game.Text.SeStringHandling.Payloads.EmphasisItalicPayload.ItalicsOff,
+        new Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload("正常"),
+    });
+    var converted = new ChatChunkConverter(metadata).Convert(line, 0xabcdefff);
+    var texts = converted.OfType<XIVChatCommon.Message.TextChunk>().ToArray();
+    if (string.Concat(texts.Select(t => t.Content)) != "看看 陆行鸟充气床 好看吗斜体正常") throw new Exception("Converted text changed");
+    if (texts[0].ItemId != null || texts[1].ItemId != bed.RowId || texts[1].ItemName != "陆行鸟充气床" || texts[1].DataSource == null || texts[2].ItemId != null)
+        throw new Exception("Item details must cover exactly the linked text");
+    if (!converted.OfType<XIVChatCommon.Message.IconChunk>().Any() || !texts[3].Italic || texts[4].Italic || texts.Any(t => t.FallbackColour != 0xabcdefff))
+        throw new Exception("Icons, italics or fallback colour were lost");
+    Console.WriteLine("PASS Chat conversion scopes item links to their text and keeps icons, italics and colour");
+
     return 0;
 } catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

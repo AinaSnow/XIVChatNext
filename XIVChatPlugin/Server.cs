@@ -42,6 +42,7 @@ namespace XIVChatPlugin {
 
         private readonly Plugin _plugin;
         private readonly LinkMetadataCache _metadata;
+        private readonly ChatChunkConverter _chunks;
         internal GameCardService GameCards { get; }
         private ScreenshotCapture ScreenshotCapture { get; }
         private ScreenshotCoordinator Screenshots { get; }
@@ -100,6 +101,7 @@ namespace XIVChatPlugin {
             this._plugin = plugin;
             this._metadata = new LinkMetadataCache(plugin.DataManager,
                 ex => Plugin.Log.Warning(ex, "Could not read optional link metadata; preserving chat text"));
+            this._chunks = new ChatChunkConverter(this._metadata);
             this.ScreenshotCapture = new ScreenshotCapture(plugin);
             this.Screenshots = new ScreenshotCoordinator(this.ScreenshotCapture.CaptureAsync,
                 ex => Plugin.Log.Warning(ex, "Could not capture game screenshot"));
@@ -686,175 +688,9 @@ namespace XIVChatPlugin {
         }
 
         private IReadOnlyList<Chunk> SafeChunks(SeString message, uint? colour) => ChatChunkFallback.Convert(
-            () => this.ToChunks(message, colour), message.Encode(), colour,
+            () => this._chunks.Convert(message, colour), message.Encode(), colour,
             ex => Plugin.Log.Warning(ex, "Could not enrich chat message; forwarding original text"));
 
-        private IEnumerable<Chunk> ToChunks(SeString msg, uint? defaultColour) {
-            var chunks = new List<Chunk>();
-
-            var italic = false;
-            var foreground = new Stack<uint>();
-            var glow = new Stack<uint>();
-
-            uint? currentMapId = null;
-            float? currentMapX = null;
-            float? currentMapY = null;
-            string? currentMapFilenameId = null;
-            ushort? currentMapSizeFactor = null;
-            string? currentMapPlaceName = null;
-            uint? currentItemId = null;
-            uint? currentItemKind = null;
-            bool? currentIsHq = null;
-            string? currentItemName = null;
-            string? currentItemDesc = null;
-            uint? currentItemIcon = null;
-            ushort? currentItemLevel = null;
-            byte? currentItemRarity = null;
-            string? currentItemCategory = null;
-            ushort? currentItemEquipLevel = null;
-            byte? currentItemMateriaSlots = null;
-            bool? currentItemIsAdvancedMeldingPermitted = null;
-            List<string>? currentItemStats = null;
-            XIVChatCommon.GameItemDetails? currentItemDetails = null;
-            XIVChatCommon.GameDataSource? currentDataSource = null;
-
-            void Append(string text) {
-                chunks.Add(new TextChunk(text) {
-                    FallbackColour = defaultColour,
-                    Foreground = foreground.Count > 0 ? foreground.Peek() : null,
-                    Glow = glow.Count > 0 ? glow.Peek() : null,
-                    Italic = italic,
-                    MapId = currentMapId,
-                    MapX = currentMapX,
-                    MapY = currentMapY,
-                    MapFilenameId = currentMapFilenameId,
-                    MapSizeFactor = currentMapSizeFactor,
-                    MapPlaceName = currentMapPlaceName,
-                    ItemId = currentItemId,
-                    ItemKind = currentItemKind,
-                    IsHq = currentIsHq,
-                    ItemName = currentItemName,
-                    ItemDescription = currentItemDesc,
-                    ItemIconId = currentItemIcon,
-                    ItemLevel = currentItemLevel,
-                    ItemRarity = currentItemRarity,
-                    ItemCategory = currentItemCategory,
-                    ItemEquipLevel = currentItemEquipLevel,
-                    ItemMateriaSlots = currentItemMateriaSlots,
-                    ItemIsAdvancedMeldingPermitted = currentItemIsAdvancedMeldingPermitted,
-                    ItemStats = currentItemStats,
-                    ItemDetails = currentItemDetails,
-                    DataSource = currentDataSource,
-                });
-            }
-
-            foreach (var payload in msg.Payloads) {
-                switch (payload.Type) {
-                    case PayloadType.EmphasisItalic:
-                        var newStatus = ((EmphasisItalicPayload) payload).IsEnabled;
-                        italic = newStatus;
-                        break;
-                    case PayloadType.UIForeground:
-                        var foregroundPayload = (UIForegroundPayload) payload;
-                        if (foregroundPayload.IsEnabled) {
-                            foreground.Push(foregroundPayload.UIColor.Value.Dark);
-                        } else if (foreground.Count > 0) {
-                            foreground.Pop();
-                        }
-
-                        break;
-                    case PayloadType.UIGlow:
-                        var glowPayload = (UIGlowPayload) payload;
-                        if (glowPayload.IsEnabled) {
-                            glow.Push(glowPayload.UIColor.Value.Light);
-                        } else if (glow.Count > 0) {
-                            glow.Pop();
-                        }
-
-                        break;
-                    case PayloadType.AutoTranslateText:
-                        chunks.Add(new IconChunk {
-                            index = 54,
-                        });
-                        var autoText = ((AutoTranslatePayload) payload).Text;
-                        Append(autoText.Substring(2, autoText.Length - 4));
-                        chunks.Add(new IconChunk {
-                            index = 55,
-                        });
-                        break;
-                    case PayloadType.Icon:
-                        var index = ((IconPayload) payload).Icon;
-                        chunks.Add(new IconChunk {
-                            index = (byte) index,
-                        });
-                        break;
-                    case PayloadType.MapLink:
-                        var mapLink = (MapLinkPayload)payload;
-                        var map = this._metadata.Map(mapLink.Map.RowId, mapLink.TerritoryType.RowId);
-                        currentMapId = map.Id > 0 ? map.Id : null;
-                        currentMapX = mapLink.XCoord; currentMapY = mapLink.YCoord;
-                        currentMapFilenameId = map.Filename; currentMapSizeFactor = map.SizeFactor;
-                        currentMapPlaceName = map.PlaceName;
-                        currentDataSource = this._metadata.Source();
-                        break;
-                    case PayloadType.Item:
-                        var itemLink = (ItemPayload)payload;
-                        currentItemId = itemLink.ItemId; currentIsHq = itemLink.IsHQ;
-                        currentItemKind = (uint)itemLink.Kind;
-                        var item = this._metadata.Item(itemLink.ItemId, itemLink.Kind);
-                        currentItemName = item?.Name; currentItemDesc = item?.Description;
-                        currentItemIcon = item?.Icon; currentItemLevel = item?.Level;
-                        currentItemRarity = item?.Rarity; currentItemCategory = item?.Category;
-                        currentItemEquipLevel = item?.EquipLevel; currentItemMateriaSlots = item?.MateriaSlots;
-                        currentItemIsAdvancedMeldingPermitted = item?.AdvancedMelding; currentItemStats = item?.Stats;
-                        currentItemDetails = item?.Details; currentDataSource = item?.Source;
-                        break;
-                    case PayloadType.Unknown:
-                        var rawPayload = (RawPayload) payload;
-                        if (rawPayload.Data.Length >= 2 && rawPayload.Data[1] == 0x13) {
-                            if (foreground.Count > 0) {
-                                foreground.Pop();
-                            }
-
-                            if (glow.Count > 0) {
-                                glow.Pop();
-                            }
-                        }
-                        if (rawPayload.Data.Length >= 4 && rawPayload.Data[0] == 0x02 && rawPayload.Data[1] == 0x27 && rawPayload.Data[3] == 0xCF) {
-                            currentMapId = null;
-                            currentMapX = null;
-                            currentMapY = null;
-                            currentMapFilenameId = null;
-                            currentMapSizeFactor = null;
-                            currentMapPlaceName = null;
-                            currentItemId = null;
-                            currentItemKind = null;
-                            currentIsHq = null;
-                            currentItemName = null;
-                            currentItemDesc = null;
-                            currentItemIcon = null;
-                            currentItemLevel = null;
-                            currentItemRarity = null;
-                            currentItemCategory = null;
-                            currentItemEquipLevel = null;
-                            currentItemMateriaSlots = null;
-                            currentItemIsAdvancedMeldingPermitted = null;
-                            currentItemStats = null;
-                            currentItemDetails = null; currentDataSource = null;
-                        }
-
-                        break;
-                    default:
-                        if (payload is ITextProvider textProvider) {
-                            Append(textProvider.Text);
-                        }
-
-                        break;
-                }
-            }
-
-            return chunks;
-        }
 
 
         private ServerHistory HistoryPage(ClientHistory request) {

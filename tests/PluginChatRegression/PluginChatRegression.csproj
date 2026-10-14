@@ -13,5 +13,6 @@
     <Compile Include="../../XIVChatPlugin/LinkMetadataCache.cs" Link="LinkMetadataCache.cs"/>
     <Compile Include="../../XIVChatPlugin/BoundedCache.cs" Link="BoundedCache.cs"/>
     <Compile Include="../../XIVChatPlugin/ChatChunkFallback.cs" Link="ChatChunkFallback.cs"/>
+    <Compile Include="../../XIVChatPlugin/ChatChunkConverter.cs" Link="ChatChunkConverter.cs"/>
   </ItemGroup>
 </Project>

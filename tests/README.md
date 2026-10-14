@@ -38,7 +38,7 @@ The opt-in Windows suite also tests update progress, the nonmodal banner, releas
 
 ## CN plugin item-link regression
 
-`PluginChatRegression` reads an installed CN `game/sqpack` directory without starting Dalamud, connecting to the game or sending chat. It checks the two reported items, equipment restrictions without an English sheet, metadata failure caching and chat fallback preserving text/raw bytes. Override `DalamudLibPath` for a different local CN runtime version; pass the same directory at runtime for dependency resolution.
+`PluginChatRegression` reads an installed CN `game/sqpack` directory without starting Dalamud, connecting to the game or sending chat. It checks the two reported items, equipment restrictions without an English sheet, metadata failure caching, chat fallback preserving text/raw bytes, and the plugin's chat converter (item details limited to the linked text, icons, italics and fallback colour). Override `DalamudLibPath` for a different local CN runtime version; pass the same directory at runtime for dependency resolution.
 
 ```powershell
 dotnet run --project tests/PluginChatRegression -c Release -- '<game>/sqpack' '<CN Dalamud library directory>'
