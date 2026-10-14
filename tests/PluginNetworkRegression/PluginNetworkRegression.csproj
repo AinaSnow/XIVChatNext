@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../../XIVChatPlugin/ConnectionGate.cs" Link="ConnectionGate.cs" />
     <Compile Include="../../XIVChatPlugin/ProtocolNegotiation.cs" Link="ProtocolNegotiation.cs" />
+    <Compile Include="../../XIVChatPlugin/BacklogBatches.cs" Link="BacklogBatches.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../XIVChatCommon/XIVChatCommon.csproj" />

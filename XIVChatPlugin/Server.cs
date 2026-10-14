@@ -478,26 +478,26 @@ namespace XIVChatPlugin {
                     // ReSharper disable once LocalVariableHidesMember
                     var backlog = ClientBacklog.Decode(payload);
 
-                    var backlogMessages = this._backlog.Snapshot().Messages.Reverse()
-                        .Where(m => client.Subscription.Allows((ushort)m.Channel)).Take(backlog.Amount).ToList();
+                    var backlogMessages = this._backlog.Entries().Reverse()
+                        .Where(m => client.Subscription.Allows((ushort)m.Message.Channel)).Take(backlog.Amount).ToList();
 
                     if (!client.GetPreference(ClientPreference.BacklogNewestMessagesFirst, false)) {
                         backlogMessages.Reverse();
                     }
 
-                    await SendBacklogs(backlogMessages.ToArray(), client);
+                    SendBacklogs(backlogMessages, client);
                     break;
                 case ClientOperation.CatchUp:
                     var catchUp = ClientCatchUp.Decode(payload);
                     // I'm not sure why this needs to be done, but apparently it does
                     var after = catchUp.After.AddMilliseconds(1);
-                    var msgs = this.MessagesAfter(after);
+                    IEnumerable<(ServerMessage Message, int Bytes)> msgs = this._backlog.Entries().Where(entry => entry.Message.Timestamp > after);
 
                     if (client.GetPreference(ClientPreference.BacklogNewestMessagesFirst, false)) {
                         msgs = msgs.Reverse();
                     }
 
-                    await SendBacklogs(msgs, client);
+                    SendBacklogs(msgs, client);
                     break;
                 case ClientOperation.FriendPresence:
                     if (!client.GetPreference(ClientPreference.WorkbenchSupport, false) || payload.Length > 1024) break;
@@ -679,35 +679,10 @@ namespace XIVChatPlugin {
             }
         }
 
-        private static Task SendBacklogs(IEnumerable<ServerMessage> messages, BaseClient client) {
-            const int defaultSize = 5 + SecretMessage.NonceSize + SecretMessage.MacSize;
-            var size = defaultSize;
-            var responseMessages = new List<ServerMessage>();
-
-            bool SendBacklog() {
-                var resp = new ServerBacklog(responseMessages.ToArray(), ++client.BacklogSequence);
-                return client.Send(resp);
-            }
-
-            foreach (var catchUpMessage in messages.Where(m => client.Subscription.Allows((ushort)m.Channel))) {
-                // FIXME: this is very gross
-                var len = MessagePackSerializer.Serialize(catchUpMessage).Length;
-                // send message if it would've gone over length
-                if (size + len >= MaxMessageSize) {
-                    if (!SendBacklog()) return Task.CompletedTask;
-
-                    size = defaultSize;
-                    responseMessages.Clear();
-                }
-
-                size += len;
-                responseMessages.Add(catchUpMessage);
-            }
-
-            if (responseMessages.Count > 0) {
-                SendBacklog();
-            }
-            return Task.CompletedTask;
+        private static void SendBacklogs(IEnumerable<(ServerMessage Message, int Bytes)> messages, BaseClient client) {
+            // Sizes were measured when each message was recorded, so nothing is serialized twice.
+            foreach (var batch in BacklogBatches.Split(messages.Where(m => client.Subscription.Allows((ushort)m.Message.Channel)), MaxMessageSize))
+                if (!client.Send(new ServerBacklog(batch, ++client.BacklogSequence))) return;
         }
 
         private IReadOnlyList<Chunk> SafeChunks(SeString message, uint? colour) => ChatChunkFallback.Convert(
@@ -881,9 +856,6 @@ namespace XIVChatPlugin {
             return chunks;
         }
 
-        private IEnumerable<ServerMessage> MessagesAfter(DateTime time) {
-            return this._backlog.Snapshot().Messages.Where(msg => msg.Timestamp > time).ToArray();
-        }
 
         private ServerHistory HistoryPage(ClientHistory request) {
             var snapshot = this._backlog.Snapshot();

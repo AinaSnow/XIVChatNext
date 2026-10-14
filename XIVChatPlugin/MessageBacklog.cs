@@ -39,6 +39,10 @@ namespace XIVChatPlugin {
         internal (ServerMessage[] Messages, long Latest) Snapshot() {
             lock (this.gate) return (this.messages.Select(m => m.Message).ToArray(), this.sequence);
         }
+        /// <summary>Messages with the encoded size measured when they were recorded, oldest first.</summary>
+        internal (ServerMessage Message, int Bytes)[] Entries() {
+            lock (this.gate) return this.messages.ToArray();
+        }
         private void Trim() {
             while (this.messages.First != null && (this.messages.Count > this.capacity || this.bytes > this.byteCapacity)) {
                 this.bytes -= this.messages.First.Value.Bytes;
