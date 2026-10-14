@@ -31,7 +31,7 @@ Like any web request, these services also see your IP address.
 
 ### Screenshots and streamer mode
 
-The plugin captures the game window when a trusted client asks for a screenshot. From plugin 1.7.18 you can turn this off with **Allow clients to request game screenshots** in the plugin's Messages tab; earlier versions have no switch, so only trust devices you control. **Streamer mode changes what the client displays, copies and exports.** It does not redact game screenshots, images, unknown nicknames or text you type, and local history keeps the original messages. Check the actual screen before sharing.
+The plugin captures the game window when a trusted client asks for a screenshot. From plugin 1.8.0 you can turn this off with **Allow clients to request game screenshots** in the plugin's Messages tab; earlier versions have no switch, so only trust devices you control. **Streamer mode changes what the client displays, copies and exports.** It does not redact game screenshots, images, unknown nicknames or text you type, and local history keeps the original messages. Check the actual screen before sharing.
 
 ### Reporting a security problem
 
@@ -68,7 +68,7 @@ XIVChat Next 没有账号，不做统计，也没有项目方运营的云服务�
 
 ### 截图和主播模式
 
-已信任的客户端请求截图时，插件会截取游戏画面。插件 1.7.18 起，可以在插件“消息”页关闭“允许客户端请求游戏截图”；更早的版本没有这个开关，所以只信任你自己控制的设备。**主播模式只改变客户端里显示、复制和导出的内容**，不会给游戏截图、图片、未知昵称或你正在输入的文字打码，本地记录也保留原始消息。分享前请检查实际画面。
+已信任的客户端请求截图时，插件会截取游戏画面。插件 1.8.0 起，可以在插件“消息”页关闭“允许客户端请求游戏截图”；更早的版本没有这个开关，所以只信任你自己控制的设备。**主播模式只改变客户端里显示、复制和导出的内容**，不会给游戏截图、图片、未知昵称或你正在输入的文字打码，本地记录也保留原始消息。分享前请检查实际画面。
 
 ### 报告安全问题
 
