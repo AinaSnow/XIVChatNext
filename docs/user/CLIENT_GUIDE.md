@@ -83,7 +83,7 @@ Optional and off by default. In **Settings → Translation & AI**, turn on **Ena
 
 Right-click a message, or select text in it, and choose **Translate**. The translation appears under the original; only that message is sent. **Translate and summarize into** picks the language; **Interface language** follows the app. **Test translation** checks the service with one short sentence.
 
-**AI summaries** use the AI service: **Claude** with your own Anthropic API key (default model `claude-opus-5-5`), or an **OpenAI-compatible service or local model** (service address ending in `/v1`, model name, and a key if needed; plain `http://` only for a model on this computer, such as Ollama). Open the export window for a conversation, channel or history search, narrow it by time or keyword, and choose **AI summary** to read and copy it. Tick **Add AI summary to Markdown export** and save as `.md` to put it at the top of the file with a note that it may be wrong. Very large ranges are refused rather than cut short. Paid services bill your own account.
+**AI summaries** use the AI service: **Claude** with your own Anthropic API key (default model `claude-opus-5-5`), or an **OpenAI-compatible service or local model** (service address ending in `/v1`, model name, and a key if needed; plain `http://` only for this computer or a private network, such as Ollama or a model server on your LAN). To read a summary without exporting, use the **AI summary** button in a conversation or channel header (or the main menu, or a popout's menu). It opens on the last day; change the time range or keyword, choose **Summarize**, then read or copy the result in the window. No file is saved. In the export window, **AI summary** does the same for the export range. Tick **Add AI summary to Markdown export** and save as `.md` to put it at the top of the file with a note that it may be wrong. Very large ranges are refused rather than cut short. Paid services bill your own account.
 
 ### Data and upgrades
 
@@ -188,7 +188,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 在消息上右键，或选中其中的文字后右键，选择“翻译”，译文显示在原文下方，只会发送这一条消息。“翻译和总结使用的语言”选择目标语言，“跟随界面语言”则与客户端一致。“测试翻译”会用一句简短的话检查服务是否可用。
 
-**AI 总结**使用 AI 服务：**Claude**（填写自己的 Anthropic API Key，默认模型 `claude-opus-5-5`），或 **OpenAI 兼容服务或本机模型**（以 `/v1` 结尾的服务地址、模型名称，需要时填写 Key；只有本机模型允许 `http://`，例如 Ollama）。为会话、频道或历史搜索打开导出窗口，按时间或关键词缩小范围后点“AI 总结”，可以查看和复制。勾选“导出 Markdown 时附带 AI 总结”并保存为 `.md`，总结会放在文件开头，并注明可能有误。范围太大时会直接提示缩小范围，不会悄悄截断。收费服务由你自己的账号计费。
+**AI 总结**使用 AI 服务：**Claude**（填写自己的 Anthropic API Key，默认模型 `claude-opus-5-5`），或 **OpenAI 兼容服务或本机模型**（以 `/v1` 结尾的服务地址、模型名称，需要时填写 Key；只有本机或局域网地址允许 `http://`，例如 Ollama 或局域网里的模型服务）。只想看总结、不想导出时，点会话或频道标题栏的“AI 总结”按钮（主菜单和小窗菜单里也有），默认范围是最近一天，可调整时间或关键词，点“生成总结”后直接在窗口里查看或复制，不会保存文件。导出窗口里的“AI 总结”按钮则总结当前导出范围。勾选“导出 Markdown 时附带 AI 总结”并保存为 `.md`，总结会放在文件开头，并注明可能有误。范围太大时会直接提示缩小范围，不会悄悄截断。收费服务由你自己的账号计费。
 
 ### 数据存在哪里
 

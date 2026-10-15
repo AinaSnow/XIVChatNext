@@ -360,6 +360,10 @@
   <data name="Ai.SummaryFailedNotSaved" xml:space="preserve"><value>总结失败，未保存文件。</value></data>
   <data name="Ai.SummaryHeading" xml:space="preserve"><value>AI 总结</value></data>
   <data name="Ai.SummaryCaveat" xml:space="preserve"><value>由 {0} 生成，可能不完整或有误；以下方的原始消息为准。</value></data>
+  <data name="Ai.Generate" xml:space="preserve"><value>生成总结</value></data>
+  <data name="Ai.SummaryOnlyHint" xml:space="preserve"><value>选择时间范围后点“生成总结”。只把这个范围内的消息发送给 AI 服务，不会保存文件。</value></data>
+  <data name="Ai.Copied" xml:space="preserve"><value>已复制到剪贴板。</value></data>
+  <data name="Ai.SummaryOnlyCaveat" xml:space="preserve"><value>由 {0} 生成，可能不完整或有误，重要内容请以原始消息为准。</value></data>
   <data name="Ai.Copy" xml:space="preserve"><value>复制</value></data>
   <data name="Ai.TranslationSection" xml:space="preserve"><value>翻译</value></data>
   <data name="Ai.Translator" xml:space="preserve"><value>翻译服务</value></data>

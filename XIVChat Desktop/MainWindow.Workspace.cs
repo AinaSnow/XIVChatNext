@@ -59,21 +59,21 @@ public partial class MainWindow {
     internal void CloseForWorkspace() {
         stopping = true; allowClose = true; historyCancellation?.Cancel(); conversationLoad?.Cancel(); base.Close();
     }
-    private void OpenExport() {
+    private void OpenExport(bool summaryOnly = false) {
         if (section == "history" && cardSourceOrigin is { } origin) {
             new Export(new HistoryQuery(Source: origin.Source, OwnerKey: origin.OwnerKey, FavoriteId: origin.FavoriteId,
-                RecordId: origin.FavoriteId != null ? null : origin.Message is { } message ? message.LocalStorageId ?? HistoryStore.StorageId(origin.Source, message) : ""), L("Card.MessageSources")).Activate(); return;
+                RecordId: origin.FavoriteId != null ? null : origin.Message is { } message ? message.LocalStorageId ?? HistoryStore.StorageId(origin.Source, message) : ""), L("Card.MessageSources"), null, summaryOnly).Activate(); return;
         }
         if (section == "history") {
-            new Export(activeHistoryQuery ?? new HistoryQuery(), L("Workbench.History")).Activate(); return;
+            new Export(activeHistoryQuery ?? new HistoryQuery(), L("Workbench.History"), null, summaryOnly).Activate(); return;
         }
         if (selectedConversation is { } conversation) {
-            new Export(new HistoryQuery(Source: conversation.State.Source, OwnerKey: conversation.State.OwnerKey, PeerKey: conversation.Key), conversation.Name).Activate(); return;
+            new Export(new HistoryQuery(Source: conversation.State.Source, OwnerKey: conversation.State.OwnerKey, PeerKey: conversation.Key), conversation.Name, null, summaryOnly).Activate(); return;
         }
         var source = App.Workbench.Source.Length > 0 ? App.Workbench.Source : App.Session.Source;
         var owner = App.Workbench.OwnerKey ?? "unassigned:" + source;
         new Export(new HistoryQuery(Source: source, OwnerKey: owner), selectedChannel?.Name ?? L("Workbench.History"),
-            selectedChannel == null ? null : new Filter { Types = selectedChannel.Filter.Types.ToHashSet() }).Activate();
+            selectedChannel == null ? null : new Filter { Types = selectedChannel.Filter.Types.ToHashSet() }, summaryOnly).Activate();
     }
     private void InitializePopoutDrag() {
         bool dragging = false; Windows.Foundation.Point origin = default;

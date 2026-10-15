@@ -17,6 +17,10 @@
         <ListView x:Name="PreviewList" Grid.Row="4" SelectionMode="None" HorizontalContentAlignment="Stretch">
             <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" IsTextSelectionEnabled="True"/></DataTemplate></ListView.ItemTemplate>
         </ListView>
+        <Grid x:Name="SummaryPanel" Grid.Row="4" RowSpacing="8" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <TextBox x:Name="SummaryText" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12"><Button x:Name="CopySummaryButton" Click="CopySummary_Click"/><TextBlock x:Name="SummaryCaveat" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12" Opacity="0.7"/></StackPanel>
+        </Grid>
         <Grid Grid.Row="5" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBlock x:Name="Status" TextWrapping="Wrap" VerticalAlignment="Center"/><Button x:Name="CancelButton" Grid.Column="1" Click="Cancel_Click"/><Button x:Name="SaveButton" Grid.Column="2" Click="Save_Click"/>
         </Grid>

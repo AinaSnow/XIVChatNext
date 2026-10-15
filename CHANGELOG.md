@@ -1,5 +1,10 @@
 # Changelog / 更新说明
 
+## Unreleased
+
+- Desktop: **AI summary** without exporting. A button in conversation and channel headers (also in the main menu and popout menus, shown only when translation & AI is on) opens a summary window for that chat, starting with the last day. Choose **Summarize** to read or copy the result in the window; no file is saved.
+- 客户端：可以只看 AI 总结、不导出。会话和频道标题栏新增“AI 总结”按钮（主菜单和小窗菜单中也有，仅在开启翻译与 AI 后显示），默认总结最近一天，点“生成总结”后直接在窗口中查看或复制，不保存文件。
+
 ## Desktop 1.6.0 · Plugin 1.8.0 — 2026-10-15
 
 - Desktop: Windows installer (`XIVChatNext-win-Setup.exe`). It installs for the current user in `%LOCALAPPDATA%\XIVChatNext` without administrator rights and adds desktop and Start menu shortcuts. When an update is found, the installed client offers **Download and install**; nothing downloads until you click it, then the client closes normally and restarts on the new version. Updates come from GitHub Releases (Velopack). The portable ZIP is still published and keeps linking to the download. Chat history and settings stay in `%LOCALAPPDATA%\XIVChatDesktop` and survive updates and uninstalling.

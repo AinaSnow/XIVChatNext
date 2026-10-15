@@ -146,6 +146,9 @@ public sealed class ChatPopoutWindow : Window {
         }
         var export = new MenuFlyoutItem { Text = L("Menu.Export") };
         export.Click += (_, _) => new Export(ExportQuery, State.Name, SnapshotChannelFilter()).Activate(); flyout.Items.Add(export);
+        var summary = new MenuFlyoutItem { Text = L("Ai.Summarize") };
+        summary.Click += (_, _) => new Export(ExportQuery, State.Name, SnapshotChannelFilter(), summaryOnly: true).Activate(); flyout.Items.Add(summary);
+        flyout.Opening += (_, _) => summary.Visibility = app.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;
         var exit = new MenuFlyoutItem { Text = L("Menu.Exit") };
         exit.Click += async (_, _) => await workspace.ShutdownAsync(); flyout.Items.Add(exit);
         return flyout;

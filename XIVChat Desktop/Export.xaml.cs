@@ -18,6 +18,9 @@ namespace XIVChat_Desktop {
         private readonly HistoryQuery scope;
         private readonly string scopeName;
         private readonly Filter? filter;
+        // Summary only: no file is written; the summary is shown in the window.
+        private readonly bool summaryOnly;
+        private string? summary;
         private string? ownerLabel;
         private CancellationTokenSource? operation;
         private Task running = Task.CompletedTask;
@@ -25,9 +28,11 @@ namespace XIVChat_Desktop {
         private static string L(string key) => LocalizationHelper.GetString(key);
         public Export() : this(new HistoryQuery(Source: ((App)Application.Current).Workbench.Source,
             OwnerKey: ((App)Application.Current).Workbench.OwnerKey), L("Workbench.History")) { }
-        public Export(HistoryQuery query, string name, Filter? filter = null) {
+        public Export(HistoryQuery query, string name, Filter? filter = null, bool summaryOnly = false) {
             scope = query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null };
-            scopeName = name; this.filter = filter;
+            scopeName = name; this.filter = filter; this.summaryOnly = summaryOnly;
+            // A whole history is usually too long to summarize; start from the last day.
+            if (summaryOnly && query.FromUtc == null && query.UntilUtc == null) query = query with { FromUtc = DateTime.UtcNow.AddDays(-1) };
             InitializeComponent(); ThemeHelper.InitializeWindow(this);
             AppWindow.Resize(new Windows.Graphics.SizeInt32(820, 760));
             Keyword.Text = query.Text ?? "";
@@ -49,8 +54,8 @@ namespace XIVChat_Desktop {
             };
         }
         private void LocalizeWindow() {
-            Title = L("Export.Title"); Scope.Text = app.Presentation.Text(scopeName, app.Presentation.Context(scope.Source ?? "", scope.OwnerKey));
-            Explanation.Text = L("Export.DatabaseOnly") + "\n" +
+            Title = L(summaryOnly ? "Ai.SummaryHeading" : "Export.Title"); Scope.Text = app.Presentation.Text(scopeName, app.Presentation.Context(scope.Source ?? "", scope.OwnerKey));
+            Explanation.Text = L(summaryOnly ? "Ai.SummaryOnlyHint" : "Export.DatabaseOnly") + "\n" +
                 (scope.OwnerKey == null ? L("History.AllOwners") : ownerLabel ?? L("History.Unassigned")) + " · " + (scope.Source == null ? L("Export.AllConnections") : app.Config.TrustedKeys.FirstOrDefault(k => Convert.ToHexString(k.Key) == scope.Source)?.Name ?? L("Export.SavedConnection")) +
                 (scope.Channel is { } channel ? " · " + channel : "") + (scope.Person is { Length: > 0 } person ? " · " + person : "") +
                 (scope.BookmarksOnly ? " · " + L("History.BookmarksOnly") : "");
@@ -59,10 +64,15 @@ namespace XIVChat_Desktop {
             Keyword.Header = L("Workbench.Search");
             FromDate.PlaceholderText = L("Export.From"); UntilDate.PlaceholderText = L("Export.UntilExclusive");
             Timestamps.Content = L("Export.ShowTimestamps"); PreviewButton.Content = L("Export.Preview");
-            ClearDates.Content = L("Export.ClearDates"); SaveButton.Content = L("Dialog.Save"); CancelButton.Content = L("Dialog.Cancel");
+            ClearDates.Content = L("Export.ClearDates"); CancelButton.Content = L("Dialog.Cancel");
+            SaveButton.Content = L(summaryOnly ? "Ai.Generate" : "Dialog.Save");
             AiSummaryButton.Content = L("Ai.Summarize"); AiIncludeSummary.Content = L("Ai.IncludeSummary");
-            AiSummaryButton.Visibility = AiIncludeSummary.Visibility = app.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;
-            SaveButton.IsEnabled = app.Session.Store != null && !busy;
+            AiSummaryButton.Visibility = AiIncludeSummary.Visibility = app.Ai.Enabled && !summaryOnly ? Visibility.Visible : Visibility.Collapsed;
+            Timestamps.Visibility = summaryOnly ? Visibility.Collapsed : Visibility.Visible;
+            CopySummaryButton.Content = L("Ai.Copy");
+            SummaryCaveat.Text = string.Format(L("Ai.SummaryOnlyCaveat"), app.Ai.Settings().Model);
+            if (summaryOnly) SaveButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+            SaveButton.IsEnabled = CanSave();
         }
         internal HistoryQuery Query() {
             var from = FromDate.Date?.Date.Add(FromTime.Time).ToUniversalTime();
@@ -72,9 +82,14 @@ namespace XIVChat_Desktop {
         }
         private void SetBusy(bool value) {
             busy = value;
-            SaveButton.IsEnabled = !value && app.Session.Store != null;
+            SaveButton.IsEnabled = CanSave();
             AiSummaryButton.IsEnabled = AiIncludeSummary.IsEnabled = !value;
             PreviewButton.IsEnabled = ClearDates.IsEnabled = Keyword.IsEnabled = FromDate.IsEnabled = FromTime.IsEnabled = UntilDate.IsEnabled = UntilTime.IsEnabled = Timestamps.IsEnabled = !value;
+        }
+        private bool CanSave() => !busy && app.Session.Store != null && (!summaryOnly || app.Ai.Enabled);
+        private void ShowSummary(bool visible) {
+            SummaryPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            PreviewList.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
         }
         private async Task PreviewAsync() {
             if (busy || closed) return;
@@ -92,11 +107,15 @@ namespace XIVChat_Desktop {
             catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
             finally { if (!closed) SetBusy(false); }
         }
-        private async void Preview_Click(object sender, RoutedEventArgs e) => await PreviewAsync();
+        private async void Preview_Click(object sender, RoutedEventArgs e) { ShowSummary(false); await PreviewAsync(); }
         private void ClearDates_Click(object sender, RoutedEventArgs e) { FromDate.Date = null; UntilDate.Date = null; }
         private void Cancel_Click(object sender, RoutedEventArgs e) { if (busy) operation?.Cancel(); else Close(); }
         private async void Save_Click(object sender, RoutedEventArgs e) {
             if (busy || app.Session.Store == null) return;
+            if (summaryOnly) {
+                if (await SummarizeAsync() is { } text) { summary = text; SummaryText.Text = text; ShowSummary(true); }
+                return;
+            }
             operation?.Dispose(); operation = new();
             await SaveAsync(operation.Token);
         }
@@ -146,20 +165,33 @@ namespace XIVChat_Desktop {
         internal string SummarySection(string summary) =>
             "## " + L("Ai.SummaryHeading") + "\n\n> " + string.Format(L("Ai.SummaryCaveat"), app.Ai.Settings().Model) + "\n\n" + summary.Trim() + "\n";
 
-        private async void AiSummary_Click(object sender, RoutedEventArgs e) {
-            if (busy || app.Session.Store is not { } store) return;
+        /// <summary>Summarizes the current range; null after a failure or cancellation, which is shown in the status line.</summary>
+        private async Task<string?> SummarizeAsync() {
+            if (busy || app.Session.Store is not { } store) return null;
             operation?.Dispose(); operation = new(); SetBusy(true);
             Status.Text = L("Ai.Summarizing");
-            string? summary = null;
+            string? result = null;
             try {
                 var query = Query();
-                summary = await app.Ai.SummarizeAsync(store, query, filter == null ? null : filter.Allowed, SummaryScope(query), operation.Token);
+                result = await app.Ai.SummarizeAsync(store, query, filter == null ? null : filter.Allowed, SummaryScope(query), operation.Token);
                 if (!closed) Status.Text = "";
             } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
             catch (XIVChatAi.AiException ex) { if (!closed) Status.Text = AiAssistant.Describe(ex); }
             catch (Exception ex) { if (!closed) Status.Text = L("Ai.Failed") + " " + ex.Message; }
             finally { if (!closed) SetBusy(false); }
-            if (summary == null || closed) return;
+            return closed ? null : result;
+        }
+
+        private void CopySummary_Click(object sender, RoutedEventArgs e) {
+            if (string.IsNullOrEmpty(summary)) return;
+            var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(summary);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+            Status.Text = L("Ai.Copied");
+        }
+
+        private async void AiSummary_Click(object sender, RoutedEventArgs e) {
+            var summary = await SummarizeAsync();
+            if (summary == null) return;
             var text = new TextBox { Text = summary, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 320, MaxHeight = 520 };
             ScrollViewer.SetVerticalScrollBarVisibility(text, ScrollBarVisibility.Auto);
             var dialog = new ContentDialog {
@@ -177,7 +209,8 @@ namespace XIVChat_Desktop {
             await Task.WhenAll(windows.Select(async w => { try { await w.running; } catch (Exception) { /* The export window has already reported this failure. */ } }));
         }
         private void PrivacyChanged() {
-            operation?.Cancel(); PreviewList.ItemsSource = null; LocalizeWindow(); Status.Text = L("Privacy.ExportChanged");
+            operation?.Cancel(); PreviewList.ItemsSource = null; summary = null; SummaryText.Text = ""; ShowSummary(false);
+            LocalizeWindow(); Status.Text = L("Privacy.ExportChanged");
         }
     }
 }

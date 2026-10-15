@@ -63,6 +63,7 @@ namespace XIVChat_Desktop {
             App.Config.Tabs.CollectionChanged += TabsChanged;
             App.Config.Saved += ConfigSaved;
             App.Updates.Changed += UpdateReleaseBanner;
+            App.Config.Saved += UpdateSummaryEntry;
             App.Presentation.Changed += UpdatePrivacyDisplay;
             App.PropertyChanged += AppChanged;
             App.Workbench.Changed += WorkbenchChanged;
@@ -104,7 +105,7 @@ namespace XIVChat_Desktop {
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PopoutButton, L("Windows.Popout"));
             ToolTipService.SetToolTip(ScreenshotButton, L("Screenshot.Title"));
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ScreenshotButton, L("Screenshot.Title"));
-            MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
+            MenuRefreshFriends.Text = L("FriendList.Refresh"); MenuExport.Text = L("Menu.Export"); MenuSummary.Text = L("Ai.Summarize"); MenuConfig.Text = L("Menu.Config"); MenuExit.Text = L("Menu.Exit");
             // The rail is 60 px wide; use a short label there and keep the full name for tooltips and screen readers.
             NavConversationsText.Text = L("Workbench.ConversationsShort"); NavChannelsText.Text = L("Workbench.Channels");
             ToolTipService.SetToolTip(NavConversations, L("Workbench.Conversations"));
@@ -121,6 +122,8 @@ namespace XIVChat_Desktop {
             ToolTipService.SetToolTip(PinConversationButton, L("Conversation.Pin"));
             ToolTipService.SetToolTip(ConversationNoteButton, L("Conversation.Note"));
             ToolTipService.SetToolTip(ExportButton, L("Menu.Export")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ExportButton, L("Menu.Export"));
+            ToolTipService.SetToolTip(SummaryButton, L("Ai.Summarize")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SummaryButton, L("Ai.Summarize"));
+            UpdateSummaryEntry();
             ToolTipService.SetToolTip(AvatarButton, L("Avatar.Title"));
             ToolTipService.SetToolTip(LoadOlderButton, L("History.LoadOlder"));
             ToolTipService.SetToolTip(EditChannelButton, L("Workbench.EditChannel"));
@@ -458,6 +461,10 @@ namespace XIVChat_Desktop {
         private void Configuration_Click(object sender, RoutedEventArgs e) => new ConfigWindow(App.Config).Activate();
         private void EditChannel_Click(object sender, RoutedEventArgs e) { if (selectedChannel != null) new ManageTab(selectedChannel).Activate(); }
         private void Export_Click(object sender, RoutedEventArgs e) => OpenExport();
+        private void Summary_Click(object sender, RoutedEventArgs e) => OpenExport(summaryOnly: true);
+        // Summaries are only offered once translation & AI is turned on in settings.
+        private void UpdateSummaryEntry() =>
+            SummaryButton.Visibility = MenuSummary.Visibility = App.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;
         private async void Exit_Click(object sender, RoutedEventArgs e) => await App.Workspace.ShutdownAsync();
         private void Map_Click(object sender, RoutedEventArgs e) => MapWindow.ShowMap(CurrentPlayerData?.mapId, CurrentPlayerData?.mapX, CurrentPlayerData?.mapY, LocationText.Text, CurrentPlayerData?.mapFilenameId, CurrentPlayerData?.mapSizeFactor);
         private void LocationBtn_Click(object sender, RoutedEventArgs e) => Map_Click(sender, e);
@@ -473,6 +480,7 @@ namespace XIVChat_Desktop {
         }
         private void DisposeViews() {
             App.Updates.Changed -= UpdateReleaseBanner;
+            App.Config.Saved -= UpdateSummaryEntry;
             eventLoadVersion++;
             App.Notifier.EventsChanged -= EventsChanged;
             App.Cards.FavoritesChanged -= FavoritesChanged; favoritesVersion++;
