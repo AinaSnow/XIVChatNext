@@ -14,6 +14,10 @@ internal static class Program {
         try { await action(); return null; } catch (AiException ex) { return ex.Failure; }
     }
 
+    private static async Task<Exception?> Record(Func<Task> action) {
+        try { await action(); return null; } catch (Exception ex) { return ex; }
+    }
+
     private sealed record Captured(string Path, string Query, Dictionary<string, string> Headers, JsonNode? Body, string Raw);
 
     /// <summary>Serves one canned response per request and records what the client sent.</summary>
@@ -112,10 +116,20 @@ internal static class Program {
                 Check(await Failure(() => new OpenAiCompatibleClient(compatible.Url, "wrong", "m").CompleteAsync(AiPrompts.Translation("hi", "English"))) == AiFailure.Authentication,
                     "A rejected key is reported for OpenAI-compatible services");
             }
-            Check(await Failure(() => Task.FromResult(new OpenAiCompatibleClient("http://example.com/v1", null, "m"))) == AiFailure.NotConfigured
-                && new OpenAiCompatibleClient("http://localhost:11434/v1", null, "llama") != null, "Plain HTTP is only accepted for a service on this computer");
-            Check(await Failure(() => Task.FromResult(new AiSettings(AiProviderKind.Claude, " ", "").CreateClient())) == AiFailure.NotConfigured,
-                "A missing Claude key is reported before any request");
+            Check(await Failure(() => Task.FromResult(new OpenAiCompatibleClient("http://example.com/v1", null, "m"))) == AiFailure.InsecureAddress
+                && await Failure(() => Task.FromResult(new OpenAiCompatibleClient("http://8.8.8.8:8317/v1", null, "m"))) == AiFailure.InsecureAddress,
+                "Plain HTTP to a public host is refused with its own reason");
+            foreach (var local in new[] { "http://localhost:11434/v1", "http://127.0.0.1:8317/v1", "http://192.168.11.112:8317/v1", "http://10.0.0.5/v1",
+                         "http://172.20.1.2:8000/v1", "http://nas:8317/v1", "http://llm.lan/v1", "http://[fd00::1]:8317/v1" })
+                new OpenAiCompatibleClient(local, null, "m");
+            Check(true, "Plain HTTP is accepted on this computer and private networks (LAN, ULA, local names)");
+            Check(await Failure(() => Task.FromResult(new OpenAiCompatibleClient("172.32.0.1:8000/v1", null, "m"))) == AiFailure.InvalidAddress
+                && await Failure(() => Task.FromResult(new OpenAiCompatibleClient("http://172.32.0.1/v1", null, "m"))) == AiFailure.InsecureAddress,
+                "Addresses without a scheme or outside private ranges are reported precisely");
+            var missing = await Record(() => Task.FromResult(new AiSettings(AiProviderKind.Claude, " ", "").CreateClient()));
+            var missingModel = await Record(() => Task.FromResult(new AiSettings(AiProviderKind.OpenAiCompatible, null, "", "http://127.0.0.1/v1").CreateClient()));
+            Check(missing is AiException { Failure: AiFailure.NotConfigured, Setting: "ClaudeKey" } && missingModel is AiException { Setting: "Model" },
+                "Missing settings are named so the app can say which one");
 
             await Translators();
             Console.WriteLine($"All {checks} AI checks passed.");

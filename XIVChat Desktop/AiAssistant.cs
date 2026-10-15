@@ -48,16 +48,16 @@ namespace XIVChat_Desktop {
         public ITranslator Translator() {
             var o = this.Options;
             if (this.TranslatorFactory is { } factory) return factory(o);
-            string Required(string? protectedKey, string what) => Unprotect(protectedKey) is { Length: > 0 } key ? key
-                : throw new AiException(AiFailure.NotConfigured, what);
+            string Required(string? protectedKey, string setting) => Unprotect(protectedKey) is { Length: > 0 } key ? key
+                : throw AiException.Missing(setting);
             return o.Translator switch {
                 TranslationProvider.GoogleFree => new GoogleFreeTranslator(),
-                TranslationProvider.Microsoft => new MicrosoftTranslator(Required(o.ProtectedMicrosoftKey, "Microsoft key"), o.MicrosoftRegion),
-                TranslationProvider.DeepL => new DeepLTranslator(Required(o.ProtectedDeepLKey, "DeepL key")),
-                TranslationProvider.Baidu => string.IsNullOrWhiteSpace(o.BaiduAppId) ? throw new AiException(AiFailure.NotConfigured, "Baidu APP ID")
-                    : new BaiduTranslator(o.BaiduAppId.Trim(), Required(o.ProtectedBaiduKey, "Baidu key")),
-                TranslationProvider.Tencent => string.IsNullOrWhiteSpace(o.TencentSecretId) ? throw new AiException(AiFailure.NotConfigured, "Tencent SecretId")
-                    : new TencentTranslator(o.TencentSecretId.Trim(), Required(o.ProtectedTencentKey, "Tencent SecretKey"), o.TencentRegion),
+                TranslationProvider.Microsoft => new MicrosoftTranslator(Required(o.ProtectedMicrosoftKey, "MicrosoftKey"), o.MicrosoftRegion),
+                TranslationProvider.DeepL => new DeepLTranslator(Required(o.ProtectedDeepLKey, "DeepLKey")),
+                TranslationProvider.Baidu => string.IsNullOrWhiteSpace(o.BaiduAppId) ? throw AiException.Missing("BaiduAppId")
+                    : new BaiduTranslator(o.BaiduAppId.Trim(), Required(o.ProtectedBaiduKey, "BaiduKey")),
+                TranslationProvider.Tencent => string.IsNullOrWhiteSpace(o.TencentSecretId) ? throw AiException.Missing("TencentSecretId")
+                    : new TencentTranslator(o.TencentSecretId.Trim(), Required(o.ProtectedTencentKey, "TencentSecretKey"), o.TencentRegion),
                 _ => new AiTranslator(this.ClientFactory(this.Settings())),
             };
         }
@@ -137,7 +137,11 @@ namespace XIVChat_Desktop {
         }
 
         public static string Describe(AiException ex) => ex.Failure switch {
-            AiFailure.NotConfigured => LocalizationHelper.GetString("Ai.NotConfigured"),
+            AiFailure.NotConfigured => ex.Setting is { } setting
+                ? string.Format(LocalizationHelper.GetString("Ai.MissingSetting"), LocalizationHelper.GetString("Ai." + setting))
+                : LocalizationHelper.GetString("Ai.NotConfigured"),
+            AiFailure.InvalidAddress => LocalizationHelper.GetString("Ai.InvalidAddress"),
+            AiFailure.InsecureAddress => LocalizationHelper.GetString("Ai.InsecureAddress"),
             AiFailure.Authentication => LocalizationHelper.GetString("Ai.Authentication"),
             AiFailure.RateLimited => LocalizationHelper.GetString("Ai.RateLimited"),
             AiFailure.Refused => LocalizationHelper.GetString("Ai.Refused"),

@@ -96,6 +96,11 @@ public partial class ConfigWindow {
         try {
             Config.Save();
             LocalizeAi();
+            // Point out a bad address now instead of at the first translation.
+            if (o.Provider == AiProviderKind.OpenAiCompatible && o.CompatibleBaseUrl.Length > 0) {
+                try { OpenAiCompatibleClient.ParseAddress(o.CompatibleBaseUrl); }
+                catch (AiException ex) { AiStatus.Text = AiAssistant.Describe(ex); return false; }
+            }
             return true;
         } catch (Exception ex) {
             AiStatus.Text = L("Ai.SaveFailed") + " " + ex.Message;

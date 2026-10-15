@@ -380,6 +380,9 @@
   <data name="Ai.TestTranslation" xml:space="preserve"><value>Test translation</value></data>
   <data name="Ai.AiSection" xml:space="preserve"><value>AI service</value></data>
   <data name="Ai.AiSectionNote" xml:space="preserve"><value>Used for summaries in the export window, and for translation when "The AI service below" is selected.</value></data>
+  <data name="Ai.MissingSetting" xml:space="preserve"><value>Fill in “{0}” in Settings → Translation &amp; AI, then save.</value></data>
+  <data name="Ai.InvalidAddress" xml:space="preserve"><value>The service address must start with http:// or https://, for example https://api.example.com/v1.</value></data>
+  <data name="Ai.InsecureAddress" xml:space="preserve"><value>Services on the internet need an https:// address. http:// is only accepted for this computer or a private network (such as 192.168.x.x).</value></data>
   <data name="Export.Open" xml:space="preserve"><value>Export chat history…</value></data>
   <data name="Workbench.ConversationsShort" xml:space="preserve"><value>Chats</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>Conversations</value></data>

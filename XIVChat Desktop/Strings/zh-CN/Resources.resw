@@ -380,6 +380,9 @@
   <data name="Ai.TestTranslation" xml:space="preserve"><value>测试翻译</value></data>
   <data name="Ai.AiSection" xml:space="preserve"><value>AI 服务</value></data>
   <data name="Ai.AiSectionNote" xml:space="preserve"><value>用于导出窗口里的 AI 总结；翻译服务选择“使用下方的 AI 服务”时也用于翻译。</value></data>
+  <data name="Ai.MissingSetting" xml:space="preserve"><value>请在“设置 → 翻译与 AI”中填写“{0}”并保存。</value></data>
+  <data name="Ai.InvalidAddress" xml:space="preserve"><value>服务地址必须以 http:// 或 https:// 开头，例如 https://api.example.com/v1。</value></data>
+  <data name="Ai.InsecureAddress" xml:space="preserve"><value>互联网上的服务需要使用 https:// 地址。http:// 只允许本机或局域网地址（例如 192.168.x.x）。</value></data>
   <data name="Export.Open" xml:space="preserve"><value>导出聊天记录…</value></data>
   <data name="Workbench.ConversationsShort" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>
