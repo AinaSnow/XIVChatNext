@@ -1,8 +1,11 @@
 param(
     [ValidateSet('all','desktop','plugin')][string]$Component = 'all',
-    [string]$Label = ('preview-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    [string]$Label = ('preview-' + (Get-Date -Format 'yyyyMMdd-HHmmss')),
+    # Overrides the project version, e.g. to build an older installer for testing an update.
+    [string]$VersionOverride
 )
 $ErrorActionPreference = 'Stop'
+if ($VersionOverride -and $VersionOverride -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { throw 'VersionOverride must look like 1.2.3.' }
 if ($Label -notmatch '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' -or $Label.Contains('..')) { throw 'Label must be a simple release name.' }
 $releaseRoot = Join-Path $PSScriptRoot "artifacts/$Label"
 if (Test-Path -LiteralPath $releaseRoot) { throw "Output already exists: $releaseRoot. Choose a new label." }
@@ -14,8 +17,9 @@ try {
         $desktopRoot = Join-Path $releaseRoot 'desktop'
         # The .NET runtime ships in runtime\ instead of next to the app, so the folder stays readable.
         # Users still need nothing installed. WinUI's native files must stay beside the executable.
+        $versionArgs = if ($VersionOverride) { @("-p:Version=$VersionOverride", "-p:AssemblyVersion=$VersionOverride", "-p:FileVersion=$VersionOverride") } else { @() }
         dotnet publish 'XIVChat Desktop/XIVChat Desktop.csproj' -c Release -r win-x64 --self-contained false -p:WindowsAppSDKSelfContained=true -p:PublishSingleFile=false `
-            -p:AppHostDotNetSearch=AppRelative -p:AppHostRelativeDotNet=runtime -o $desktopRoot
+            -p:AppHostDotNetSearch=AppRelative -p:AppHostRelativeDotNet=runtime @versionArgs -o $desktopRoot
         if ($LASTEXITCODE -ne 0) { throw 'Desktop publishing failed.' }
         $dotnetRoot = Split-Path -Parent (Get-Command dotnet).Source
         $runtimeVersion = Get-ChildItem -LiteralPath (Join-Path $dotnetRoot 'shared/Microsoft.NETCore.App') -Directory |
@@ -48,10 +52,20 @@ try {
             if (!(Test-Path -LiteralPath (Join-Path $desktopRoot "Strings/$language/Resources.resw"))) { throw "Missing application translation: $language" }
         }
         $desktopProject = [xml](Get-Content -LiteralPath 'XIVChat Desktop/XIVChat Desktop.csproj' -Raw)
-        $desktopVersion = $desktopProject.SelectSingleNode('//AssemblyVersion').InnerText
+        $desktopVersion = if ($VersionOverride) { $VersionOverride } else { $desktopProject.SelectSingleNode('//AssemblyVersion').InnerText }
         [IO.Compression.ZipFile]::CreateFromDirectory($desktopRoot, (Join-Path $releaseRoot "XIVChatNext-Desktop-v$desktopVersion-win-x64.zip"))
         Write-Output "Removed $($removed.Count) unused runtime language folders; retained English, Japanese, German, Chinese, French and neutral resources."
         Write-Output "Bundled .NET runtime $runtimeVersion in runtime\; $((Get-ChildItem -LiteralPath $desktopRoot -File).Count) files beside the executable."
+
+        # Setup.exe installs to %LocalAppData%\XIVChatNext with desktop and Start menu shortcuts. Installed copies update from
+        # the GitHub release, so upload every file in installer\ next to the ZIP.
+        $installerRoot = Join-Path $releaseRoot 'installer'
+        dotnet tool restore | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not restore the vpk tool.' }
+        dotnet vpk pack --packId XIVChatNext --packVersion $desktopVersion --packDir $desktopRoot --mainExe 'XIVChat Desktop.exe' `
+            --packTitle 'XIVChat Next' --packAuthors AinaSnow --icon 'XIVChat Desktop/Resources/logo-c1.ico' --noPortable --outputDir $installerRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
+        if (!(Test-Path -LiteralPath (Join-Path $installerRoot 'releases.win.json'))) { throw 'The update feed is missing.' }
     }
     if ($Component -in @('all','plugin')) {
         dotnet build 'XIVChatPlugin/XIVChatPlugin.csproj' -c Release
@@ -66,7 +80,7 @@ try {
         } finally { $archive.Dispose() }
         Copy-Item -LiteralPath $pluginArchive -Destination (Join-Path $releaseRoot 'latest.zip')
     }
-    $hashes = Get-ChildItem -LiteralPath $releaseRoot -Filter '*.zip' | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" }
+    $hashes = @(Get-ChildItem -LiteralPath $releaseRoot -Filter '*.zip') + @(Get-ChildItem -LiteralPath (Join-Path $releaseRoot 'installer') -File -Include '*.exe','*.nupkg' -Recurse -ErrorAction SilentlyContinue) | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" }
     $hashes | Set-Content -LiteralPath (Join-Path $releaseRoot 'SHA256SUMS.txt') -Encoding utf8
     Write-Output "Distribution ready: $releaseRoot"
 } finally { Pop-Location }

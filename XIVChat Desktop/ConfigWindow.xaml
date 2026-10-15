@@ -244,10 +244,10 @@
                     <StackPanel x:Name="UpdateAvailablePanel" Spacing="12" Visibility="Collapsed">
                         <TextBlock x:Name="UpdateAvailableVersion" FontSize="18" FontWeight="SemiBold"/>
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Button local:Localize.Content="Update.Download" Click="DownloadUpdate_Click" Style="{ThemeResource AccentButtonStyle}"/>
+                            <Button x:Name="DownloadUpdateButton" Click="DownloadUpdate_Click" Style="{ThemeResource AccentButtonStyle}"/>
                             <Button local:Localize.Content="Update.ReleasePage" Click="ReleasePage_Click"/>
                         </StackPanel>
-                        <TextBlock local:Localize.Text="Update.InstallHint" TextWrapping="Wrap" Opacity="0.7"/>
+                        <TextBlock x:Name="UpdateInstallHint" TextWrapping="Wrap" Opacity="0.7"/>
                         <TextBlock local:Localize.Text="Update.Notes" FontWeight="SemiBold"/>
                         <TextBlock x:Name="UpdateReleaseNotes" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
                     </StackPanel>

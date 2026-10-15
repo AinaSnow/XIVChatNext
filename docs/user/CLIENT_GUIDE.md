@@ -4,7 +4,12 @@
 
 ### Install
 
-Download the Windows x64 ZIP from [Releases](https://github.com/AinaSnow/XIVChatNext/releases/latest), extract it into its own directory and run `XIVChat Desktop.exe`. Keep all DLL/resource folders. .NET and Windows App SDK are included; web cards also require Microsoft Edge WebView2 Runtime.
+From [Releases](https://github.com/AinaSnow/XIVChatNext/releases/latest), download one of:
+
+- **Installer (recommended):** `XIVChatNext-win-Setup.exe`. It installs for the current user in `%LOCALAPPDATA%\XIVChatNext` without administrator rights, adds desktop and Start menu shortcuts, and can update itself. Windows may show a SmartScreen warning because the installer is not code-signed; choose **More info → Run anyway**. Uninstall from **Settings → Apps**; chat history and settings in `%LOCALAPPDATA%\XIVChatDesktop` are kept.
+- **Portable ZIP:** `XIVChatNext-Desktop-…-win-x64.zip`. Extract it into its own directory and run `XIVChat Desktop.exe`. Keep all files and folders, including `runtime`. It does not update itself.
+
+.NET and Windows App SDK are included in both; web cards also require Microsoft Edge WebView2 Runtime.
 
 Add `https://raw.githubusercontent.com/AinaSnow/FFXIV-Dalamud-Plugins/main/pluginmaster.json` to Dalamud's custom plugin repositories. Install **XIVChatNext Server**, log in, and use matching client/plugin versions from the same release.
 
@@ -45,7 +50,7 @@ The same display rules apply to known complete names in chat text, previews, his
 
 ### Update checks (Desktop 1.4.1)
 
-The client checks public GitHub releases shortly after startup. If a newer Windows client is available, a dismissible banner opens **Settings → Updates**, where you can read the release notes and open the download. This page also shows the current version and a **Check for updates** button. Turn off **Check for updates at startup** to use manual checks only; the preference saves immediately. Failed checks do not interrupt chat.
+The client checks public GitHub releases shortly after startup. If a newer Windows client is available, a dismissible banner opens **Settings → Updates**, where you can read the release notes and open the download. This page also shows the current version and a **Check for updates** button. Turn off **Check for updates at startup** to use manual checks only; the preference saves immediately. Failed checks do not interrupt chat. In the installed version, **Download and install** downloads the update only after you click it, then closes the client the normal way and restarts on the new version. The portable ZIP opens the download in your browser instead.
 
 Only stable Windows desktop packages are compared, independently of plugin version tags. Checking sends no chat or character information. Downloads open in your browser; extract into a new folder and close the current client before starting the new version. The client does not replace itself automatically.
 
@@ -84,7 +89,7 @@ Right-click a message, or select text in it, and choose **Translate**. The trans
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
 
-Close the client normally and back up configuration/data before upgrading. Extract the new package into a separate directory; never mix runtime DLLs. Update the plugin in Dalamud and retain the old client package for rollback.
+The installed version updates from **Settings → Updates**. For the portable ZIP, close the client normally and back up configuration/data before upgrading, then extract the new package into a separate directory; never mix runtime DLLs. Update the plugin in Dalamud and retain the old client package for rollback.
 
 Desktop 1.4.0 remains compatible with plugin 1.7.15 and upgrades the history database from schema v5 to v6. Migration makes a `*.before-v6-*.bak` backup next to the database. To roll back, close the client and restore the previous configuration and database together with the previous executable; do not open the v6 database with an older client. Keep a copy of the current data first, since restoring a backup omits messages saved after that backup.
 
@@ -96,7 +101,10 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 ### 先安装客户端和插件
 
-打开 [下载页面](https://github.com/AinaSnow/XIVChatNext/releases/latest)，下载 `XIVChatNext-Desktop-…-win-x64.zip`。解压到一个新文件夹后运行 `XIVChat Desktop.exe`。不要只拿出 EXE，旁边的文件和文件夹也要保留。
+打开 [下载页面](https://github.com/AinaSnow/XIVChatNext/releases/latest)，二选一：
+
+- **安装版（推荐）**：下载 `XIVChatNext-win-Setup.exe` 双击运行。程序只为当前用户安装到 `%LOCALAPPDATA%\XIVChatNext`，不需要管理员权限，会创建桌面和开始菜单快捷方式，之后可以在客户端里直接更新。安装包没有代码签名，Windows 可能弹出 SmartScreen 提示，点“更多信息 → 仍要运行”即可。卸载在“设置 → 应用”里进行，`%LOCALAPPDATA%\XIVChatDesktop` 中的聊天记录和配置会保留。
+- **免安装版**：下载 `XIVChatNext-Desktop-…-win-x64.zip`，解压到一个新文件夹后运行 `XIVChat Desktop.exe`。不要只拿出 EXE，旁边的文件和文件夹（包括 `runtime`）都要保留。免安装版不会自动更新。
 
 客户端已带有所需的 .NET 和 Windows App SDK。物品、地图等网页卡片还需要 Microsoft Edge WebView2 Runtime。
 
@@ -149,7 +157,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 ### 更新检查（客户端 1.4.1）
 
-启动后会在后台检查 GitHub 上的公开版本。发现新版时，主窗口显示可关闭的提示，点击后进入“设置 → 更新”，可以查看更新说明或打开下载。这一页也能手动检查，或者关闭启动检查。检查只比较正式发布的客户端版本，不发送聊天或角色信息，失败也不影响聊天。下载会在浏览器中打开，客户端不会自动替换自己。
+启动后会在后台检查 GitHub 上的公开版本。发现新版时，主窗口显示可关闭的提示，点击后进入“设置 → 更新”，可以查看更新说明或打开下载。这一页也能手动检查，或者关闭启动检查。检查只比较正式发布的客户端版本，不发送聊天或角色信息，失败也不影响聊天。安装版点“下载并更新”后才开始下载，下载完成后客户端会正常退出，并自动以新版本重新启动。免安装版则在浏览器中打开下载，客户端不会替换自己。
 
 ### 托盘和全局快捷键（客户端 1.5.0）
 
@@ -193,7 +201,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 ### 怎么升级
 
-先正常退出客户端，备份上面的两个目录。把新版解压到新的文件夹，不要混用旧版 DLL。插件通过 Dalamud 更新，客户端和插件请使用同一次发布的版本。保留旧安装包，方便回退。
+安装版在“设置 → 更新”中直接更新。免安装版请先正常退出客户端，备份上面的两个目录，再把新版解压到新的文件夹，不要混用旧版 DLL。插件通过 Dalamud 更新，客户端和插件请使用同一次发布的版本。保留旧安装包，方便回退。
 
 - 客户端 1.4.0 会把历史数据库从 v5 升到 v6，升级前自动生成 `*.before-v6-*.bak` 备份。不要用旧客户端打开 v6 数据库。
 - 客户端 1.5.0 首次启动时会把本设备私钥改为加密保存，1.4.x 客户端读不了迁移后的配置。

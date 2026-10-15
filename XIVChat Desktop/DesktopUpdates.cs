@@ -80,6 +80,14 @@ public sealed class DesktopReleaseClient {
 
 public enum UpdateCheckState { Idle, Checking, Current, Available, Failed }
 
+public enum UpdateInstallState { Idle, Downloading, Ready, Failed }
+
+/// <summary>Updates an installed copy in place. The portable ZIP has none and links to the release instead.</summary>
+public interface IUpdateInstaller {
+    /// <summary>Downloads the newest release and arranges for it to replace this copy once the process exits. False when nothing newer is offered.</summary>
+    Task<bool> PrepareAsync(Action<int> progress, CancellationToken token);
+}
+
 // Called on the UI context. A single in-flight task serves every settings window and startup.
 public sealed class DesktopUpdates {
     public Version CurrentVersion { get; }
@@ -88,13 +96,40 @@ public sealed class DesktopUpdates {
     public bool HasUpdate => Release != null && Release.Version > CurrentVersion;
     public UpdateCheckState State { get; private set; }
     public event Action? Changed;
+    public bool CanInstall => installer != null;
+    public UpdateInstallState InstallState { get; private set; }
+    public int InstallProgress { get; private set; }
     private readonly Func<CancellationToken, Task<DesktopRelease>> findLatest;
+    private readonly IUpdateInstaller? installer;
     private Task? pending;
     private bool startupRequested;
 
-    public DesktopUpdates(Version currentVersion, Func<CancellationToken, Task<DesktopRelease>>? findLatest = null) {
+    public DesktopUpdates(Version currentVersion, Func<CancellationToken, Task<DesktopRelease>>? findLatest = null, IUpdateInstaller? installer = null) {
         CurrentVersion = DesktopReleaseClient.Normalize(currentVersion);
         this.findLatest = findLatest ?? new DesktopReleaseClient().FindLatestAsync;
+        this.installer = installer;
+    }
+
+    /// <summary>Only after the user asks. True when the update is ready and the app should now close so it can be applied.</summary>
+    public async Task<bool> InstallAsync() {
+        if (installer == null || !HasUpdate || InstallState is UpdateInstallState.Downloading or UpdateInstallState.Ready) return false;
+        InstallState = UpdateInstallState.Downloading;
+        InstallProgress = 0;
+        Changed?.Invoke();
+        // Progress<T> reports on the caller's (UI) context; the download reports from a worker thread.
+        var progress = new Progress<int>(value => {
+            if (InstallState != UpdateInstallState.Downloading) return;
+            InstallProgress = Math.Clamp(value, 0, 100);
+            Changed?.Invoke();
+        });
+        try {
+            InstallState = await installer.PrepareAsync(((IProgress<int>)progress).Report, CancellationToken.None)
+                ? UpdateInstallState.Ready : UpdateInstallState.Failed;
+        } catch (Exception) {
+            InstallState = UpdateInstallState.Failed;
+        }
+        Changed?.Invoke();
+        return InstallState == UpdateInstallState.Ready;
     }
 
     public async Task CheckAtStartupAsync(Func<bool> enabled) {

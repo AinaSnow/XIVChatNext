@@ -12,7 +12,8 @@ public partial class ConfigWindow {
         updateControlsReady = true;
         Updates.Changed += RefreshUpdates;
         Config.Saved += RefreshUpdatePreference;
-        Closed += (_, _) => { Updates.Changed -= RefreshUpdates; Config.Saved -= RefreshUpdatePreference; };
+        LocalizationHelper.LanguageChanged += RefreshUpdates;
+        Closed += (_, _) => { Updates.Changed -= RefreshUpdates; Config.Saved -= RefreshUpdatePreference; LocalizationHelper.LanguageChanged -= RefreshUpdates; };
         RefreshUpdates();
     }
     public void ShowUpdates() => ConfigTabs.SelectedItem = TabUpdates;
@@ -32,7 +33,15 @@ public partial class ConfigWindow {
             UpdateCheckState.Available => "Update.Found",
             _ => "Update.Idle"
         });
-        UpdateActionStatus.Text = updateActionStatusKey == null ? "" : L(updateActionStatusKey);
+        UpdateActionStatus.Text = Updates.InstallState switch {
+            UpdateInstallState.Downloading => string.Format(L("Update.Downloading"), Updates.InstallProgress),
+            UpdateInstallState.Ready => L("Update.Restarting"),
+            UpdateInstallState.Failed => L("Update.InstallFailed"),
+            _ => updateActionStatusKey == null ? "" : L(updateActionStatusKey),
+        };
+        DownloadUpdateButton.Content = L(Updates.CanInstall ? "Update.Install" : "Update.Download");
+        DownloadUpdateButton.IsEnabled = Updates.InstallState is not (UpdateInstallState.Downloading or UpdateInstallState.Ready);
+        UpdateInstallHint.Text = L(Updates.CanInstall ? "Update.InstallHintInstalled" : "Update.InstallHint");
         UpdateAvailablePanel.Visibility = Updates.HasUpdate ? Visibility.Visible : Visibility.Collapsed;
         if (Updates.Release is { } release) {
             UpdateAvailableVersion.Text = string.Format(L("Update.Available"), DesktopReleaseClient.DisplayVersion(release.Version));
@@ -58,7 +67,11 @@ public partial class ConfigWindow {
         RefreshUpdates();
     }
     private async void DownloadUpdate_Click(object sender, RoutedEventArgs e) {
-        if (Updates.HasUpdate) await OpenUpdateLinkAsync(Updates.Release!.Download);
+        if (!Updates.HasUpdate) return;
+        if (!Updates.CanInstall) { await OpenUpdateLinkAsync(Updates.Release!.Download); return; }
+        updateActionStatusKey = null;
+        // Same path as Exit, so drafts, window layout and history are saved before Update.exe takes over.
+        if (await Updates.InstallAsync()) await ((App)Application.Current).Workspace.ShutdownAsync();
     }
     private async void ReleasePage_Click(object sender, RoutedEventArgs e) {
         if (Updates.HasUpdate) await OpenUpdateLinkAsync(Updates.Release!.Page);

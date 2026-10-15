@@ -874,7 +874,12 @@
   <data name="Update.BannerHint" xml:space="preserve"><value>查看更新说明，方便时再下载。</value></data>
   <data name="Update.Download" xml:space="preserve"><value>下载 Windows 客户端</value></data>
   <data name="Update.ReleasePage" xml:space="preserve"><value>打开发布页面</value></data>
-  <data name="Update.InstallHint" xml:space="preserve"><value>下载后解压到新文件夹，关闭当前客户端再启动新版。本地配置和历史会保留。</value></data>
+  <data name="Update.InstallHint" xml:space="preserve"><value>下载后解压到新文件夹，关闭当前客户端再启动新版。本地配置和历史会保留。改用安装版（Setup.exe）可以自动更新。</value></data>
+  <data name="Update.Install" xml:space="preserve"><value>下载并更新</value></data>
+  <data name="Update.InstallHintInstalled" xml:space="preserve"><value>下载完成后客户端会关闭，并自动以新版本重新启动。配置和历史记录都会保留。</value></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>正在下载更新… {0}%</value></data>
+  <data name="Update.Restarting" xml:space="preserve"><value>更新已就绪，正在重新启动…</value></data>
+  <data name="Update.InstallFailed" xml:space="preserve"><value>更新下载失败。请稍后重试，或打开发布页面手动下载。</value></data>
   <data name="Update.Notes" xml:space="preserve"><value>更新说明</value></data>
   <data name="Update.NoNotes" xml:space="preserve"><value>请在发布页面查看详细说明。</value></data>
   <data name="Update.SaveFailed" xml:space="preserve"><value>更新检查设置未能保存，已恢复之前的选项。</value></data>

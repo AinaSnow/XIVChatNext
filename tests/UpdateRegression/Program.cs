@@ -98,8 +98,47 @@ internal static class Program {
             var startOnce = enabledStartup.CheckAtStartupAsync(() => true);
             await enabledStartup.CheckAtStartupAsync(() => true); await startOnce;
             Check(autoCalls == 3 && enabledStartup.HasUpdate, "Enabled startup check runs once and discovers a newer client");
+            var portable = new DesktopUpdates(new Version(1, 4, 1), _ => Task.FromResult(combined));
+            await portable.CheckAsync();
+            Check(!portable.CanInstall && !await portable.InstallAsync() && portable.InstallState == UpdateInstallState.Idle,
+                "The portable ZIP never installs; it keeps linking to the release");
+            var installer = new FakeInstaller(true);
+            var installed = new DesktopUpdates(new Version(1, 4, 1), _ => Task.FromResult(combined), installer);
+            Check(installed.CanInstall && !await installed.InstallAsync() && installer.Calls == 0,
+                "Nothing downloads before an update has been found");
+            await installed.CheckAsync();
+            Check(installer.Calls == 0, "Finding an update does not download it; the user is asked first");
+            var states = new List<UpdateInstallState>();
+            installed.Changed += () => states.Add(installed.InstallState);
+            Check(await installed.InstallAsync() && installed.InstallState == UpdateInstallState.Ready && installer.Calls == 1
+                && states.First() == UpdateInstallState.Downloading, "Download and install reports progress and then asks the app to close");
+            Check(!await installed.InstallAsync() && installer.Calls == 1, "A prepared update is not downloaded twice");
+            var current = new DesktopUpdates(new Version(1, 4, 2), _ => Task.FromResult(combined), new FakeInstaller(true));
+            await current.CheckAsync();
+            Check(!await current.InstallAsync() && current.InstallState == UpdateInstallState.Idle, "An up-to-date client offers nothing to install");
+            var missingFeed = new DesktopUpdates(new Version(1, 4, 1), _ => Task.FromResult(combined), new FakeInstaller(false));
+            await missingFeed.CheckAsync();
+            Check(!await missingFeed.InstallAsync() && missingFeed.InstallState == UpdateInstallState.Failed,
+                "A release without installer files fails without closing the app");
+            var broken = new FakeInstaller(true) { Throw = true };
+            var retry2 = new DesktopUpdates(new Version(1, 4, 1), _ => Task.FromResult(combined), broken);
+            await retry2.CheckAsync();
+            Check(!await retry2.InstallAsync() && retry2.InstallState == UpdateInstallState.Failed, "A failed download is reported instead of crashing");
+            broken.Throw = false;
+            Check(await retry2.InstallAsync() && retry2.InstallState == UpdateInstallState.Ready, "A failed download can be retried");
             Console.WriteLine($"All {checks} update checks passed."); return 0;
         } catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+    }
+    private sealed class FakeInstaller(bool offers) : IUpdateInstaller {
+        public int Calls;
+        public bool Throw;
+        public async Task<bool> PrepareAsync(Action<int> progress, CancellationToken token) {
+            Calls++;
+            await Task.Yield();
+            if (Throw) throw new HttpRequestException("offline");
+            progress(50); progress(100);
+            return offers;
+        }
     }
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) => send(request, token);
