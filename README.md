@@ -6,7 +6,7 @@
 
 A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
-**Desktop 1.5.0 · Plugin 1.7.17** adds an optional tray icon and a global show/hide shortcut, protects the device key with Windows DPAPI, moves the client to .NET 10, and makes the plugin accept same-PC connections only unless LAN access is enabled.
+**Desktop 1.6.0 · Plugin 1.8.0** adds a Windows installer that updates itself, encryption v2 with per-connection keys and replay protection, Markdown chat exports with real linkshell names, and optional translation and AI summaries.
 
 [Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
@@ -14,11 +14,11 @@ A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://x
 
 | Component | Version | Download |
 | --- | --- | --- |
-| Windows x64 desktop client | **1.5.0** | [Desktop ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/XIVChatNext-Desktop-v1.5.0-win-x64.zip) |
-| Dalamud plugin | **1.7.17** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip) |
+| Windows x64 desktop client | **1.6.0** | [Installer (recommended)](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-win-Setup.exe) · [Portable ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-Desktop-v1.6.0-win-x64.zip) |
+| Dalamud plugin | **1.8.0** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip) |
 | Optional self-hosted relay | Unchanged | [Existing relay package](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
-The desktop ZIP includes .NET and Windows App SDK dependencies. Runtime language resources are limited to English, Japanese, German, Chinese and French; the application UI supports **English and Simplified Chinese**. Web-based cards use Microsoft Edge WebView2 Runtime.
+The installer sets the client up for the current user with desktop and Start menu shortcuts, and later updates it from **Settings → Updates**; the portable ZIP does not update itself. Both include .NET and Windows App SDK dependencies. Runtime language resources are limited to English, Japanese, German, Chinese and French; the application UI supports **English and Simplified Chinese**. Web-based cards use Microsoft Edge WebView2 Runtime.
 
 ## Start chatting
 
@@ -57,7 +57,7 @@ Desktop 1.4.0 adds local contact nicknames and a streamer-mode switch for names,
 ./build.ps1 -Component desktop -Configuration Release
 ./build.ps1 -Component plugin -Configuration Release
 ./build.ps1 -Component relay -Configuration Release
-./pack.ps1 -Label release-1.7.17
+./pack.ps1 -Label release-1.8.0
 ```
 
 [Build guide](docs/development/BUILD.md) · [Documentation](docs/README.md) · [Changelog](CHANGELOG.md)
@@ -74,14 +74,14 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 使用时，**游戏需要保持运行，角色也需要在线**。
 
-**客户端 1.5.0 · 插件 1.7.17**：新增可选的托盘图标和全局快捷键，本设备密钥改用 Windows DPAPI 加密保存，客户端升级到 .NET 10；插件默认只允许本机连接，可在设置中开启局域网连接。
+**客户端 1.6.0 · 插件 1.8.0**：新增可自动更新的 Windows 安装包；客户端与插件之间改用加密 v2（每次连接使用新密钥，防重放）；聊天记录可导出为 Markdown 并显示真实通讯贝名称；新增可选的翻译和 AI 总结。
 
 [介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
 
 ### 下载与安装
 
-- **客户端 1.5.0**：[Windows x64 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/XIVChatNext-Desktop-v1.5.0-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`。
-- **插件 1.7.17**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip)。
+- **客户端 1.6.0**：推荐使用 [安装包](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-win-Setup.exe)，安装后有桌面和开始菜单快捷方式，可在“设置 → 更新”中直接更新；也可以下载 [免安装 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-Desktop-v1.6.0-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`（不会自动更新）。
+- **插件 1.8.0**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip)。
 - **可选中继**：继续使用 [已有部署包](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15)，本次无需更新中继。
 
 客户端包含 .NET 和 Windows App SDK，保留英、日、德、中、法运行库资源，**应用界面为中英文**。网页卡片需要 Microsoft Edge WebView2 Runtime。插件新配置默认英文，可切换中文或跟随系统，已有选择保留。

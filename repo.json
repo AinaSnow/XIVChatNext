@@ -3,7 +3,7 @@
     "Author": "AinaSnow",
     "Name": "XIVChatNext Server",
     "InternalName": "XIVChatNext",
-    "AssemblyVersion": "1.7.17",
+    "AssemblyVersion": "1.8.0",
     "Description": "Connect FFXIV to the XIVChat Next Windows client. Chat, friends, item/map cards and game screenshots, with optional self-hosted relay. English UI by default; Chinese is available in settings.\n\n将 FFXIV 连接到 XIVChat Next 桌面客户端，支持聊天、好友、物品/地图卡片、游戏截图及可选自建中继。默认英文，可在设置中切换中文。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/AinaSnow/XIVChatNext",
@@ -21,14 +21,14 @@
       "relay"
     ],
     "DownloadCount": 0,
-    "LastUpdate": 1791906457,
-    "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip",
-    "DownloadLinkTesting": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.17/latest.zip",
-    "TestingAssemblyVersion": "1.7.17",
+    "LastUpdate": 1792036237,
+    "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip",
+    "DownloadLinkTesting": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip",
+    "TestingAssemblyVersion": "1.8.0",
     "TestingDalamudApiLevel": 15,
     "IsTestingExclusive": false,
     "IconUrl": "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/XIVChatPlugin/Resources/icon.png",
-    "Changelog": "Plugin 1.7.17 accepts same-PC connections only by default (existing configurations keep LAN access; see Connection → Allow LAN connections) and limits repeated trust prompts from untrusted devices. Desktop 1.5.0 adds an optional tray icon and global shortcut, encrypts the device key with DPAPI and moves to .NET 10.\n\n插件 1.7.17 默认只允许本机直接连接（已有配置保持局域网开启，可在“连接 → 允许局域网设备连接”中修改），并限制未信任设备反复弹出确认窗口。客户端 1.5.0 新增可选托盘图标和全局快捷键，本设备密钥改用 DPAPI 加密，升级到 .NET 10。"
+    "Changelog": "Plugin 1.8.0 switches to encryption v2 (fresh keys per connection, replay protection; older clients fall back to v1 unless you turn it off), sends linkshell names for exports, and adds a switch to block screenshot requests. Desktop 1.6.0 adds a self-updating Windows installer, Markdown exports, and optional translation and AI summaries. Update both together.\n\n插件 1.8.0 改用加密 v2（每次连接使用新密钥并防重放；旧客户端可回退到 v1，也可在设置中关闭），导出时附带通讯贝名称，并新增“允许客户端请求游戏截图”开关。客户端 1.6.0 新增可自动更新的安装包、Markdown 导出，以及可选的翻译和 AI 总结。请同时更新两者。"
   }
 ]

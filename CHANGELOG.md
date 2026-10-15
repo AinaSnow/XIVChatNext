@@ -1,6 +1,6 @@
 # Changelog / 更新说明
 
-## Unreleased
+## Desktop 1.6.0 · Plugin 1.8.0 — 2026-10-15
 
 - Desktop: Windows installer (`XIVChatNext-win-Setup.exe`). It installs for the current user in `%LOCALAPPDATA%\XIVChatNext` without administrator rights and adds desktop and Start menu shortcuts. When an update is found, the installed client offers **Download and install**; nothing downloads until you click it, then the client closes normally and restarts on the new version. Updates come from GitHub Releases (Velopack). The portable ZIP is still published and keeps linking to the download. Chat history and settings stay in `%LOCALAPPDATA%\XIVChatDesktop` and survive updates and uninstalling.
 - 客户端：新增 Windows 安装包（`XIVChatNext-win-Setup.exe`）。只为当前用户安装到 `%LOCALAPPDATA%\XIVChatNext`，不需要管理员权限，并创建桌面和开始菜单快捷方式。发现新版本时，安装版会提供“下载并更新”：点击后才开始下载，完成后客户端正常退出并以新版本重新启动。更新来自 GitHub Releases（Velopack）。免安装 ZIP 继续提供，仍然只打开下载页面。聊天记录和配置保存在 `%LOCALAPPDATA%\XIVChatDesktop`，更新和卸载都不会删除。
