@@ -320,6 +320,7 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
+  <data name="Export.Open" xml:space="preserve"><value>导出聊天记录…</value></data>
   <data name="Workbench.ConversationsShort" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Channels" xml:space="preserve"><value>频道</value></data>

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Desktop: chat history can be exported as Markdown (.md) in addition to text and RTF. Each message keeps the existing `time [channel] sender: message` form; Markdown adds a title and a heading per day and escapes chat text so it displays literally.
+- Desktop: the export window was only reachable from the menu behind the "XIVChat Next" title. It now also opens from an export button in each conversation or channel header and from **Settings → History**, and the menu title shows a drop-down arrow.
+- 客户端：聊天记录导出新增 Markdown (.md)，文本和 RTF 保留。每条消息仍是 `时间 [频道] 发送者: 内容`；Markdown 另加标题和按日期分组的小标题，并对聊天内容转义，保证原样显示。
+- 客户端：导出窗口以前只能从 “XIVChat Next” 标题后面的菜单打开。现在会话或频道标题栏有导出按钮，“设置 → 历史”里也能打开；菜单标题加上了下拉箭头。
 - Encryption v2 between the desktop client and the plugin (Desktop 1.6.0, Plugin 1.8.0). Each connection adds fresh X25519 keys, both ends prove ownership of their long-term keys, and packets use per-direction counters. Protocol 1 reused the same session keys on every connection and accepted replayed packets, so someone who recorded encrypted traffic could replay a client's commands into a new connection; v2 rejects that and adds forward secrecy. Fingerprints are unchanged. See docs/protocol/CHAT_V2.md.
 - Compatibility: the client tries v2 first and falls back to v1 for older plugins with a warning. After a plugin has used v2, the client refuses v1 for it; the plugin likewise refuses v1 from a client key that has used v2. The plugin's **Allow clients using old encryption (v1)** setting (on by default) can turn v1 off entirely, and the Devices tab labels each device's encryption.
 - 客户端与插件之间改用加密 v2（客户端 1.6.0、插件 1.8.0）。每次连接增加新的 X25519 临时密钥，双方证明持有自己的长期私钥，数据包使用分方向的计数器。v1 每次连接都使用相同的会话密钥，并且接受重放的数据包，录下加密流量的人可以把客户端的指令重放到新连接中；v2 会拒绝这种重放，并提供前向保密。设备指纹不变。详见 docs/protocol/CHAT_V2.md。

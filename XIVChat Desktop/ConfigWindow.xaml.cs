@@ -66,6 +66,7 @@ namespace XIVChat_Desktop {
                 HistoryRetention.Header = LocalizationHelper.GetString("History.Retention");
                 HistoryRetentionHelp.Text = LocalizationHelper.GetString("History.RetentionHelp");
                 BtnSaveHistory.Content = LocalizationHelper.GetString("Dialog.Save");
+                BtnExportHistory.Content = LocalizationHelper.GetString("Export.Open");
                 ChkOnlineAvatars.Content = LocalizationHelper.GetString("Avatar.Online");
 
                 ChkAlwaysOnTop.Content = LocalizationHelper.GetString("Config.AlwaysOnTop");
@@ -120,6 +121,8 @@ namespace XIVChat_Desktop {
         private void HistoryRetention_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) {
             if (!double.IsNaN(args.NewValue)) this.Config.HistoryRetentionDays = (int)Math.Clamp(args.NewValue, 0, 36500);
         }
+
+        private void ExportHistory_Click(object sender, RoutedEventArgs e) => new Export().Activate();
 
         private async void Save_Click(object sender, RoutedEventArgs e) {
             this.Config.Save();

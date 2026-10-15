@@ -487,6 +487,20 @@ internal sealed class DesktopPrivacySmokeApp : App {
                 (true, "Send me the coordinates, I'll come by after my roulette."), (false, "On my way to the aetheryte ✨"));
             var siteZh = await SiteConversation(new CharacterIdentity { ContentId = 7302, Name = "松风", HomeWorldId = 1, HomeWorld = "Alpha" }, 9101,
                 (true, "你还在白银乡码头吗？"), (false, "在呢！这里的日落也太好看了。"), (true, "把坐标发我，随机任务打完就过来。"), (false, "好，我在以太之光旁边等你 ✨"));
+            // Export entry points and a real Markdown file written through the same path as the Save button.
+            main.Navigate("conversations"); main.ShowConversation(siteEn); await Task.Delay(200);
+            Check(Control<Button>(main, "ExportButton").Visibility == Visibility.Visible, "The conversation header has an export button");
+            var exportSettings = new ConfigWindow(config); exportSettings.Activate(); await Task.Delay(200);
+            Check(Control<Button>(exportSettings, "BtnExportHistory").Content is string { Length: > 0 }, "History settings offer chat history export");
+            exportSettings.Close();
+            var markdownPath = Path.Combine(fixture, "conversation.md");
+            File.WriteAllText(markdownPath, "");
+            var markdownFile = await StorageFile.GetFileFromPathAsync(markdownPath);
+            var exported = await Export.WriteFileAsync(Session.Store!, markdownFile, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), true, title: "Maple Leaf");
+            var markdownText = File.ReadAllText(markdownPath);
+            File.Copy(markdownPath, Path.Combine(AppContext.BaseDirectory, "export-sample.md"), true);
+            Check(exported == 4 && markdownText.StartsWith("# Maple Leaf") && markdownText.Split("\n- ").Length == 5 && markdownText.Contains("Shirogane docks?"),
+                "A Markdown export of a conversation lists every message under its title");
             main.AppWindow.Resize(new Windows.Graphics.SizeInt32(1240, 780));
             foreach (var (language, conversation, captureName) in new[] { (AppLanguage.English, siteEn, "site-main-en.png"), (AppLanguage.ChineseSimplified, siteZh, "site-main-zh.png") }) {
                 LocalizationHelper.ApplyLanguage(language);

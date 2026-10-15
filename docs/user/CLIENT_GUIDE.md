@@ -55,6 +55,12 @@ In **Settings → Window**, turn on **Keep running in the notification area** to
 
 Turn on **Global shortcut** and press a combination in the shortcut field (Ctrl+Alt+X by default). The shortcut shows the window with the message box focused, and hides it again when the window is already in front. It works while the game is focused, so pick a combination the game does not use. If another application already owns it, the settings page says so.
 
+### Export chat history
+
+Open the export window from the export button in a conversation or channel header, from **Settings → History → Export chat history…**, or from the **XIVChat Next ▾** menu next to the logo. It exports what you are looking at: the open conversation, channel, history search or favorite. Narrow it by keyword and time, choose whether to include timestamps, preview the last 100 lines, then save.
+
+Choose the format in the save dialog: **Text (.txt)**, **Markdown (.md)** or **Rich Text (.rtf)**. Every format writes each message as `time [channel] sender: message`. Markdown adds a title, groups messages under a heading per day and escapes chat text so it displays literally. With streamer mode on, exports use the same hidden names as the screen.
+
 ### Data and upgrades
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
@@ -131,6 +137,12 @@ Live sending, friends and screenshots require the game, logged-in character and 
 在“设置 → 窗口”中开启“关闭主窗口时保留在通知区域（托盘）”，关闭主窗口后程序继续运行。单击托盘图标显示或隐藏窗口，右键可退出；鼠标悬停可以看到未读私聊数。
 
 开启“使用全局快捷键”（默认 Ctrl+Alt+X），点一下快捷键框再按组合键就能修改。按下后显示窗口并聚焦输入框，窗口已在最前时再按一次会隐藏。快捷键在游戏中同样生效，请避开游戏里正在使用的按键；如果已被其他程序占用，设置页会提示。两项默认关闭。
+
+### 导出聊天记录
+
+可以从会话或频道标题栏右侧的导出按钮、“设置 → 历史 → 导出聊天记录…”，或者 Logo 旁边的 “XIVChat Next ▾” 菜单打开导出窗口。导出的是你当前正在看的内容：打开的会话、频道、历史搜索结果或收藏。可以按关键词和时间缩小范围，选择是否带时间，预览最后 100 行后再保存。
+
+在保存对话框里选择格式：**文本 (.txt)**、**Markdown (.md)** 或 **RTF (.rtf)**。每种格式中，每条消息都是 `时间 [频道] 发送者: 内容`。Markdown 会加上标题、按日期分组，并对聊天内容做转义，保证原样显示。开启主播模式时，导出内容和屏幕上一样隐藏名字。
 
 ### 数据存在哪里
 

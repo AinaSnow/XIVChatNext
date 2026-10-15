@@ -101,14 +101,14 @@ namespace XIVChat_Desktop {
             try {
                 var query = Query(); var store = app.Session.Store!; var timestamps = Timestamps.IsChecked == true;
                 var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary, SuggestedFileName = "XIVChat Export" };
-                picker.FileTypeChoices.Add("Text", new[] { ".txt" }); picker.FileTypeChoices.Add("Rich Text", new[] { ".rtf" });
+                picker.FileTypeChoices.Add("Text", new[] { ".txt" }); picker.FileTypeChoices.Add("Markdown", new[] { ".md" }); picker.FileTypeChoices.Add("Rich Text", new[] { ".rtf" });
                 WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 var file = await picker.PickSaveFileAsync();
                 token.ThrowIfCancellationRequested(); if (file == null) return;
                 var progress = new Progress<long>(count => { if (!closed) Status.Text = string.Format(L("Export.Progress"), count); });
                 var display = app.Presentation.Engine.Snapshot();
                 var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token, (row, showTime) => display.ExportLine(row.Source, row.Message, showTime),
-                    display.Enabled ? row => display.Observe(row.Source, row.Message) : null);
+                    display.Enabled ? row => display.Observe(row.Source, row.Message) : null, Scope.Text);
                 running = write; var count = await write;
                 if (!closed) Status.Text = string.Format(L("Export.Complete"), count);
             } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
@@ -117,13 +117,13 @@ namespace XIVChat_Desktop {
         }
         internal static async Task<long> WriteFileAsync(HistoryStore store, StorageFile file, HistoryQuery query, bool timestamps,
             Filter? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
-            Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null) {
+            Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null) {
             token.ThrowIfCancellationRequested();
             using var transaction = await file.OpenTransactedWriteAsync();
             using var stream = transaction.Stream.AsStreamForWrite(); stream.Position = 0;
             using var writer = new StreamWriter(stream, new UTF8Encoding(false), 65536, leaveOpen: true);
-            var count = await store.ExportAsync(query, writer, file.FileType.Equals(".rtf", StringComparison.OrdinalIgnoreCase), timestamps,
-                filter == null ? null : filter.Allowed, progress, token, displayLine, prepareRow);
+            var count = await store.ExportAsync(query, writer, HistoryExport.FormatForExtension(file.FileType), timestamps,
+                filter == null ? null : filter.Allowed, progress, token, displayLine, prepareRow, title);
             await writer.FlushAsync(token); token.ThrowIfCancellationRequested();
             stream.SetLength(stream.Position); await transaction.CommitAsync(); return count;
         }

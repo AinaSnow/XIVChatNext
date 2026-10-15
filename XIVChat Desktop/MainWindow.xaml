@@ -23,7 +23,7 @@
                         <Image Source="ms-appx:///Resources/logo-c1.png" Width="30" Height="30" Stretch="Uniform"/>
                     </Button>
                     <MenuBar VerticalAlignment="Center">
-                    <MenuBarItem x:Name="MenuMain" Title="XIVChat Next">
+                    <MenuBarItem x:Name="MenuMain" Title="XIVChat Next ▾">
                         <MenuFlyoutItem x:Name="MenuConnect" Click="Connect_Click"/>
                         <MenuFlyoutItem x:Name="MenuDisconnect" Click="Disconnect_Click"/>
                         <MenuFlyoutSeparator/>
@@ -135,6 +135,7 @@
                                 <Button x:Name="NicknameButton" Click="Nickname_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE77B;" FontSize="15"/></Button>
                                 <Button x:Name="AvatarButton" Click="Avatar_Click" Visibility="Collapsed" Padding="7"><FontIcon Glyph="&#xE722;" FontSize="15"/></Button>
                                 <Border x:Name="PopoutDragHandle" Background="Transparent" Padding="7"><FontIcon Glyph="&#xE784;" FontSize="15"/></Border>
+                                <Button x:Name="ExportButton" Click="Export_Click" Padding="7"><FontIcon Glyph="&#xEDE1;" FontSize="15"/></Button>
                                 <Button x:Name="PopoutButton" Click="Popout_Click" Padding="7"><FontIcon Glyph="&#xE8A7;" FontSize="15"/></Button>
                                 <Button x:Name="EditChannelButton" Click="EditChannel_Click" Padding="7"><FontIcon Glyph="&#xE70F;" FontSize="15"/></Button>
                             </StackPanel>

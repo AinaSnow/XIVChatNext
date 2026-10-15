@@ -120,6 +120,7 @@ namespace XIVChat_Desktop {
             ToolTipService.SetToolTip(AddViewButton, L("Workbench.Add"));
             ToolTipService.SetToolTip(PinConversationButton, L("Conversation.Pin"));
             ToolTipService.SetToolTip(ConversationNoteButton, L("Conversation.Note"));
+            ToolTipService.SetToolTip(ExportButton, L("Menu.Export")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ExportButton, L("Menu.Export"));
             ToolTipService.SetToolTip(AvatarButton, L("Avatar.Title"));
             ToolTipService.SetToolTip(LoadOlderButton, L("History.LoadOlder"));
             ToolTipService.SetToolTip(EditChannelButton, L("Workbench.EditChannel"));

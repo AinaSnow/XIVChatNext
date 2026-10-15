@@ -180,17 +180,24 @@ public sealed partial class HistoryStore : IAsyncDisposable {
     /// <summary>Streams a consistent SQLite snapshot in chronological order with bounded managed memory.</summary>
     public Task<long> ExportAsync(HistoryQuery query, TextWriter writer, bool rtf, bool timestamps,
         Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
-        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null) => Task.Run(() => {
+        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null) =>
+        this.ExportAsync(query, writer, rtf ? ExportFormat.Rtf : ExportFormat.Text, timestamps, filter, progress, token, displayLine, prepareRow);
+
+    /// <param name="title">Markdown document title; ignored by other formats.</param>
+    public Task<long> ExportAsync(HistoryQuery query, TextWriter writer, ExportFormat format, bool timestamps,
+        Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
+        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null) => Task.Run(() => {
         long count = 0;
-        if (rtf) writer.Write("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Segoe UI;}}\\uc1\\f0 ");
+        DateOnly? day = null;
+        HistoryExport.WriteHeader(writer, format, title, DateTime.UtcNow);
         ReadHistory(query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null }, row => {
             if (filter != null && !filter(row.Message)) return;
             token.ThrowIfCancellationRequested();
             var line = displayLine?.Invoke(row, timestamps) ?? HistoryExport.Line(row.Message, timestamps);
-            writer.Write(rtf ? HistoryExport.EscapeRtf(line) + "\\par\n" : line + Environment.NewLine);
+            HistoryExport.WriteLine(writer, format, line, row.Message.Timestamp, timestamps, ref day);
             if (++count % 500 == 0) progress?.Report(count);
         }, token, true, prepareRow);
-        if (rtf) writer.Write("}");
+        HistoryExport.WriteFooter(writer, format);
         writer.Flush(); progress?.Report(count); return count;
     }, token);
 

@@ -228,6 +228,17 @@ try {
         output = new StringWriter();
         await store.ExportAsync(new(), output, true, false, displayLine: (row, time) => exporter.ExportLine(row.Source, row.Message, time));
         Check(output.ToString().StartsWith("{\\rtf") && !output.ToString().Contains(peer.Name), "RTF masked before escaping");
+        output = new StringWriter();
+        await store.ExportAsync(new(), output, ExportFormat.Markdown, true, displayLine: (row, time) => exporter.ExportLine(row.Source, row.Message, time), title: "Team *chat*");
+        var markdown = output.ToString();
+        var day = message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd");
+        Check(markdown.StartsWith("# Team \\*chat\\*\n") && markdown.Contains("\n## " + day + "\n\n- " + day) && !markdown.Contains(peer.Name),
+            "Markdown export has a title, a day heading, one list item per message and masked names");
+        Equal(HistoryExport.EscapeMarkdown("*hi* [a](b) <b>x</b> _y_ `z` a|b ~s~ #1 & Yes!"),
+            @"\*hi\* \[a\](b) \<b\>x\</b\> \_y\_ \`z\` a\|b \~s\~ #1 & Yes!", "Markdown escaping keeps chat text literal and readable");
+        Equal(HistoryExport.EscapeMarkdown("line one\nline two"), "line one\\\n  line two", "Multi-line messages stay inside their list item");
+        Check(HistoryExport.FormatForExtension(".MD") == ExportFormat.Markdown && HistoryExport.FormatForExtension(".rtf") == ExportFormat.Rtf && HistoryExport.FormatForExtension(".txt") == ExportFormat.Text,
+            "File extensions choose the export format");
         Equal((await store.SearchAsync(new())).Single().Message.ContentText, message.ContentText, "export leaves database original intact");
         var prepared = false;
         await store.ExportAsync(new(), new StringWriter(), false, false,
