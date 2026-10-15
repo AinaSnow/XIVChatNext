@@ -43,6 +43,7 @@ namespace XIVChatPlugin {
         private readonly Plugin _plugin;
         private readonly LinkMetadataCache _metadata;
         private readonly ChatChunkConverter _chunks;
+        private readonly GameLinkshellNames _linkshellNames = new();
         internal GameCardService GameCards { get; }
         private ScreenshotCapture ScreenshotCapture { get; }
         private ScreenshotCoordinator Screenshots { get; }
@@ -218,6 +219,7 @@ namespace XIVChatPlugin {
             );
 
             msg.Owner = this.CurrentIdentity();
+            msg.ChannelName = this._linkshellNames.NameFor(chatCode.Type);
             if (chatCode.Type is ChatType.TellIncoming or ChatType.TellOutgoing) {
                 var peer = sender.Payloads.OfType<PlayerPayload>().FirstOrDefault();
                 if (peer != null) msg.TellPeer = new CharacterIdentity {
@@ -239,6 +241,7 @@ namespace XIVChatPlugin {
             if (!this._awaitingState.IsEmpty || this._toGame.Usage.Count > 0 || Environment.TickCount64 >= this._nextHousingCheck)
                 this._plugin.Functions.RefreshChatChannel();
             this.RefreshGameContext();
+            this._linkshellNames.Refresh(this.CurrentIdentity() != null, ex => Plugin.Log.Warning(ex, "Could not read linkshell names"));
             this.FriendLists.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             this.FriendPresence.Tick(this.CurrentIdentity(), this._ownerEpoch, DateTime.UtcNow);
             var eventOwner = this.CurrentIdentity();

@@ -496,11 +496,27 @@ internal sealed class DesktopPrivacySmokeApp : App {
             var markdownPath = Path.Combine(fixture, "conversation.md");
             File.WriteAllText(markdownPath, "");
             var markdownFile = await StorageFile.GetFileFromPathAsync(markdownPath);
-            var exported = await Export.WriteFileAsync(Session.Store!, markdownFile, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), true, title: "Maple Leaf");
+            var exported = await Export.WriteFileAsync(Session.Store!, markdownFile, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), true,
+                displayLine: (row, time) => Presentation.Engine.Snapshot().ExportLine(row.Source, row.Message, time, ChannelLabels.For(row.Message, true)), title: "Maple Leaf");
             var markdownText = File.ReadAllText(markdownPath);
             File.Copy(markdownPath, Path.Combine(AppContext.BaseDirectory, "export-sample.md"), true);
-            Check(exported == 4 && markdownText.StartsWith("# Maple Leaf") && markdownText.Split("\n- ").Length == 5 && markdownText.Contains("Shirogane docks?"),
+            Check(exported == 4 && markdownText.StartsWith("# Maple Leaf") && markdownText.Split("\n- ").Length == 5 && markdownText.Contains("Shirogane docks?") && markdownText.Contains("Tell (Incoming)"),
                 "A Markdown export of a conversation lists every message under its title");
+            var shell = new ServerMessage(DateTime.UtcNow, ChatType.CrossLinkshell2, Encoding.UTF8.GetBytes("Maple Leaf"), Encoding.UTF8.GetBytes("Raid at nine"),
+                new() { new TextChunk("Raid at nine") }) { ChannelName = "Moogle Post", Owner = owner, MessageId = "site-shell", Sequence = 9201, ServiceId = "fixture", RunId = "fixture" };
+            await Session.RecordAsync(shell, Session.Source, true);
+            LocalizationHelper.ApplyLanguage(AppLanguage.ChineseSimplified);
+            Check(ChannelLabels.For(shell, true) == "跨界通讯贝 [2] · Moogle Post" && ChannelLabels.For(shell, false) == "跨界通讯贝 [2]",
+                "Exports name the channel in the interface language and add the linkshell name unless streamer mode hides it");
+            LocalizationHelper.ApplyLanguage(AppLanguage.English);
+            Check(ChannelLabels.For(new ServerMessage(DateTime.UtcNow, ChatType.TellIncoming, [], [], []), true) == "Tell (Incoming)", "Tells use readable channel names");
+            var shellPath = Path.Combine(fixture, "shell.md"); File.WriteAllText(shellPath, "");
+            var shellDisplay = Presentation.Engine.Snapshot();
+            await Export.WriteFileAsync(Session.Store!, await StorageFile.GetFileFromPathAsync(shellPath), new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, Channel: (ushort)ChatType.CrossLinkshell2), true,
+                displayLine: (row, time) => shellDisplay.ExportLine(row.Source, row.Message, time, ChannelLabels.For(row.Message, !shellDisplay.Enabled)), title: "Moogle Post");
+            var shellMarkdown = File.ReadAllText(shellPath);
+            File.Copy(shellPath, Path.Combine(AppContext.BaseDirectory, "export-linkshell-sample.md"), true);
+            Check(shellMarkdown.Contains(@"\[Cross-world Linkshell \[2\] · Moogle Post\] Maple Leaf: Raid at nine"), "A linkshell export shows the channel and linkshell name");
             main.AppWindow.Resize(new Windows.Graphics.SizeInt32(1240, 780));
             foreach (var (language, conversation, captureName) in new[] { (AppLanguage.English, siteEn, "site-main-en.png"), (AppLanguage.ChineseSimplified, siteZh, "site-main-zh.png") }) {
                 LocalizationHelper.ApplyLanguage(language);

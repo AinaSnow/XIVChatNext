@@ -3,8 +3,10 @@
 ## Unreleased
 
 - Desktop: chat history can be exported as Markdown (.md) in addition to text and RTF. Each message keeps the existing `time [channel] sender: message` form; Markdown adds a title and a heading per day and escapes chat text so it displays literally.
+- Exports name channels in the interface language ("Tell (Incoming)", "私聊（接收）") instead of internal identifiers. The plugin now attaches the linkshell or cross-world linkshell name to each linkshell message, read from the game, and exports show it as `[Cross-world Linkshell [1] · Shell name]`. The name is stored with the message, so later renames do not change history; streamer mode omits it.
 - Desktop: the export window was only reachable from the menu behind the "XIVChat Next" title. It now also opens from an export button in each conversation or channel header and from **Settings → History**, and the menu title shows a drop-down arrow.
 - 客户端：聊天记录导出新增 Markdown (.md)，文本和 RTF 保留。每条消息仍是 `时间 [频道] 发送者: 内容`；Markdown 另加标题和按日期分组的小标题，并对聊天内容转义，保证原样显示。
+- 导出时频道按界面语言显示（“私聊（接收）”等），不再显示内部名称。插件会从游戏读取通讯贝和跨界通讯贝的名字并附在每条消息上，导出显示为 `[跨界通讯贝 [1] · 贝名]`。贝名随消息保存，之后改名不影响旧记录；主播模式下不显示。
 - 客户端：导出窗口以前只能从 “XIVChat Next” 标题后面的菜单打开。现在会话或频道标题栏有导出按钮，“设置 → 历史”里也能打开；菜单标题加上了下拉箭头。
 - Encryption v2 between the desktop client and the plugin (Desktop 1.6.0, Plugin 1.8.0). Each connection adds fresh X25519 keys, both ends prove ownership of their long-term keys, and packets use per-direction counters. Protocol 1 reused the same session keys on every connection and accepted replayed packets, so someone who recorded encrypted traffic could replay a client's commands into a new connection; v2 rejects that and adds forward secrecy. Fingerprints are unchanged. See docs/protocol/CHAT_V2.md.
 - Compatibility: the client tries v2 first and falls back to v1 for older plugins with a warning. After a plugin has used v2, the client refuses v1 for it; the plugin likewise refuses v1 from a client key that has used v2. The plugin's **Allow clients using old encryption (v1)** setting (on by default) can turn v1 off entirely, and the Devices tab labels each device's encryption.

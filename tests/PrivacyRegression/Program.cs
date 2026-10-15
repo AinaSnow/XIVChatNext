@@ -237,6 +237,10 @@ try {
         Equal(HistoryExport.EscapeMarkdown("*hi* [a](b) <b>x</b> _y_ `z` a|b ~s~ #1 & Yes!"),
             @"\*hi\* \[a\](b) \<b\>x\</b\> \_y\_ \`z\` a\|b \~s\~ #1 & Yes!", "Markdown escaping keeps chat text literal and readable");
         Equal(HistoryExport.EscapeMarkdown("line one\nline two"), "line one\\\n  line two", "Multi-line messages stay inside their list item");
+        Check(XIVChatCommon.LinkshellSlots.Of(ChatType.Linkshell1) == (false, 0) && XIVChatCommon.LinkshellSlots.Of(ChatType.Linkshell8) == (false, 7)
+            && XIVChatCommon.LinkshellSlots.Of(ChatType.CrossLinkshell1) == (true, 0) && XIVChatCommon.LinkshellSlots.Of(ChatType.CrossLinkshell2) == (true, 1)
+            && XIVChatCommon.LinkshellSlots.Of(ChatType.CrossLinkshell8) == (true, 7) && XIVChatCommon.LinkshellSlots.Of(ChatType.FreeCompany) == null,
+            "Linkshell and cross-world linkshell channels map to their slots");
         Check(HistoryExport.FormatForExtension(".MD") == ExportFormat.Markdown && HistoryExport.FormatForExtension(".rtf") == ExportFormat.Rtf && HistoryExport.FormatForExtension(".txt") == ExportFormat.Text,
             "File extensions choose the export format");
         Equal((await store.SearchAsync(new())).Single().Message.ContentText, message.ContentText, "export leaves database original intact");
@@ -254,6 +258,13 @@ try {
         Equal(count, 1201L, "streaming export visits all rows");
         Check(counter.Characters > 0, "streaming writer receives data without retaining all lines");
         Console.WriteLine($"Streaming export: {count} rows, {clock.ElapsedMilliseconds} ms");
+        var shellLine = new ServerMessage(DateTime.UtcNow, ChatType.CrossLinkshell2, Encoding.UTF8.GetBytes("Bob Birch"), Encoding.UTF8.GetBytes("Raid at nine"),
+            new() { new TextChunk("Raid at nine") }) { ChannelName = "Moogle Post", Owner = self, ServiceId = "fixture", RunId = "fixture", Sequence = 4242, MessageId = "shell-message" };
+        await store.AppendAsync("fixture", shellLine, "shell-message", false);
+        Equal((await store.SearchAsync(new(RecordId: "shell-message"))).Single().Message.ChannelName, "Moogle Post", "Linkshell names are stored with each message");
+        Check(HistoryExport.Line(shellLine, false).StartsWith("[CrossLinkshell2 · Moogle Post] "), "The plain export line includes the linkshell name");
+        Check(exporter.ExportLine("fixture", shellLine, false, "Cross-world Linkshell [2] · Moogle Post").StartsWith("[Cross-world Linkshell [2] · Moogle Post] "),
+            "Exports can use a readable channel label");
     }
     // Simulate an actual v5 file by removing only the additive v6 table.
     using (var db = new SqliteConnection("Data Source=" + path)) {

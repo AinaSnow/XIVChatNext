@@ -59,7 +59,7 @@ Turn on **Global shortcut** and press a combination in the shortcut field (Ctrl+
 
 Open the export window from the export button in a conversation or channel header, from **Settings → History → Export chat history…**, or from the **XIVChat Next ▾** menu next to the logo. It exports what you are looking at: the open conversation, channel, history search or favorite. Narrow it by keyword and time, choose whether to include timestamps, preview the last 100 lines, then save.
 
-Choose the format in the save dialog: **Text (.txt)**, **Markdown (.md)** or **Rich Text (.rtf)**. Every format writes each message as `time [channel] sender: message`. Markdown adds a title, groups messages under a heading per day and escapes chat text so it displays literally. With streamer mode on, exports use the same hidden names as the screen.
+Choose the format in the save dialog: **Text (.txt)**, **Markdown (.md)** or **Rich Text (.rtf)**. Every format writes each message as `time [channel] sender: message`, with the channel named in the interface language. Linkshell and cross-world linkshell messages also show the linkshell's name, for example `[Cross-world Linkshell [1] · Shell name]`; the plugin records it with each message from plugin 1.8.0, so earlier messages show the channel only. Markdown adds a title, groups messages under a heading per day and escapes chat text so it displays literally. With streamer mode on, exports use the same hidden names as the screen and omit linkshell names.
 
 ### Data and upgrades
 
@@ -142,7 +142,7 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 可以从会话或频道标题栏右侧的导出按钮、“设置 → 历史 → 导出聊天记录…”，或者 Logo 旁边的 “XIVChat Next ▾” 菜单打开导出窗口。导出的是你当前正在看的内容：打开的会话、频道、历史搜索结果或收藏。可以按关键词和时间缩小范围，选择是否带时间，预览最后 100 行后再保存。
 
-在保存对话框里选择格式：**文本 (.txt)**、**Markdown (.md)** 或 **RTF (.rtf)**。每种格式中，每条消息都是 `时间 [频道] 发送者: 内容`。Markdown 会加上标题、按日期分组，并对聊天内容做转义，保证原样显示。开启主播模式时，导出内容和屏幕上一样隐藏名字。
+在保存对话框里选择格式：**文本 (.txt)**、**Markdown (.md)** 或 **RTF (.rtf)**。每种格式中，每条消息都是 `时间 [频道] 发送者: 内容`，频道按界面语言显示。通讯贝和跨界通讯贝的消息还会带上贝的名字，例如 `[跨界通讯贝 [1] · 贝名]`；插件 1.8.0 起会随每条消息记录贝名，更早的消息只显示频道。Markdown 会加上标题、按日期分组，并对聊天内容做转义，保证原样显示。开启主播模式时，导出内容和屏幕上一样隐藏名字，也不显示贝名。
 
 ### 数据存在哪里
 

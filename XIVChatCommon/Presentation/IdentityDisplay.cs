@@ -382,7 +382,8 @@ public sealed class IdentityDisplay {
             return ApplyChunks(message.Chunks, text, edits);
         }
     }
-    public string ExportLine(string source, ServerMessage message, bool timestamps) {
+    /// <param name="channel">Display name for the channel; defaults to the channel identifier.</param>
+    public string ExportLine(string source, ServerMessage message, bool timestamps, string? channel = null) {
         lock (gate) {
             var context = Observe(source, message);
             var sender = settings.Enabled ? Text(context, message.SenderText) : message.SenderText;
@@ -390,7 +391,7 @@ public sealed class IdentityDisplay {
             if (settings.Enabled && Sender(context, message) is { } peer && Hidden(context, peer)) sender = Identity(context, peer, false).Name;
             else if (settings.Enabled && sender.Length > 0 && Sender(context, message) == null) sender = Anonymous;
             return (timestamps ? message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " " : "") +
-                "[" + message.Channel + "] " + (sender.Length == 0 ? "" : sender + ": ") + Content(source, message);
+                "[" + (channel ?? message.Channel.ToString()) + "] " + (sender.Length == 0 ? "" : sender + ": ") + Content(source, message);
         }
     }
 }

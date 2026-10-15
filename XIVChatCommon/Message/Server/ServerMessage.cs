@@ -30,6 +30,8 @@ namespace XIVChatCommon.Message.Server {
         [Key(8)] public long Sequence { get; set; }
         [Key(9)] public CharacterIdentity? Owner { get; set; }
         [Key(10)] public CharacterIdentity? TellPeer { get; set; }
+        /// <summary>Linkshell or cross-world linkshell name when the message was sent; chat lines only carry the slot number.</summary>
+        [Key(11)] public string? ChannelName { get; set; }
         [IgnoreMember] public string? LocalSource { get; set; }
         [IgnoreMember] public string? LocalStorageId { get; set; }
 

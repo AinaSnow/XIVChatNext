@@ -16,7 +16,8 @@ public static class HistoryExport {
 
     public static string Line(ServerMessage message, bool timestamps) =>
         (timestamps ? message.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " " : "") +
-        "[" + message.Channel + "] " + (string.IsNullOrEmpty(message.SenderText) ? "" : message.SenderText + ": ") + message.ContentText;
+        "[" + message.Channel + (string.IsNullOrWhiteSpace(message.ChannelName) ? "" : " · " + message.ChannelName) + "] " +
+        (string.IsNullOrEmpty(message.SenderText) ? "" : message.SenderText + ": ") + message.ContentText;
 
     public static string EscapeRtf(string text) {
         var result = new StringBuilder();

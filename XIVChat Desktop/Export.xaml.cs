@@ -82,7 +82,7 @@ namespace XIVChat_Desktop {
                 foreach (var row in rows) app.Presentation.Observe(row.Message);
                 var display = app.Presentation.Engine.Snapshot();
                 PreviewList.ItemsSource = rows.Reverse().Where(r => filter?.Allowed(r.Message) != false).TakeLast(100)
-                    .Select(r => display.ExportLine(r.Source, r.Message, Timestamps.IsChecked == true)).ToArray();
+                    .Select(r => display.ExportLine(r.Source, r.Message, Timestamps.IsChecked == true, ChannelLabels.For(r.Message, !display.Enabled))).ToArray();
                 Status.Text = L("Export.PreviewLimit");
             } catch (OperationCanceledException) { }
             catch (Exception ex) { if (!closed) Status.Text = ex.Message; }
@@ -107,7 +107,7 @@ namespace XIVChat_Desktop {
                 token.ThrowIfCancellationRequested(); if (file == null) return;
                 var progress = new Progress<long>(count => { if (!closed) Status.Text = string.Format(L("Export.Progress"), count); });
                 var display = app.Presentation.Engine.Snapshot();
-                var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token, (row, showTime) => display.ExportLine(row.Source, row.Message, showTime),
+                var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token, (row, showTime) => display.ExportLine(row.Source, row.Message, showTime, ChannelLabels.For(row.Message, !display.Enabled)),
                     display.Enabled ? row => display.Observe(row.Source, row.Message) : null, Scope.Text);
                 running = write; var count = await write;
                 if (!closed) Status.Text = string.Format(L("Export.Complete"), count);
