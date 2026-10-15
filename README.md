@@ -6,7 +6,7 @@
 
 A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://xiv.chat/). Keep conversations, friends, searchable history and game screenshots close at hand while your game stays running.
 
-**Desktop 1.6.0 · Plugin 1.8.0** adds a Windows installer that updates itself, encryption v2 with per-connection keys and replay protection, Markdown chat exports with real linkshell names, and optional translation and AI summaries.
+**Desktop 1.6.1** adds an **AI summary** button to chat headers, so you can read a summary without exporting. **Desktop 1.6.0 · Plugin 1.8.0** added a Windows installer that updates itself, encryption v2 with per-connection keys and replay protection, Markdown chat exports with real linkshell names, and optional translation and AI summaries.
 
 [Website & getting started](https://ainasnow.github.io/XIVChatNext-site/) · [Downloads](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [Client guide](docs/user/CLIENT_GUIDE.md) · [Self-hosted relay](docs/user/SELF_HOSTED_RELAY.md)
 
@@ -14,7 +14,7 @@ A Windows chat workspace for **FINAL FANTASY XIV**, built on [XIVChat](https://x
 
 | Component | Version | Download |
 | --- | --- | --- |
-| Windows x64 desktop client | **1.6.0** | [Installer (recommended)](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-win-Setup.exe) · [Portable ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-Desktop-v1.6.0-win-x64.zip) |
+| Windows x64 desktop client | **1.6.1** | [Installer (recommended)](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.6.1/XIVChatNext-win-Setup.exe) · [Portable ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.6.1/XIVChatNext-Desktop-v1.6.1-win-x64.zip) |
 | Dalamud plugin | **1.8.0** | Install through the repository below, or [latest.zip](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip) |
 | Optional self-hosted relay | Unchanged | [Existing relay package](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15) |
 
@@ -74,13 +74,13 @@ An independent community project based on XIVChat, originally created by Anna. N
 
 使用时，**游戏需要保持运行，角色也需要在线**。
 
-**客户端 1.6.0 · 插件 1.8.0**：新增可自动更新的 Windows 安装包；客户端与插件之间改用加密 v2（每次连接使用新密钥，防重放）；聊天记录可导出为 Markdown 并显示真实通讯贝名称；新增可选的翻译和 AI 总结。
+**客户端 1.6.1**：会话和频道标题栏新增“AI 总结”按钮，不用导出也能看总结。**客户端 1.6.0 · 插件 1.8.0**：新增可自动更新的 Windows 安装包；客户端与插件之间改用加密 v2（每次连接使用新密钥，防重放）；聊天记录可导出为 Markdown 并显示真实通讯贝名称；新增可选的翻译和 AI 总结。
 
 [介绍与入门](https://ainasnow.github.io/XIVChatNext-site/zh/) · [下载](https://github.com/AinaSnow/XIVChatNext/releases/latest) · [客户端指南](docs/user/CLIENT_GUIDE.md#简体中文) · [自建中继](docs/user/SELF_HOSTED_RELAY.md#简体中文)
 
 ### 下载与安装
 
-- **客户端 1.6.0**：推荐使用 [安装包](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-win-Setup.exe)，安装后有桌面和开始菜单快捷方式，可在“设置 → 更新”中直接更新；也可以下载 [免安装 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/XIVChatNext-Desktop-v1.6.0-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`（不会自动更新）。
+- **客户端 1.6.1**：推荐使用 [安装包](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.6.1/XIVChatNext-win-Setup.exe)，安装后有桌面和开始菜单快捷方式，可在“设置 → 更新”中直接更新；也可以下载 [免安装 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/desktop-1.6.1/XIVChatNext-Desktop-v1.6.1-win-x64.zip)，解压后运行 `XIVChat Desktop.exe`（不会自动更新）。
 - **插件 1.8.0**：通过上面的 Dalamud 自定义插件仓库安装 **XIVChatNext Server**，或使用 [插件 ZIP](https://github.com/AinaSnow/XIVChatNext/releases/download/1.8.0/latest.zip)。
 - **可选中继**：继续使用 [已有部署包](https://github.com/AinaSnow/XIVChatNext/releases/tag/1.7.15)，本次无需更新中继。
 

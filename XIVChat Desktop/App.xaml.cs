@@ -14,7 +14,7 @@ namespace XIVChat_Desktop {
         public MainWindow Window { get; private set; } = null!;
         public Configuration Config { get; private set; } = null!;
         private DesktopUpdates? updates;
-        public DesktopUpdates Updates => updates ??= new DesktopUpdates(typeof(App).Assembly.GetName().Version ?? new Version(1, 6, 0), installer: VelopackInstaller.TryCreate());
+        public DesktopUpdates Updates => updates ??= new DesktopUpdates(typeof(App).Assembly.GetName().Version ?? new Version(1, 6, 1), installer: VelopackInstaller.TryCreate());
         private IdentityPresentation? presentation;
         public IdentityPresentation Presentation => presentation ??= new IdentityPresentation(this);
         private ChatSession? session;
