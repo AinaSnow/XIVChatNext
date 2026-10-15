@@ -14,7 +14,7 @@ internal static class Program {
         try { await action(); return null; } catch (AiException ex) { return ex.Failure; }
     }
 
-    private sealed record Captured(string Path, Dictionary<string, string> Headers, JsonNode? Body);
+    private sealed record Captured(string Path, string Query, Dictionary<string, string> Headers, JsonNode? Body, string Raw);
 
     /// <summary>Serves one canned response per request and records what the client sent.</summary>
     private sealed class FakeServer : IDisposable {
@@ -35,9 +35,10 @@ internal static class Program {
                 HttpListenerContext context;
                 try { context = await this.listener.GetContextAsync(); } catch { return; }
                 var body = await new StreamReader(context.Request.InputStream).ReadToEndAsync();
-                var captured = new Captured(context.Request.Url!.AbsolutePath,
-                    context.Request.Headers.AllKeys.Where(k => k != null).ToDictionary(k => k!.ToLowerInvariant(), k => context.Request.Headers[k]!),
-                    body.Length > 0 ? JsonNode.Parse(body) : null);
+                JsonNode? json = null;
+                try { if (body.Length > 0) json = JsonNode.Parse(body); } catch (System.Text.Json.JsonException) { }
+                var captured = new Captured(context.Request.Url!.AbsolutePath, context.Request.Url.Query,
+                    context.Request.Headers.AllKeys.Where(k => k != null).ToDictionary(k => k!.ToLowerInvariant(), k => context.Request.Headers[k]!), json, body);
                 lock (this.Requests) this.Requests.Add(captured);
                 var (status, type, reply) = this.respond(captured);
                 context.Response.StatusCode = status;
@@ -116,11 +117,84 @@ internal static class Program {
             Check(await Failure(() => Task.FromResult(new AiSettings(AiProviderKind.Claude, " ", "").CreateClient())) == AiFailure.NotConfigured,
                 "A missing Claude key is reported before any request");
 
+            await Translators();
             Console.WriteLine($"All {checks} AI checks passed.");
             return 0;
         } catch (Exception ex) {
             Console.Error.WriteLine("FAIL " + ex);
             return 1;
         }
+    }
+
+    private static Dictionary<string, string> Form(string raw) => raw.Split('&', StringSplitOptions.RemoveEmptyEntries)
+        .Select(pair => pair.Split('=', 2)).ToDictionary(p => Uri.UnescapeDataString(p[0].Replace('+', ' ')), p => Uri.UnescapeDataString(p[1].Replace('+', ' ')));
+
+    private static async Task Translators() {
+        Check(TranslationLanguages.Name("ja") == "Japanese" && TranslationLanguages.Codes.Length == 7, "Translation languages have readable names for AI prompts");
+
+        using (var google = new FakeServer(_ => (200, "application/json", """[[["你好","Hello",null],["，世界",", world",null]],null,"en"]"""))) {
+            var text = await new GoogleFreeTranslator(baseUrl: google.Url).TranslateAsync("Hello, world", "zh-Hans");
+            var sent = google.Requests.Single();
+            Check(text == "你好，世界" && sent.Path == "/translate_a/single" && sent.Query.Contains("tl=zh-CN") && sent.Query.Contains("client=gtx") && Form(sent.Raw)["q"] == "Hello, world",
+                "Google (free) joins the translated segments and maps Simplified Chinese to zh-CN");
+        }
+        using (var microsoft = new FakeServer(r => r.Headers.GetValueOrDefault("ocp-apim-subscription-key") == "ms-key"
+                   ? (200, "application/json", """[{"translations":[{"text":"准备好了吗","to":"zh-Hans"}]}]""") : (401, "application/json", "{}"))) {
+            var text = await new MicrosoftTranslator("ms-key", "eastasia", baseUrl: microsoft.Url).TranslateAsync("Ready?", "zh-Hans");
+            var sent = microsoft.Requests.Single();
+            Check(text == "准备好了吗" && sent.Query.Contains("to=zh-Hans") && sent.Headers["ocp-apim-subscription-region"] == "eastasia" && sent.Body?[0]?["Text"]?.ToString() == "Ready?",
+                "Microsoft sends the key, region and text");
+            Check(await Failure(() => new MicrosoftTranslator("bad", null, baseUrl: microsoft.Url).TranslateAsync("x", "en")) == AiFailure.Authentication,
+                "A rejected Microsoft key is reported");
+        }
+        using (var deepl = new FakeServer(r => r.Headers.GetValueOrDefault("authorization") switch {
+                   "DeepL-Auth-Key good:fx" => (200, "application/json", """{"translations":[{"detected_source_language":"EN","text":"準備はいい？"}]}"""),
+                   "DeepL-Auth-Key spent:fx" => (456, "application/json", "{}"),
+                   _ => (403, "application/json", "{}") })) {
+            var text = await new DeepLTranslator("good:fx", baseUrl: deepl.Url).TranslateAsync("Ready?", "ja");
+            var sent = deepl.Requests.Single();
+            Check(text == "準備はいい？" && sent.Path == "/v2/translate" && sent.Body?["target_lang"]?.ToString() == "JA" && sent.Body?["text"]?[0]?.ToString() == "Ready?",
+                "DeepL sends the auth key header and its own language codes");
+            Check(await Failure(() => new DeepLTranslator("spent:fx", baseUrl: deepl.Url).TranslateAsync("x", "en")) == AiFailure.RateLimited
+                && await Failure(() => new DeepLTranslator("bad", baseUrl: deepl.Url).TranslateAsync("x", "en")) == AiFailure.Authentication,
+                "DeepL quota and key errors are reported");
+        }
+        using (var baidu = new FakeServer(r => {
+                   var form = Form(r.Raw);
+                   return form["appid"] == "2015063000000001" && form["sign"] == BaiduTranslator.Sign(form["appid"], form["q"], form["salt"], "12345678")
+                       ? (200, "application/json", """{"from":"en","to":"zh","trans_result":[{"src":"Ready?","dst":"准备好了吗？"}]}""")
+                       : (200, "application/json", """{"error_code":"52003","error_msg":"UNAUTHORIZED USER"}""");
+               })) {
+            var text = await new BaiduTranslator("2015063000000001", "12345678", baseUrl: baidu.Url).TranslateAsync("Ready?", "zh-Hans");
+            var form = Form(baidu.Requests.Single().Raw);
+            Check(text == "准备好了吗？" && form["to"] == "zh" && form["from"] == "auto" && form["sign"].Length == 32, "Baidu signs appid + text + salt + key with MD5");
+            Check(BaiduTranslator.Sign("2015063000000001", "apple", "1435660288", "12345678") == "f89f9594663708c1605f3d736d01d2d4",
+                "The Baidu signature matches Baidu's published example");
+            Check(await Failure(() => new BaiduTranslator("2015063000000001", "wrong", baseUrl: baidu.Url).TranslateAsync("x", "en")) == AiFailure.Authentication,
+                "A rejected Baidu APP ID or key is reported");
+        }
+        var fixedTime = DateTimeOffset.FromUnixTimeSeconds(1_760_500_000);
+        using (var tencent = new FakeServer(r => r.Headers["authorization"].Contains("Credential=AKIDgood/")
+                   ? (200, "application/json", """{"Response":{"TargetText":"准备好了吗？","Source":"en","Target":"zh","RequestId":"fixture"}}""")
+                   : (200, "application/json", """{"Response":{"Error":{"Code":"AuthFailure.SecretIdNotFound","Message":"bad"},"RequestId":"fixture"}}"""))) {
+            var host = new Uri(tencent.Url).Authority;
+            var text = await new TencentTranslator("AKIDgood", "secret", null, host: host, clock: () => fixedTime).TranslateAsync("Ready?", "zh-Hans");
+            var sent = tencent.Requests.Single();
+            Check(text == "准备好了吗？" && sent.Headers["x-tc-action"] == "TextTranslate" && sent.Headers["x-tc-version"] == "2018-03-21" && sent.Headers["x-tc-region"] == "ap-guangzhou"
+                && sent.Headers["x-tc-timestamp"] == "1760500000" && sent.Body?["Target"]?.ToString() == "zh" && sent.Body?["Source"]?.ToString() == "auto",
+                "Tencent sends the TextTranslate action, version, region and timestamp");
+            Check(sent.Headers["authorization"] == TencentTranslator.Authorization("AKIDgood", "secret", host, sent.Raw, fixedTime)
+                && sent.Headers["authorization"].StartsWith("TC3-HMAC-SHA256 Credential=AKIDgood/2025-10-15/tmt/tc3_request, SignedHeaders=content-type;host;x-tc-action, Signature="),
+                "Tencent requests are signed with TC3-HMAC-SHA256 over the exact body sent");
+            Check(await Failure(() => new TencentTranslator("AKIDbad", "secret", null, host: host).TranslateAsync("x", "en")) == AiFailure.Authentication,
+                "A rejected Tencent SecretId or SecretKey is reported");
+        }
+        var ai = new FakeTranslatorAi();
+        Check(await new AiTranslator(ai).TranslateAsync("Ready?", "ko") == "AI" && ai.Last!.System.Contains("Korean"), "AI translation names the target language");
+    }
+
+    private sealed class FakeTranslatorAi : IAiClient {
+        public AiRequest? Last;
+        public Task<string> CompleteAsync(AiRequest request, CancellationToken token = default) { this.Last = request; return Task.FromResult("AI"); }
     }
 }

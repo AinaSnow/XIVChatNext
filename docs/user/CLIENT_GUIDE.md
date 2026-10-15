@@ -61,19 +61,24 @@ Open the export window from the export button in a conversation or channel heade
 
 Choose the format in the save dialog: **Text (.txt)**, **Markdown (.md)** or **Rich Text (.rtf)**. Every format writes each message as `time [channel] sender: message`, with the channel named in the interface language. Linkshell and cross-world linkshell messages also show the linkshell's name, for example `[Cross-world Linkshell [1] · Shell name]`; the plugin records it with each message from plugin 1.8.0, so earlier messages show the channel only. Markdown adds a title, groups messages under a heading per day and escapes chat text so it displays literally. With streamer mode on, exports use the same hidden names as the screen and omit linkshell names.
 
-### AI translation and summaries (Desktop 1.6.0)
+### Translation and AI summaries (Desktop 1.6.0)
 
-Optional and off by default. In **Settings → AI**, turn on **Enable AI translation and summaries**, choose a service and save:
+Optional and off by default. In **Settings → Translation & AI**, turn on **Enable translation and AI summaries**, choose the services and save. Nothing is sent automatically, and with streamer mode on, names are hidden the same way as in exports before text is sent. Keys are encrypted for your Windows account and never shown again; leave a key field empty to keep the saved key.
 
-- **Claude** with your own Anthropic API key. The default model is `claude-opus-5-5`; you can enter another model ID.
-- **OpenAI-compatible service or local model**: the service address ending in `/v1`, the model name and, if the service needs one, an API key. Plain `http://` is accepted only for a model on this computer, such as Ollama at `http://localhost:11434/v1`.
+**Translation** uses one of:
 
-**Test** sends one short sentence to check the settings. Usage is billed by the service to your account. Keys are encrypted for your Windows account and never shown again; leave the field empty to keep a saved key.
+| Service | What you enter | Notes |
+| --- | --- | --- |
+| Google Translate (free) | Nothing | Uses Google's unpublished web endpoint: it may stop working at any time, Google's terms do not cover automated use, and it needs a proxy in mainland China. |
+| Microsoft Translator | Azure Translator key, region for regional resources | 2 million characters a month free; usually reachable from mainland China. |
+| DeepL | Authentication key | 500,000 characters a month on the free plan (keys ending in `:fx`). |
+| Baidu Translate | APP ID and secret key | Reachable from mainland China, with a monthly free allowance. |
+| Tencent Translate | SecretId, SecretKey, optional region | Reachable from mainland China, with a monthly free allowance. |
+| The AI service | See below | Best at keeping game terms and names. |
 
-- **Translate a message:** right-click a message, or select text in it, and choose **Translate**. The translation appears under the original. Only that message is sent. **Translate and summarize into** sets the language; empty follows the interface language.
-- **Summarize history:** open the export window for a conversation, channel or history search, narrow it by time or keyword, and choose **AI summary**. You can copy the result. To keep it with the record, tick **Add AI summary to Markdown export** and save as `.md`; the summary appears at the top with a note that it may be wrong. Very large ranges are refused rather than cut short: narrow the range instead.
+Right-click a message, or select text in it, and choose **Translate**. The translation appears under the original; only that message is sent. **Translate and summarize into** picks the language; **Interface language** follows the app. **Test translation** checks the service with one short sentence.
 
-Nothing is sent automatically. With streamer mode on, names are hidden the same way as in exports before text is sent. Summaries can miss or misread things; the original messages remain the record.
+**AI summaries** use the AI service: **Claude** with your own Anthropic API key (default model `claude-opus-5-5`), or an **OpenAI-compatible service or local model** (service address ending in `/v1`, model name, and a key if needed; plain `http://` only for a model on this computer, such as Ollama). Open the export window for a conversation, channel or history search, narrow it by time or keyword, and choose **AI summary** to read and copy it. Tick **Add AI summary to Markdown export** and save as `.md` to put it at the top of the file with a note that it may be wrong. Very large ranges are refused rather than cut short. Paid services bill your own account.
 
 ### Data and upgrades
 
@@ -158,19 +163,24 @@ Live sending, friends and screenshots require the game, logged-in character and 
 
 在保存对话框里选择格式：**文本 (.txt)**、**Markdown (.md)** 或 **RTF (.rtf)**。每种格式中，每条消息都是 `时间 [频道] 发送者: 内容`，频道按界面语言显示。通讯贝和跨界通讯贝的消息还会带上贝的名字，例如 `[跨界通讯贝 [1] · 贝名]`；插件 1.8.0 起会随每条消息记录贝名，更早的消息只显示频道。Markdown 会加上标题、按日期分组，并对聊天内容做转义，保证原样显示。开启主播模式时，导出内容和屏幕上一样隐藏名字，也不显示贝名。
 
-### AI 翻译和总结（客户端 1.6.0）
+### 翻译和 AI 总结（客户端 1.6.0）
 
-可选功能，默认关闭。在“设置 → AI”中开启“启用 AI 翻译和总结”，选择服务后保存：
+可选功能，默认关闭。在“设置 → 翻译与 AI”中开启“启用翻译和 AI 总结”，选好服务后保存。不会自动发送任何内容；开启主播模式时，发送前会像导出一样隐藏名字。密钥按你的 Windows 账户加密保存，之后不会再显示；密钥框留空则保持已保存的密钥。
 
-- **Claude**：使用你自己的 Anthropic API Key。默认模型是 `claude-opus-5-5`，也可以填写其他模型 ID。
-- **OpenAI 兼容服务或本机模型**：填写以 `/v1` 结尾的服务地址、模型名称；服务需要时再填 API Key。只有本机的模型才允许使用 `http://`，例如 Ollama 的 `http://localhost:11434/v1`。
+**翻译**可以选择：
 
-点击“测试”会发送一句简短的话来检查设置。费用由该服务向你的账号收取。密钥按你的 Windows 账户加密保存，之后不会再显示；留空则保持已保存的密钥。
+| 服务 | 需要填写 | 说明 |
+| --- | --- | --- |
+| 谷歌翻译（免费） | 无 | 使用谷歌未公开的网页接口：随时可能失效，谷歌条款不涵盖这种自动调用，在中国大陆需要代理。 |
+| 微软翻译 | Azure 翻译密钥；区域资源需要填写区域 | 每月 200 万字符免费，在中国大陆通常可以直接访问。 |
+| DeepL | 认证密钥 | 免费版每月 50 万字符（密钥以 `:fx` 结尾）。 |
+| 百度翻译 | APP ID 和密钥 | 中国大陆可直接访问，每月有免费额度。 |
+| 腾讯翻译 | SecretId、SecretKey，可选地域 | 中国大陆可直接访问，每月有免费额度。 |
+| 使用 AI 服务 | 见下方 | 对游戏术语和角色名保留得最好。 |
 
-- **翻译消息：**在消息上右键，或选中其中的文字后右键，选择“翻译”，译文显示在原文下方。只会发送这一条消息。“翻译和总结使用的语言”留空时跟随界面语言。
-- **总结记录：**为会话、频道或历史搜索打开导出窗口，按时间或关键词缩小范围后点“AI 总结”，结果可以复制。想和记录一起保存时，勾选“导出 Markdown 时附带 AI 总结”并保存为 `.md`，总结会放在文件开头，并注明可能有误。范围太大时会直接提示缩小范围，不会悄悄截断。
+在消息上右键，或选中其中的文字后右键，选择“翻译”，译文显示在原文下方，只会发送这一条消息。“翻译和总结使用的语言”选择目标语言，“跟随界面语言”则与客户端一致。“测试翻译”会用一句简短的话检查服务是否可用。
 
-不会自动发送任何内容。开启主播模式时，发送前会像导出一样隐藏名字。总结可能遗漏或理解错误，以原始消息为准。
+**AI 总结**使用 AI 服务：**Claude**（填写自己的 Anthropic API Key，默认模型 `claude-opus-5-5`），或 **OpenAI 兼容服务或本机模型**（以 `/v1` 结尾的服务地址、模型名称，需要时填写 Key；只有本机模型允许 `http://`，例如 Ollama）。为会话、频道或历史搜索打开导出窗口，按时间或关键词缩小范围后点“AI 总结”，可以查看和复制。勾选“导出 Markdown 时附带 AI 总结”并保存为 `.md`，总结会放在文件开头，并注明可能有误。范围太大时会直接提示缩小范围，不会悄悄截断。收费服务由你自己的账号计费。
 
 ### 数据存在哪里
 

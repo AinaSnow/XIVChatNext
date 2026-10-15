@@ -320,9 +320,9 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
-  <data name="Ai.Title" xml:space="preserve"><value>AI</value></data>
-  <data name="Ai.Enable" xml:space="preserve"><value>启用 AI 翻译和总结</value></data>
-  <data name="Ai.PrivacyNote" xml:space="preserve"><value>默认关闭。翻译消息或总结记录时，相应文字会发送到下面选择的服务，并由你在该服务的账号计费。不会自动发送任何内容。开启主播模式时，名字会和导出一样被隐藏。密钥按你的 Windows 账户加密保存。</value></data>
+  <data name="Ai.Title" xml:space="preserve"><value>翻译与 AI</value></data>
+  <data name="Ai.Enable" xml:space="preserve"><value>启用翻译和 AI 总结</value></data>
+  <data name="Ai.PrivacyNote" xml:space="preserve"><value>默认关闭。翻译消息或总结记录时，相应文字会发送到你在下面选择的服务，不会自动发送任何内容。开启主播模式时，名字会和导出一样被隐藏。密钥按你的 Windows 账户加密保存。收费服务由你自己的账号计费。</value></data>
   <data name="Ai.Provider" xml:space="preserve"><value>服务</value></data>
   <data name="Ai.ProviderClaude" xml:space="preserve"><value>Claude（Anthropic API Key）</value></data>
   <data name="Ai.ProviderCompatible" xml:space="preserve"><value>OpenAI 兼容服务或本机模型</value></data>
@@ -335,17 +335,17 @@
   <data name="Ai.KeyOptional" xml:space="preserve"><value>本机模型可不填</value></data>
   <data name="Ai.TargetLanguage" xml:space="preserve"><value>翻译和总结使用的语言</value></data>
   <data name="Ai.TargetLanguageAuto" xml:space="preserve"><value>跟随界面语言</value></data>
-  <data name="Ai.Test" xml:space="preserve"><value>测试</value></data>
+  <data name="Ai.Test" xml:space="preserve"><value>测试 AI</value></data>
   <data name="Ai.Testing" xml:space="preserve"><value>正在发送一条简短的测试消息…</value></data>
   <data name="Ai.TestPassed" xml:space="preserve"><value>可以使用。测试译文：{0}</value></data>
   <data name="Ai.Saved" xml:space="preserve"><value>AI 设置已保存。</value></data>
   <data name="Ai.SaveFailed" xml:space="preserve"><value>无法保存 AI 设置：</value></data>
   <data name="Ai.Failed" xml:space="preserve"><value>AI 请求失败：</value></data>
-  <data name="Ai.NotConfigured" xml:space="preserve"><value>AI 尚未设置。请在“设置 → AI”中填写服务信息。</value></data>
-  <data name="Ai.Authentication" xml:space="preserve"><value>AI 服务拒绝了密钥，请在“设置 → AI”中检查。</value></data>
-  <data name="Ai.RateLimited" xml:space="preserve"><value>AI 服务繁忙或达到频率限制，请稍后再试。</value></data>
-  <data name="Ai.Refused" xml:space="preserve"><value>AI 服务拒绝处理这条请求。</value></data>
-  <data name="Ai.Network" xml:space="preserve"><value>无法连接 AI 服务。</value></data>
+  <data name="Ai.NotConfigured" xml:space="preserve"><value>这个服务还没有设置完整，请在“设置 → 翻译与 AI”中填写。</value></data>
+  <data name="Ai.Authentication" xml:space="preserve"><value>服务拒绝了密钥，请在“设置 → 翻译与 AI”中检查。</value></data>
+  <data name="Ai.RateLimited" xml:space="preserve"><value>服务繁忙或已达到额度限制，请稍后再试。</value></data>
+  <data name="Ai.Refused" xml:space="preserve"><value>服务拒绝处理这条请求。</value></data>
+  <data name="Ai.Network" xml:space="preserve"><value>无法连接服务。</value></data>
   <data name="Ai.TooLarge" xml:space="preserve"><value>范围太大，无法一次总结。请缩小时间范围或加上关键词。</value></data>
   <data name="Ai.NothingToSummarize" xml:space="preserve"><value>这个范围内没有可以总结的消息。</value></data>
   <data name="Ai.Translate" xml:space="preserve"><value>翻译</value></data>
@@ -361,6 +361,25 @@
   <data name="Ai.SummaryHeading" xml:space="preserve"><value>AI 总结</value></data>
   <data name="Ai.SummaryCaveat" xml:space="preserve"><value>由 {0} 生成，可能不完整或有误；以下方的原始消息为准。</value></data>
   <data name="Ai.Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="Ai.TranslationSection" xml:space="preserve"><value>翻译</value></data>
+  <data name="Ai.Translator" xml:space="preserve"><value>翻译服务</value></data>
+  <data name="Ai.TranslatorGoogleFree" xml:space="preserve"><value>谷歌翻译（免费，无需 Key）</value></data>
+  <data name="Ai.TranslatorMicrosoft" xml:space="preserve"><value>微软翻译</value></data>
+  <data name="Ai.TranslatorBaidu" xml:space="preserve"><value>百度翻译</value></data>
+  <data name="Ai.TranslatorTencent" xml:space="preserve"><value>腾讯翻译</value></data>
+  <data name="Ai.TranslatorAi" xml:space="preserve"><value>使用下方的 AI 服务</value></data>
+  <data name="Ai.GoogleFreeNote" xml:space="preserve"><value>使用的是谷歌未公开的网页接口：随时可能失效，谷歌条款不涵盖这种自动调用，并且在中国大陆不使用代理无法访问。需要稳定翻译时，请改用填写自己 Key 的服务。</value></data>
+  <data name="Ai.MicrosoftKey" xml:space="preserve"><value>翻译密钥（Azure）</value></data>
+  <data name="Ai.MicrosoftRegion" xml:space="preserve"><value>区域（全局资源可留空）</value></data>
+  <data name="Ai.DeepLKey" xml:space="preserve"><value>DeepL 认证密钥</value></data>
+  <data name="Ai.BaiduAppId" xml:space="preserve"><value>APP ID</value></data>
+  <data name="Ai.BaiduKey" xml:space="preserve"><value>密钥</value></data>
+  <data name="Ai.TencentSecretId" xml:space="preserve"><value>SecretId</value></data>
+  <data name="Ai.TencentSecretKey" xml:space="preserve"><value>SecretKey</value></data>
+  <data name="Ai.TencentRegion" xml:space="preserve"><value>地域（默认 ap-guangzhou）</value></data>
+  <data name="Ai.TestTranslation" xml:space="preserve"><value>测试翻译</value></data>
+  <data name="Ai.AiSection" xml:space="preserve"><value>AI 服务</value></data>
+  <data name="Ai.AiSectionNote" xml:space="preserve"><value>用于导出窗口里的 AI 总结；翻译服务选择“使用下方的 AI 服务”时也用于翻译。</value></data>
   <data name="Export.Open" xml:space="preserve"><value>导出聊天记录…</value></data>
   <data name="Workbench.ConversationsShort" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>

@@ -310,16 +310,25 @@ namespace XIVChat_Desktop {
     }
 
     [JsonObject]
-    /// <summary>Optional translation and summaries through the user's own AI service. Keys are protected for the Windows user.</summary>
+    /// <summary>Optional translation and AI summaries through services the user chooses. Keys are protected for the Windows user.</summary>
     public class AiOptions {
         public bool Enabled { get; set; }
+        public XIVChatAi.TranslationProvider Translator { get; set; } = XIVChatAi.TranslationProvider.GoogleFree;
+        public string? ProtectedMicrosoftKey { get; set; }
+        public string MicrosoftRegion { get; set; } = "";
+        public string? ProtectedDeepLKey { get; set; }
+        public string BaiduAppId { get; set; } = "";
+        public string? ProtectedBaiduKey { get; set; }
+        public string TencentSecretId { get; set; } = "";
+        public string? ProtectedTencentKey { get; set; }
+        public string TencentRegion { get; set; } = "";
         public XIVChatAi.AiProviderKind Provider { get; set; } = XIVChatAi.AiProviderKind.Claude;
         public string ClaudeModel { get; set; } = XIVChatAi.AiSettings.DefaultClaudeModel;
         public string? ProtectedClaudeKey { get; set; }
         public string CompatibleBaseUrl { get; set; } = "";
         public string CompatibleModel { get; set; } = "";
         public string? ProtectedCompatibleKey { get; set; }
-        /// <summary>Language for translations and summaries; empty follows the interface language.</summary>
+        /// <summary>Language code from <see cref="XIVChatAi.TranslationLanguages.Codes"/>; empty follows the interface language.</summary>
         public string TargetLanguage { get; set; } = "";
     }
 

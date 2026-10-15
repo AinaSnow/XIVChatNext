@@ -603,12 +603,24 @@ internal sealed class DesktopPrivacySmokeApp : App {
             LocalizationHelper.ApplyLanguage(AppLanguage.English);
             Check(!config.Ai.Enabled, "AI features are off by default");
             var fakeAi = new FakeAi();
+            var fakeTranslator = new FakeTranslator();
             Ai.ClientFactory = _ => fakeAi;
+            Ai.TranslatorFactory = options => options.Translator == XIVChatAi.TranslationProvider.Ai ? new XIVChatAi.AiTranslator(fakeAi) : fakeTranslator;
             var aiSettings = new ConfigWindow(config); aiSettings.Activate(); await Task.Delay(200);
             Control<CheckBox>(aiSettings, "AiEnabled").IsChecked = true;
             Control<PasswordBox>(aiSettings, "AiClaudeKey").Password = "sk-ant-fixture-secret";
-            Control<TextBox>(aiSettings, "AiLanguage").Text = "Simplified Chinese";
+            Check(Control<ComboBox>(aiSettings, "TranslatorProvider").SelectedIndex == 0 && Control<TextBlock>(aiSettings, "GoogleFreeNote").Visibility == Visibility.Visible,
+                "Translation defaults to free Google Translate and explains its limits");
+            Control<ComboBox>(aiSettings, "AiLanguage").SelectedIndex = 1;
+            Control<ComboBox>(aiSettings, "TranslatorProvider").SelectedIndex = 3; await Task.Delay(50);
+            Control<TextBox>(aiSettings, "BaiduAppId").Text = "20150630";
+            Control<PasswordBox>(aiSettings, "BaiduKey").Password = "baidu-fixture-secret";
+            Check(Control<StackPanel>(aiSettings, "BaiduPanel").Visibility == Visibility.Visible && Control<TextBlock>(aiSettings, "GoogleFreeNote").Visibility == Visibility.Collapsed,
+                "Choosing Baidu shows its APP ID and key fields");
             Invoke(Control<Button>(aiSettings, "AiSave")); await Task.Delay(100);
+            Check(config.Ai.Translator == XIVChatAi.TranslationProvider.Baidu && config.Ai.TargetLanguage == "zh-Hans" && config.Ai.BaiduAppId == "20150630"
+                && config.Ai.ProtectedBaiduKey?.StartsWith("dpapi:") == true && !File.ReadAllText(config.FilePathOverride!).Contains("baidu-fixture-secret"),
+                "Translation settings save the provider, target language and an encrypted key");
             Check(config.Ai.Enabled && config.Ai.ProtectedClaudeKey?.StartsWith("dpapi:") == true && !File.ReadAllText(config.FilePathOverride!).Contains("sk-ant-fixture-secret")
                 && Ai.Settings().ApiKey == "sk-ant-fixture-secret" && Ai.Settings().Model == "claude-opus-5-5", "AI settings save an encrypted key and default to Claude Opus 5.5");
             Control<TabView>(aiSettings, "ConfigTabs").SelectedItem = Control<TabViewItem>(aiSettings, "TabAi"); await Task.Delay(300);
@@ -616,22 +628,26 @@ internal sealed class DesktopPrivacySmokeApp : App {
             aiSettings.Close();
 
             config.Privacy.Enabled = false; config.Save(); await Task.Delay(100);
-            fakeAi.Reply = request => "译文";
+            fakeTranslator.Reply = "译文";
             main.Navigate("conversations"); main.ShowConversation(model); await Task.Delay(300);
             await Ai.TranslateAsync(message, Session.Source); await Task.Delay(200);
-            Check(Ai.Translation(message) is { Status: TranslationStatus.Done, Text: "译文" } && fakeAi.Requests.Last().System.Contains("Simplified Chinese")
-                && fakeAi.Requests.Last().User.Contains(message.ContentText), "Translating a message sends only its text and stores the result");
+            Check(Ai.Translation(message) is { Status: TranslationStatus.Done, Text: "译文" } && fakeTranslator.Requests.Last() == (message.ContentText, "zh-Hans"),
+                "Translating a message sends only its text to the chosen service and stores the result");
             Check(Descendants<RichTextBlock>((DependencyObject)main.Content).Any(t => t.Blocks.OfType<Paragraph>().Any(p => p.Inlines.OfType<Run>().Any(r => r.Text == "↳ 译文"))),
                 "The translation appears under the original message");
             await Capture(main, Path.Combine(AppContext.BaseDirectory, "ai-translation.png"));
             config.Privacy.Enabled = true; config.Save(); await Task.Delay(100);
             await Ai.TranslateAsync(message, Session.Source);
-            Check(!fakeAi.Requests.Last().User.Contains(peer.Name) && !fakeAi.Requests.Last().User.Contains(owner.Name), "Streamer mode hides names before text is sent for translation");
+            Check(!fakeTranslator.Requests.Last().Text.Contains(peer.Name) && !fakeTranslator.Requests.Last().Text.Contains(owner.Name), "Streamer mode hides names before text is sent for translation");
             config.Privacy.Enabled = false; config.Save(); await Task.Delay(100);
-            fakeAi.Throw = new XIVChatAi.AiException(XIVChatAi.AiFailure.Authentication, "bad key");
+            fakeTranslator.Throw = new XIVChatAi.AiException(XIVChatAi.AiFailure.Authentication, "bad key");
             await Ai.TranslateAsync(message, Session.Source);
             Check(Ai.Translation(message) is { Status: TranslationStatus.Failed } failed && failed.Text.Contains("rejected the key"), "A failed translation explains the problem");
-            fakeAi.Throw = null; Ai.ClearTranslation(message);
+            fakeTranslator.Throw = null;
+            config.Ai.Translator = XIVChatAi.TranslationProvider.Ai; fakeAi.Reply = _ => "AI 译文";
+            await Ai.TranslateAsync(message, Session.Source);
+            Check(Ai.Translation(message)?.Text == "AI 译文" && fakeAi.Requests.Last().System.Contains("Simplified Chinese"), "Translation can use the AI service instead");
+            Ai.ClearTranslation(message);
 
             fakeAi.Reply = request => "- Raid at nine with Maple Leaf";
             var summaryText = await Ai.SummarizeAsync(Session.Store!, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), null, "Maple Leaf", CancellationToken.None);
@@ -674,5 +690,15 @@ internal sealed class FakeAi : XIVChatAi.IAiClient {
     public Task<string> CompleteAsync(XIVChatAi.AiRequest request, CancellationToken token = default) {
         lock (this.Requests) this.Requests.Add(request);
         return this.Throw is { } error ? Task.FromException<string>(error) : Task.FromResult(this.Reply(request));
+    }
+}
+
+internal sealed class FakeTranslator : XIVChatAi.ITranslator {
+    public readonly List<(string Text, string Target)> Requests = new();
+    public string Reply = "OK";
+    public Exception? Throw;
+    public Task<string> TranslateAsync(string text, string targetCode, CancellationToken token = default) {
+        lock (this.Requests) this.Requests.Add((text, targetCode));
+        return this.Throw is { } error ? Task.FromException<string>(error) : Task.FromResult(this.Reply);
     }
 }

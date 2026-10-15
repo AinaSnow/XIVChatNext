@@ -135,6 +135,30 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16" Spacing="12">
                 <CheckBox x:Name="AiEnabled" local:Localize.Content="Ai.Enable" />
                 <TextBlock local:Localize.Text="Ai.PrivacyNote" TextWrapping="Wrap" Opacity="0.75" MaxWidth="560" HorizontalAlignment="Left" />
+                <TextBlock local:Localize.Text="Ai.TranslationSection" FontWeight="SemiBold" FontSize="16" Margin="0,8,0,0" />
+                <ComboBox x:Name="TranslatorProvider" Width="320" local:Localize.Header="Ai.Translator" SelectionChanged="TranslatorProvider_SelectionChanged" />
+                <TextBlock x:Name="GoogleFreeNote" local:Localize.Text="Ai.GoogleFreeNote" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"
+                           Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                <StackPanel x:Name="MicrosoftPanel" Spacing="8">
+                    <PasswordBox x:Name="MicrosoftKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.MicrosoftKey" />
+                    <TextBox x:Name="MicrosoftRegion" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.MicrosoftRegion" PlaceholderText="eastasia" />
+                </StackPanel>
+                <StackPanel x:Name="DeepLPanel" Spacing="8">
+                    <PasswordBox x:Name="DeepLKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.DeepLKey" />
+                </StackPanel>
+                <StackPanel x:Name="BaiduPanel" Spacing="8">
+                    <TextBox x:Name="BaiduAppId" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.BaiduAppId" />
+                    <PasswordBox x:Name="BaiduKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.BaiduKey" />
+                </StackPanel>
+                <StackPanel x:Name="TencentPanel" Spacing="8">
+                    <TextBox x:Name="TencentSecretId" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.TencentSecretId" />
+                    <PasswordBox x:Name="TencentKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.TencentSecretKey" />
+                    <TextBox x:Name="TencentRegion" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.TencentRegion" PlaceholderText="ap-guangzhou" />
+                </StackPanel>
+                <ComboBox x:Name="AiLanguage" Width="320" local:Localize.Header="Ai.TargetLanguage" />
+                <Button x:Name="TranslatorTest" local:Localize.Content="Ai.TestTranslation" Click="TranslatorTest_Click" />
+                <TextBlock local:Localize.Text="Ai.AiSection" FontWeight="SemiBold" FontSize="16" Margin="0,8,0,0" />
+                <TextBlock local:Localize.Text="Ai.AiSectionNote" TextWrapping="Wrap" Opacity="0.75" MaxWidth="560" HorizontalAlignment="Left" />
                 <ComboBox x:Name="AiProvider" Width="320" local:Localize.Header="Ai.Provider" SelectionChanged="AiProvider_SelectionChanged" />
                 <StackPanel x:Name="AiClaudePanel" Spacing="8">
                     <PasswordBox x:Name="AiClaudeKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.ClaudeKey" />
@@ -145,7 +169,6 @@
                     <PasswordBox x:Name="AiCompatibleKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.CompatibleKey" />
                     <TextBox x:Name="AiCompatibleModel" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.Model" />
                 </StackPanel>
-                <TextBox x:Name="AiLanguage" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.TargetLanguage" />
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <Button x:Name="AiSave" Style="{ThemeResource AccentButtonStyle}" local:Localize.Content="Dialog.Save" Click="AiSave_Click" />
                     <Button x:Name="AiTest" local:Localize.Content="Ai.Test" Click="AiTest_Click" />

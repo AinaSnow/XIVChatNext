@@ -29,17 +29,38 @@ namespace XIVChat_Desktop {
 
         /// <summary>Raised on the UI thread when a message's translation starts, finishes or fails.</summary>
         public event Action<ServerMessage>? TranslationChanged;
-        /// <summary>Tests replace the client to avoid calling a real service.</summary>
+        /// <summary>Tests replace the clients to avoid calling a real service.</summary>
         internal Func<AiSettings, IAiClient> ClientFactory { get; set; } = settings => settings.CreateClient();
+        internal Func<AiOptions, ITranslator>? TranslatorFactory { get; set; }
 
         public AiAssistant(App app) => this.app = app;
 
         private AiOptions Options => this.app.Config.Ai;
         public bool Enabled => this.Options.Enabled;
 
-        public string TargetLanguage => !string.IsNullOrWhiteSpace(this.Options.TargetLanguage) ? this.Options.TargetLanguage.Trim()
+        /// <summary>Target language code; empty in settings follows the interface language.</summary>
+        public string TargetCode => Array.IndexOf(TranslationLanguages.Codes, this.Options.TargetLanguage) >= 0 ? this.Options.TargetLanguage
             : (LocalizationHelper.LanguageCode.Length > 0 ? LocalizationHelper.LanguageCode : System.Globalization.CultureInfo.CurrentUICulture.Name)
-                .StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "Simplified Chinese" : "English";
+                .StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-Hans" : "en";
+
+        public string TargetLanguage => TranslationLanguages.Name(this.TargetCode);
+
+        public ITranslator Translator() {
+            var o = this.Options;
+            if (this.TranslatorFactory is { } factory) return factory(o);
+            string Required(string? protectedKey, string what) => Unprotect(protectedKey) is { Length: > 0 } key ? key
+                : throw new AiException(AiFailure.NotConfigured, what);
+            return o.Translator switch {
+                TranslationProvider.GoogleFree => new GoogleFreeTranslator(),
+                TranslationProvider.Microsoft => new MicrosoftTranslator(Required(o.ProtectedMicrosoftKey, "Microsoft key"), o.MicrosoftRegion),
+                TranslationProvider.DeepL => new DeepLTranslator(Required(o.ProtectedDeepLKey, "DeepL key")),
+                TranslationProvider.Baidu => string.IsNullOrWhiteSpace(o.BaiduAppId) ? throw new AiException(AiFailure.NotConfigured, "Baidu APP ID")
+                    : new BaiduTranslator(o.BaiduAppId.Trim(), Required(o.ProtectedBaiduKey, "Baidu key")),
+                TranslationProvider.Tencent => string.IsNullOrWhiteSpace(o.TencentSecretId) ? throw new AiException(AiFailure.NotConfigured, "Tencent SecretId")
+                    : new TencentTranslator(o.TencentSecretId.Trim(), Required(o.ProtectedTencentKey, "Tencent SecretKey"), o.TencentRegion),
+                _ => new AiTranslator(this.ClientFactory(this.Settings())),
+            };
+        }
 
         public AiSettings Settings() => this.Options.Provider == AiProviderKind.Claude
             ? new AiSettings(AiProviderKind.Claude, Unprotect(this.Options.ProtectedClaudeKey), this.Options.ClaudeModel)
@@ -62,8 +83,7 @@ namespace XIVChat_Desktop {
             try {
                 var display = this.app.Presentation.Engine.Snapshot();
                 var text = display.Enabled ? display.Content(source, message) : message.ContentText;
-                var client = this.ClientFactory(this.Settings());
-                var result = await client.CompleteAsync(AiPrompts.Translation(text, this.TargetLanguage));
+                var result = await this.Translator().TranslateAsync(text, this.TargetCode);
                 this.Set(message, new TranslationState(TranslationStatus.Done, result));
             } catch (AiException ex) {
                 this.Set(message, new TranslationState(TranslationStatus.Failed, Describe(ex)));
