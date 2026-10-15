@@ -15,6 +15,7 @@ namespace XIVChat_Desktop.Controls {
         }
 
         public BlockCollection Blocks => _richTextBlock.Blocks;
+        protected RichTextBlock Inner => _richTextBlock;
         public bool IsTextSelectionEnabled {
             get => _richTextBlock.IsTextSelectionEnabled;
             set => _richTextBlock.IsTextSelectionEnabled = value;

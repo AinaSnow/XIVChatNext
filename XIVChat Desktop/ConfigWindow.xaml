@@ -131,6 +131,28 @@
                 <CheckBox x:Name="ChkOnlineAvatars" IsChecked="{x:Bind Config.OnlineAvatars, Mode=TwoWay}" />
             </StackPanel>
         </TabViewItem>
+        <TabViewItem x:Name="TabAi" IsClosable="False" local:Localize.Header="Ai.Title">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16" Spacing="12">
+                <CheckBox x:Name="AiEnabled" local:Localize.Content="Ai.Enable" />
+                <TextBlock local:Localize.Text="Ai.PrivacyNote" TextWrapping="Wrap" Opacity="0.75" MaxWidth="560" HorizontalAlignment="Left" />
+                <ComboBox x:Name="AiProvider" Width="320" local:Localize.Header="Ai.Provider" SelectionChanged="AiProvider_SelectionChanged" />
+                <StackPanel x:Name="AiClaudePanel" Spacing="8">
+                    <PasswordBox x:Name="AiClaudeKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.ClaudeKey" />
+                    <TextBox x:Name="AiClaudeModel" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.Model" />
+                </StackPanel>
+                <StackPanel x:Name="AiCompatiblePanel" Spacing="8">
+                    <TextBox x:Name="AiCompatibleUrl" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.BaseUrl" PlaceholderText="https://api.example.com/v1" />
+                    <PasswordBox x:Name="AiCompatibleKey" Width="420" HorizontalAlignment="Left" local:Localize.Header="Ai.CompatibleKey" />
+                    <TextBox x:Name="AiCompatibleModel" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.Model" />
+                </StackPanel>
+                <TextBox x:Name="AiLanguage" Width="320" HorizontalAlignment="Left" local:Localize.Header="Ai.TargetLanguage" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button x:Name="AiSave" Style="{ThemeResource AccentButtonStyle}" local:Localize.Content="Dialog.Save" Click="AiSave_Click" />
+                    <Button x:Name="AiTest" local:Localize.Content="Ai.Test" Click="AiTest_Click" />
+                </StackPanel>
+                <TextBlock x:Name="AiStatus" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" />
+            </StackPanel></ScrollViewer>
+        </TabViewItem>
         <TabViewItem x:Name="TabNotifications" Header="通知" IsClosable="False">
             <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16" Spacing="14">
                 <Grid ColumnSpacing="16" RowSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>

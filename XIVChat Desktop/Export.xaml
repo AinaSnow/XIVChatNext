@@ -13,7 +13,7 @@
             <StackPanel Spacing="6"><CalendarDatePicker x:Name="FromDate"/><TimePicker x:Name="FromTime" ClockIdentifier="24HourClock"/></StackPanel>
             <StackPanel Grid.Column="1" Spacing="6"><CalendarDatePicker x:Name="UntilDate"/><TimePicker x:Name="UntilTime" ClockIdentifier="24HourClock"/></StackPanel>
         </Grid>
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12"><CheckBox x:Name="Timestamps" IsChecked="True"/><Button x:Name="PreviewButton" Click="Preview_Click"/><Button x:Name="ClearDates" Click="ClearDates_Click"/></StackPanel>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12"><CheckBox x:Name="Timestamps" IsChecked="True"/><Button x:Name="PreviewButton" Click="Preview_Click"/><Button x:Name="ClearDates" Click="ClearDates_Click"/><Button x:Name="AiSummaryButton" Click="AiSummary_Click" Visibility="Collapsed"/><CheckBox x:Name="AiIncludeSummary" Visibility="Collapsed"/></StackPanel>
         <ListView x:Name="PreviewList" Grid.Row="4" SelectionMode="None" HorizontalContentAlignment="Stretch">
             <ListView.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" IsTextSelectionEnabled="True"/></DataTemplate></ListView.ItemTemplate>
         </ListView>

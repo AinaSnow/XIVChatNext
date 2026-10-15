@@ -15,6 +15,7 @@ namespace XIVChat_Desktop {
             this.InitializeComponent();
             InitializeUpdates();
             InitializeShell();
+            InitializeAi();
             LoadPrivacySettings();
             ((App)Application.Current).Presentation.PolicyChanged += LoadPrivacySettings;
             this.Closed += (_, _) => ((App)Application.Current).Presentation.PolicyChanged -= LoadPrivacySettings;

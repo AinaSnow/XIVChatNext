@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using XIVChatStorage;
@@ -59,6 +60,8 @@ namespace XIVChat_Desktop {
             FromDate.PlaceholderText = L("Export.From"); UntilDate.PlaceholderText = L("Export.UntilExclusive");
             Timestamps.Content = L("Export.ShowTimestamps"); PreviewButton.Content = L("Export.Preview");
             ClearDates.Content = L("Export.ClearDates"); SaveButton.Content = L("Dialog.Save"); CancelButton.Content = L("Dialog.Cancel");
+            AiSummaryButton.Content = L("Ai.Summarize"); AiIncludeSummary.Content = L("Ai.IncludeSummary");
+            AiSummaryButton.Visibility = AiIncludeSummary.Visibility = app.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;
             SaveButton.IsEnabled = app.Session.Store != null && !busy;
         }
         internal HistoryQuery Query() {
@@ -70,6 +73,7 @@ namespace XIVChat_Desktop {
         private void SetBusy(bool value) {
             busy = value;
             SaveButton.IsEnabled = !value && app.Session.Store != null;
+            AiSummaryButton.IsEnabled = AiIncludeSummary.IsEnabled = !value;
             PreviewButton.IsEnabled = ClearDates.IsEnabled = Keyword.IsEnabled = FromDate.IsEnabled = FromTime.IsEnabled = UntilDate.IsEnabled = UntilTime.IsEnabled = Timestamps.IsEnabled = !value;
         }
         private async Task PreviewAsync() {
@@ -105,28 +109,69 @@ namespace XIVChat_Desktop {
                 WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                 var file = await picker.PickSaveFileAsync();
                 token.ThrowIfCancellationRequested(); if (file == null) return;
+                string? preface = null;
+                if (AiIncludeSummary.IsChecked == true && app.Ai.Enabled) {
+                    if (HistoryExport.FormatForExtension(file.FileType) != ExportFormat.Markdown) { Status.Text = L("Ai.SummaryMarkdownOnly"); return; }
+                    Status.Text = L("Ai.Summarizing");
+                    preface = SummarySection(await app.Ai.SummarizeAsync(store, query, filter == null ? null : filter.Allowed, SummaryScope(query), token));
+                }
                 var progress = new Progress<long>(count => { if (!closed) Status.Text = string.Format(L("Export.Progress"), count); });
                 var display = app.Presentation.Engine.Snapshot();
                 var write = WriteFileAsync(store, file, query, timestamps, filter, progress, token, (row, showTime) => display.ExportLine(row.Source, row.Message, showTime, ChannelLabels.For(row.Message, !display.Enabled)),
-                    display.Enabled ? row => display.Observe(row.Source, row.Message) : null, Scope.Text);
+                    display.Enabled ? row => display.Observe(row.Source, row.Message) : null, Scope.Text, preface);
                 running = write; var count = await write;
                 if (!closed) Status.Text = string.Format(L("Export.Complete"), count);
             } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
+            catch (XIVChatAi.AiException ex) { if (!closed) Status.Text = L("Ai.SummaryFailedNotSaved") + " " + AiAssistant.Describe(ex); }
             catch (Exception ex) { if (!closed) Status.Text = L("Export.Failed") + " " + ex.Message; }
             finally { if (!closed) SetBusy(false); }
         }
         internal static async Task<long> WriteFileAsync(HistoryStore store, StorageFile file, HistoryQuery query, bool timestamps,
             Filter? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
-            Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null) {
+            Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null, string? preface = null) {
             token.ThrowIfCancellationRequested();
             using var transaction = await file.OpenTransactedWriteAsync();
             using var stream = transaction.Stream.AsStreamForWrite(); stream.Position = 0;
             using var writer = new StreamWriter(stream, new UTF8Encoding(false), 65536, leaveOpen: true);
             var count = await store.ExportAsync(query, writer, HistoryExport.FormatForExtension(file.FileType), timestamps,
-                filter == null ? null : filter.Allowed, progress, token, displayLine, prepareRow, title);
+                filter == null ? null : filter.Allowed, progress, token, displayLine, prepareRow, title, preface);
             await writer.FlushAsync(token); token.ThrowIfCancellationRequested();
             stream.SetLength(stream.Position); await transaction.CommitAsync(); return count;
         }
+        internal string SummaryScope(HistoryQuery query) =>
+            Scope.Text + (query.FromUtc is { } from ? " · " + from.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "") +
+            (query.UntilUtc is { } until ? " – " + until.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "") +
+            (string.IsNullOrWhiteSpace(query.Text) ? "" : " · " + query.Text);
+
+        internal string SummarySection(string summary) =>
+            "## " + L("Ai.SummaryHeading") + "\n\n> " + string.Format(L("Ai.SummaryCaveat"), app.Ai.Settings().Model) + "\n\n" + summary.Trim() + "\n";
+
+        private async void AiSummary_Click(object sender, RoutedEventArgs e) {
+            if (busy || app.Session.Store is not { } store) return;
+            operation?.Dispose(); operation = new(); SetBusy(true);
+            Status.Text = L("Ai.Summarizing");
+            string? summary = null;
+            try {
+                var query = Query();
+                summary = await app.Ai.SummarizeAsync(store, query, filter == null ? null : filter.Allowed, SummaryScope(query), operation.Token);
+                if (!closed) Status.Text = "";
+            } catch (OperationCanceledException) { if (!closed) Status.Text = L("Export.Cancelled"); }
+            catch (XIVChatAi.AiException ex) { if (!closed) Status.Text = AiAssistant.Describe(ex); }
+            catch (Exception ex) { if (!closed) Status.Text = L("Ai.Failed") + " " + ex.Message; }
+            finally { if (!closed) SetBusy(false); }
+            if (summary == null || closed) return;
+            var text = new TextBox { Text = summary, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, MinHeight = 320, MaxHeight = 520 };
+            ScrollViewer.SetVerticalScrollBarVisibility(text, ScrollBarVisibility.Auto);
+            var dialog = new ContentDialog {
+                Title = L("Ai.SummaryHeading"), Content = text, XamlRoot = Root.XamlRoot,
+                PrimaryButtonText = L("Ai.Copy"), CloseButtonText = L("Dialog.Close"),
+            };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary) {
+                var data = new Windows.ApplicationModel.DataTransfer.DataPackage(); data.SetText(summary);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(data);
+            }
+        }
+
         public static async Task CancelAllAsync() {
             var windows = active.ToArray(); foreach (var window in windows) window.operation?.Cancel();
             await Task.WhenAll(windows.Select(async w => { try { await w.running; } catch (Exception) { /* The export window has already reported this failure. */ } }));

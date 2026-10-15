@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Desktop: optional AI translation and summaries, off by default. Use Claude with your own Anthropic API key (default model `claude-opus-5-5`, through the official Anthropic SDK with server-side refusal fallback) or any OpenAI-compatible service, including a local model. Right-click a message to translate it under the original; summarize the current export range and copy the result or put it at the top of a Markdown export. Only what you choose is sent, names are hidden first in streamer mode, keys are encrypted with DPAPI, and oversized ranges are refused rather than truncated.
+- 客户端：可选的 AI 翻译和总结，默认关闭。可使用 Claude（填写自己的 Anthropic API Key，默认模型 `claude-opus-5-5`，通过官方 Anthropic SDK 调用，并启用服务端拒答回退），或任意 OpenAI 兼容服务，包括本机模型。右键消息即可翻译，译文显示在原文下方；可以总结当前导出范围，复制结果或放在 Markdown 导出开头。只发送你选择的内容，主播模式下先隐藏名字，密钥用 DPAPI 加密；范围过大时直接提示，不会截断。
 - Desktop: chat history can be exported as Markdown (.md) in addition to text and RTF. Each message keeps the existing `time [channel] sender: message` form; Markdown adds a title and a heading per day and escapes chat text so it displays literally.
 - Exports name channels in the interface language ("Tell (Incoming)", "私聊（接收）") instead of internal identifiers. The plugin now attaches the linkshell or cross-world linkshell name to each linkshell message, read from the game, and exports show it as `[Cross-world Linkshell [1] · Shell name]`. The name is stored with the message, so later renames do not change history; streamer mode omits it.
 - Desktop: the export window was only reachable from the menu behind the "XIVChat Next" title. It now also opens from an export button in each conversation or channel header and from **Settings → History**, and the menu title shows a drop-down arrow.

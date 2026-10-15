@@ -26,6 +26,7 @@ These folders contain chat history and connection secrets. Do not share them pub
 | Online avatars | Lodestone (`na.finalfantasyxiv.com`) | Names and home worlds of characters shown in the client, to find their portraits | Settings → History → **Allow online Lodestone avatar lookups** |
 | Item and map cards | `xivapi.com`, `cafemaker.wakingsands.com`, `xivapi-v2.xivcdn.com` | Item, icon and map identifiers | Images are cached locally after the first download |
 | Map links | `map.wakingsands.com` | Map identifier and coordinates, when you open a map card's web view | Only when you open it |
+| AI translation and summaries (Desktop 1.6.0) | The service you set in Settings → AI: Anthropic (`api.anthropic.com`) or the OpenAI-compatible address you enter | The message you choose to translate, or the history range you choose to summarize, with names hidden when streamer mode is on | Off by default; only sent when you ask |
 
 Like any web request, these services also see your IP address.
 
@@ -63,6 +64,7 @@ XIVChat Next 没有账号，不做统计，也没有项目方运营的云服务�
 | 联网头像 | Lodestone（`na.finalfantasyxiv.com`） | 客户端里显示的角色名和所属服务器，用来查找头像 | 设置 → 历史 → “允许联网查询 Lodestone 头像” |
 | 物品和地图卡片 | `xivapi.com`、`cafemaker.wakingsands.com`、`xivapi-v2.xivcdn.com` | 物品、图标和地图编号 | 第一次下载后图片会缓存在本机 |
 | 地图链接 | `map.wakingsands.com` | 打开地图卡片网页时的地图编号和坐标 | 只在你打开时访问 |
+| AI 翻译和总结（客户端 1.6.0） | 你在“设置 → AI”中选择的服务：Anthropic（`api.anthropic.com`）或你填写的 OpenAI 兼容地址 | 你选择翻译的那条消息，或你选择总结的那段记录；开启主播模式时会隐藏名字 | 默认关闭，只在你操作时发送 |
 
 和所有网络请求一样，这些服务也能看到你的 IP 地址。
 

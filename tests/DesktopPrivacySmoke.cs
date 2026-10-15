@@ -599,6 +599,60 @@ internal sealed class DesktopPrivacySmokeApp : App {
             config.TrustedKeys.Add(new TrustedKey("fixture v1 plugin", v1Plugin.PublicKey));
             var old = await ConnectToFakePlugin(v1Plugin, false);
             Check(old.ServedProtocol == 1 && old.Connection.Protocol == 1, "The client falls back to the old encryption for a plugin that never offered v2");
+            // AI translation and summaries with a fake client: nothing is sent anywhere.
+            LocalizationHelper.ApplyLanguage(AppLanguage.English);
+            Check(!config.Ai.Enabled, "AI features are off by default");
+            var fakeAi = new FakeAi();
+            Ai.ClientFactory = _ => fakeAi;
+            var aiSettings = new ConfigWindow(config); aiSettings.Activate(); await Task.Delay(200);
+            Control<CheckBox>(aiSettings, "AiEnabled").IsChecked = true;
+            Control<PasswordBox>(aiSettings, "AiClaudeKey").Password = "sk-ant-fixture-secret";
+            Control<TextBox>(aiSettings, "AiLanguage").Text = "Simplified Chinese";
+            Invoke(Control<Button>(aiSettings, "AiSave")); await Task.Delay(100);
+            Check(config.Ai.Enabled && config.Ai.ProtectedClaudeKey?.StartsWith("dpapi:") == true && !File.ReadAllText(config.FilePathOverride!).Contains("sk-ant-fixture-secret")
+                && Ai.Settings().ApiKey == "sk-ant-fixture-secret" && Ai.Settings().Model == "claude-opus-5-5", "AI settings save an encrypted key and default to Claude Opus 5.5");
+            Control<TabView>(aiSettings, "ConfigTabs").SelectedItem = Control<TabViewItem>(aiSettings, "TabAi"); await Task.Delay(300);
+            await Capture(aiSettings, Path.Combine(AppContext.BaseDirectory, "ai-settings-en.png"));
+            aiSettings.Close();
+
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(100);
+            fakeAi.Reply = request => "译文";
+            main.Navigate("conversations"); main.ShowConversation(model); await Task.Delay(300);
+            await Ai.TranslateAsync(message, Session.Source); await Task.Delay(200);
+            Check(Ai.Translation(message) is { Status: TranslationStatus.Done, Text: "译文" } && fakeAi.Requests.Last().System.Contains("Simplified Chinese")
+                && fakeAi.Requests.Last().User.Contains(message.ContentText), "Translating a message sends only its text and stores the result");
+            Check(Descendants<RichTextBlock>((DependencyObject)main.Content).Any(t => t.Blocks.OfType<Paragraph>().Any(p => p.Inlines.OfType<Run>().Any(r => r.Text == "↳ 译文"))),
+                "The translation appears under the original message");
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "ai-translation.png"));
+            config.Privacy.Enabled = true; config.Save(); await Task.Delay(100);
+            await Ai.TranslateAsync(message, Session.Source);
+            Check(!fakeAi.Requests.Last().User.Contains(peer.Name) && !fakeAi.Requests.Last().User.Contains(owner.Name), "Streamer mode hides names before text is sent for translation");
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(100);
+            fakeAi.Throw = new XIVChatAi.AiException(XIVChatAi.AiFailure.Authentication, "bad key");
+            await Ai.TranslateAsync(message, Session.Source);
+            Check(Ai.Translation(message) is { Status: TranslationStatus.Failed } failed && failed.Text.Contains("rejected the key"), "A failed translation explains the problem");
+            fakeAi.Throw = null; Ai.ClearTranslation(message);
+
+            fakeAi.Reply = request => "- Raid at nine with Maple Leaf";
+            var summaryText = await Ai.SummarizeAsync(Session.Store!, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), null, "Maple Leaf", CancellationToken.None);
+            var summaryRequest = fakeAi.Requests.Last();
+            Check(summaryText == "- Raid at nine with Maple Leaf" && summaryRequest.User.Contains("Shirogane docks?") && summaryRequest.User.Contains("Tell (Incoming)")
+                && summaryRequest.Effort == XIVChatAi.AiEffort.Medium, "Summaries send the selected range in export form");
+            var summaryWindow = new Export(new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), "Maple Leaf"); summaryWindow.Activate(); await Task.Delay(300);
+            Check(Control<Button>(summaryWindow, "AiSummaryButton").Visibility == Visibility.Visible && Control<CheckBox>(summaryWindow, "AiIncludeSummary").Visibility == Visibility.Visible,
+                "The export window offers an AI summary when AI is enabled");
+            var summaryPath = Path.Combine(fixture, "summary.md"); File.WriteAllText(summaryPath, "");
+            await Export.WriteFileAsync(Session.Store!, await StorageFile.GetFileFromPathAsync(summaryPath), new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), true,
+                title: "Maple Leaf", preface: summaryWindow.SummarySection(summaryText));
+            summaryWindow.Close();
+            var withSummary = File.ReadAllText(summaryPath);
+            File.Copy(summaryPath, Path.Combine(AppContext.BaseDirectory, "export-summary-sample.md"), true);
+            Check(withSummary.IndexOf("## AI summary") is > 0 and var summaryAt && summaryAt < withSummary.IndexOf("\n## 20") && withSummary.Contains("Generated by claude-opus-5-5"),
+                "A Markdown export can start with the AI summary and its caveat");
+            fakeAi.Throw = new XIVChatAi.AiException(XIVChatAi.AiFailure.TooLarge, "too large");
+            Check(await Task.Run(async () => { try { await Ai.SummarizeAsync(Session.Store!, new HistoryQuery(Source: Session.Source), null, "All", CancellationToken.None); return false; }
+                catch (XIVChatAi.AiException ex) { return ex.Failure == XIVChatAi.AiFailure.TooLarge; } }), "Summary failures surface instead of producing empty text");
+            fakeAi.Throw = null; config.Ai.Enabled = false; config.Save();
             results.Add("All desktop privacy checks completed."); File.WriteAllLines(output, results);
             await Workspace.ShutdownAsync();
         } catch (Exception ex) {
@@ -611,4 +665,14 @@ internal static class ShellNative {
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint key);
     [System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hwnd, int id);
+}
+
+internal sealed class FakeAi : XIVChatAi.IAiClient {
+    public readonly List<XIVChatAi.AiRequest> Requests = new();
+    public Func<XIVChatAi.AiRequest, string> Reply = _ => "OK";
+    public Exception? Throw;
+    public Task<string> CompleteAsync(XIVChatAi.AiRequest request, CancellationToken token = default) {
+        lock (this.Requests) this.Requests.Add(request);
+        return this.Throw is { } error ? Task.FromException<string>(error) : Task.FromResult(this.Reply(request));
+    }
 }

@@ -320,6 +320,47 @@
   <data name="Command.InvalidRequest" xml:space="preserve"><value>未发送：请求无效，或文本超过 8 KiB。</value></data>
   <data name="Command.Disconnected" xml:space="preserve"><value>操作已取消：连接已断开。</value></data>
   <data name="Command.Unavailable" xml:space="preserve"><value>操作未生效：游戏当前无法使用该频道。</value></data>
+  <data name="Ai.Title" xml:space="preserve"><value>AI</value></data>
+  <data name="Ai.Enable" xml:space="preserve"><value>启用 AI 翻译和总结</value></data>
+  <data name="Ai.PrivacyNote" xml:space="preserve"><value>默认关闭。翻译消息或总结记录时，相应文字会发送到下面选择的服务，并由你在该服务的账号计费。不会自动发送任何内容。开启主播模式时，名字会和导出一样被隐藏。密钥按你的 Windows 账户加密保存。</value></data>
+  <data name="Ai.Provider" xml:space="preserve"><value>服务</value></data>
+  <data name="Ai.ProviderClaude" xml:space="preserve"><value>Claude（Anthropic API Key）</value></data>
+  <data name="Ai.ProviderCompatible" xml:space="preserve"><value>OpenAI 兼容服务或本机模型</value></data>
+  <data name="Ai.ClaudeKey" xml:space="preserve"><value>Claude API Key</value></data>
+  <data name="Ai.CompatibleKey" xml:space="preserve"><value>API Key</value></data>
+  <data name="Ai.Model" xml:space="preserve"><value>模型</value></data>
+  <data name="Ai.BaseUrl" xml:space="preserve"><value>服务地址（以 /v1 结尾）</value></data>
+  <data name="Ai.KeyEmpty" xml:space="preserve"><value>粘贴你的密钥</value></data>
+  <data name="Ai.KeySaved" xml:space="preserve"><value>已保存，留空则保持不变</value></data>
+  <data name="Ai.KeyOptional" xml:space="preserve"><value>本机模型可不填</value></data>
+  <data name="Ai.TargetLanguage" xml:space="preserve"><value>翻译和总结使用的语言</value></data>
+  <data name="Ai.TargetLanguageAuto" xml:space="preserve"><value>跟随界面语言</value></data>
+  <data name="Ai.Test" xml:space="preserve"><value>测试</value></data>
+  <data name="Ai.Testing" xml:space="preserve"><value>正在发送一条简短的测试消息…</value></data>
+  <data name="Ai.TestPassed" xml:space="preserve"><value>可以使用。测试译文：{0}</value></data>
+  <data name="Ai.Saved" xml:space="preserve"><value>AI 设置已保存。</value></data>
+  <data name="Ai.SaveFailed" xml:space="preserve"><value>无法保存 AI 设置：</value></data>
+  <data name="Ai.Failed" xml:space="preserve"><value>AI 请求失败：</value></data>
+  <data name="Ai.NotConfigured" xml:space="preserve"><value>AI 尚未设置。请在“设置 → AI”中填写服务信息。</value></data>
+  <data name="Ai.Authentication" xml:space="preserve"><value>AI 服务拒绝了密钥，请在“设置 → AI”中检查。</value></data>
+  <data name="Ai.RateLimited" xml:space="preserve"><value>AI 服务繁忙或达到频率限制，请稍后再试。</value></data>
+  <data name="Ai.Refused" xml:space="preserve"><value>AI 服务拒绝处理这条请求。</value></data>
+  <data name="Ai.Network" xml:space="preserve"><value>无法连接 AI 服务。</value></data>
+  <data name="Ai.TooLarge" xml:space="preserve"><value>范围太大，无法一次总结。请缩小时间范围或加上关键词。</value></data>
+  <data name="Ai.NothingToSummarize" xml:space="preserve"><value>这个范围内没有可以总结的消息。</value></data>
+  <data name="Ai.Translate" xml:space="preserve"><value>翻译</value></data>
+  <data name="Ai.TranslateAgain" xml:space="preserve"><value>重新翻译</value></data>
+  <data name="Ai.HideTranslation" xml:space="preserve"><value>隐藏译文</value></data>
+  <data name="Ai.Translating" xml:space="preserve"><value>正在翻译…</value></data>
+  <data name="Ai.TranslationFailed" xml:space="preserve"><value>翻译失败：</value></data>
+  <data name="Ai.Summarize" xml:space="preserve"><value>AI 总结</value></data>
+  <data name="Ai.IncludeSummary" xml:space="preserve"><value>导出 Markdown 时附带 AI 总结</value></data>
+  <data name="Ai.SummaryMarkdownOnly" xml:space="preserve"><value>AI 总结只能附在 Markdown (.md) 导出中。请选择 .md，或取消勾选。</value></data>
+  <data name="Ai.Summarizing" xml:space="preserve"><value>正在用 AI 总结…</value></data>
+  <data name="Ai.SummaryFailedNotSaved" xml:space="preserve"><value>总结失败，未保存文件。</value></data>
+  <data name="Ai.SummaryHeading" xml:space="preserve"><value>AI 总结</value></data>
+  <data name="Ai.SummaryCaveat" xml:space="preserve"><value>由 {0} 生成，可能不完整或有误；以下方的原始消息为准。</value></data>
+  <data name="Ai.Copy" xml:space="preserve"><value>复制</value></data>
   <data name="Export.Open" xml:space="preserve"><value>导出聊天记录…</value></data>
   <data name="Workbench.ConversationsShort" xml:space="preserve"><value>会话</value></data>
   <data name="Workbench.Conversations" xml:space="preserve"><value>会话</value></data>

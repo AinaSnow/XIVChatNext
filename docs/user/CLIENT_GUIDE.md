@@ -61,6 +61,20 @@ Open the export window from the export button in a conversation or channel heade
 
 Choose the format in the save dialog: **Text (.txt)**, **Markdown (.md)** or **Rich Text (.rtf)**. Every format writes each message as `time [channel] sender: message`, with the channel named in the interface language. Linkshell and cross-world linkshell messages also show the linkshell's name, for example `[Cross-world Linkshell [1] · Shell name]`; the plugin records it with each message from plugin 1.8.0, so earlier messages show the channel only. Markdown adds a title, groups messages under a heading per day and escapes chat text so it displays literally. With streamer mode on, exports use the same hidden names as the screen and omit linkshell names.
 
+### AI translation and summaries (Desktop 1.6.0)
+
+Optional and off by default. In **Settings → AI**, turn on **Enable AI translation and summaries**, choose a service and save:
+
+- **Claude** with your own Anthropic API key. The default model is `claude-opus-5-5`; you can enter another model ID.
+- **OpenAI-compatible service or local model**: the service address ending in `/v1`, the model name and, if the service needs one, an API key. Plain `http://` is accepted only for a model on this computer, such as Ollama at `http://localhost:11434/v1`.
+
+**Test** sends one short sentence to check the settings. Usage is billed by the service to your account. Keys are encrypted for your Windows account and never shown again; leave the field empty to keep a saved key.
+
+- **Translate a message:** right-click a message, or select text in it, and choose **Translate**. The translation appears under the original. Only that message is sent. **Translate and summarize into** sets the language; empty follows the interface language.
+- **Summarize history:** open the export window for a conversation, channel or history search, narrow it by time or keyword, and choose **AI summary**. You can copy the result. To keep it with the record, tick **Add AI summary to Markdown export** and save as `.md`; the summary appears at the top with a note that it may be wrong. Very large ranges are refused rather than cut short: narrow the range instead.
+
+Nothing is sent automatically. With streamer mode on, names are hidden the same way as in exports before text is sent. Summaries can miss or misread things; the original messages remain the record.
+
 ### Data and upgrades
 
 History, favorites, notes and layouts stay local; the relay is not cloud history sync. Configuration: `%APPDATA%\XIVChat for Windows`. Data: `%LOCALAPPDATA%\XIVChatDesktop`. Do not publicly share these files. Protected relay credentials belong to the current Windows user.
@@ -143,6 +157,20 @@ Live sending, friends and screenshots require the game, logged-in character and 
 可以从会话或频道标题栏右侧的导出按钮、“设置 → 历史 → 导出聊天记录…”，或者 Logo 旁边的 “XIVChat Next ▾” 菜单打开导出窗口。导出的是你当前正在看的内容：打开的会话、频道、历史搜索结果或收藏。可以按关键词和时间缩小范围，选择是否带时间，预览最后 100 行后再保存。
 
 在保存对话框里选择格式：**文本 (.txt)**、**Markdown (.md)** 或 **RTF (.rtf)**。每种格式中，每条消息都是 `时间 [频道] 发送者: 内容`，频道按界面语言显示。通讯贝和跨界通讯贝的消息还会带上贝的名字，例如 `[跨界通讯贝 [1] · 贝名]`；插件 1.8.0 起会随每条消息记录贝名，更早的消息只显示频道。Markdown 会加上标题、按日期分组，并对聊天内容做转义，保证原样显示。开启主播模式时，导出内容和屏幕上一样隐藏名字，也不显示贝名。
+
+### AI 翻译和总结（客户端 1.6.0）
+
+可选功能，默认关闭。在“设置 → AI”中开启“启用 AI 翻译和总结”，选择服务后保存：
+
+- **Claude**：使用你自己的 Anthropic API Key。默认模型是 `claude-opus-5-5`，也可以填写其他模型 ID。
+- **OpenAI 兼容服务或本机模型**：填写以 `/v1` 结尾的服务地址、模型名称；服务需要时再填 API Key。只有本机的模型才允许使用 `http://`，例如 Ollama 的 `http://localhost:11434/v1`。
+
+点击“测试”会发送一句简短的话来检查设置。费用由该服务向你的账号收取。密钥按你的 Windows 账户加密保存，之后不会再显示；留空则保持已保存的密钥。
+
+- **翻译消息：**在消息上右键，或选中其中的文字后右键，选择“翻译”，译文显示在原文下方。只会发送这一条消息。“翻译和总结使用的语言”留空时跟随界面语言。
+- **总结记录：**为会话、频道或历史搜索打开导出窗口，按时间或关键词缩小范围后点“AI 总结”，结果可以复制。想和记录一起保存时，勾选“导出 Markdown 时附带 AI 总结”并保存为 `.md`，总结会放在文件开头，并注明可能有误。范围太大时会直接提示缩小范围，不会悄悄截断。
+
+不会自动发送任何内容。开启主播模式时，发送前会像导出一样隐藏名字。总结可能遗漏或理解错误，以原始消息为准。
 
 ### 数据存在哪里
 

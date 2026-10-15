@@ -39,6 +39,7 @@
     <ItemGroup>
         <ProjectReference Include="..\XIVChatCommon\XIVChatCommon.csproj" />
         <ProjectReference Include="..\XIVChatStorage\XIVChatStorage.csproj" />
+        <ProjectReference Include="..\XIVChatAi\XIVChatAi.csproj" />
         <ProjectReference Include="..\src\XIVChat.Relay.Transport\XIVChat.Relay.Transport.csproj" />
     </ItemGroup>
 

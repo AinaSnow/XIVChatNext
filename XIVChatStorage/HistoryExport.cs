@@ -54,7 +54,8 @@ public static class HistoryExport {
     }
 
     /// <summary>Writes the document start: nothing for text, the RTF header, or a Markdown title.</summary>
-    public static void WriteHeader(TextWriter writer, ExportFormat format, string? title, DateTime exportedUtc) {
+    /// <param name="preface">Markdown placed after the title, such as an AI summary; ignored by other formats.</param>
+    public static void WriteHeader(TextWriter writer, ExportFormat format, string? title, DateTime exportedUtc, string? preface = null) {
         switch (format) {
             case ExportFormat.Rtf:
                 writer.Write("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Segoe UI;}}\\uc1\\f0 ");
@@ -62,6 +63,7 @@ public static class HistoryExport {
             case ExportFormat.Markdown:
                 writer.Write("# " + EscapeMarkdown(string.IsNullOrWhiteSpace(title) ? "XIVChat Next" : title) + "\n\n");
                 writer.Write("XIVChat Next · " + exportedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm") + "\n");
+                if (!string.IsNullOrWhiteSpace(preface)) writer.Write("\n" + preface.Trim() + "\n");
                 break;
         }
     }

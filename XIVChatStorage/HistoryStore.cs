@@ -186,10 +186,10 @@ public sealed partial class HistoryStore : IAsyncDisposable {
     /// <param name="title">Markdown document title; ignored by other formats.</param>
     public Task<long> ExportAsync(HistoryQuery query, TextWriter writer, ExportFormat format, bool timestamps,
         Func<ServerMessage, bool>? filter = null, IProgress<long>? progress = null, CancellationToken token = default,
-        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null) => Task.Run(() => {
+        Func<HistoryRow, bool, string>? displayLine = null, Action<HistoryRow>? prepareRow = null, string? title = null, string? preface = null) => Task.Run(() => {
         long count = 0;
         DateOnly? day = null;
-        HistoryExport.WriteHeader(writer, format, title, DateTime.UtcNow);
+        HistoryExport.WriteHeader(writer, format, title, DateTime.UtcNow, preface);
         ReadHistory(query with { BeforeRow = long.MaxValue, BeforeTimestampUtc = null }, row => {
             if (filter != null && !filter(row.Message)) return;
             token.ThrowIfCancellationRequested();

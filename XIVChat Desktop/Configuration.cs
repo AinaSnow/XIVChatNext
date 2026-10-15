@@ -167,6 +167,7 @@ namespace XIVChat_Desktop {
 
         public ObservableCollection<Notification> Notifications { get; set; } = new ObservableCollection<Notification>();
         public NotificationOptions NotificationOptions { get; set; } = new();
+        public AiOptions Ai { get; set; } = new();
 
         private void OnPropertyChanged(string propName) {
             this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
@@ -198,6 +199,7 @@ namespace XIVChat_Desktop {
                     throw new InvalidDataException("Configuration is missing required keys or collections.");
                 }
                 config.NotificationOptions ??= new NotificationOptions();
+                config.Ai ??= new AiOptions();
                 config.Privacy ??= new XIVChatCommon.Presentation.PrivacySettings();
                 config.Privacy.Validate();
                 if (!config.NotificationOptions.ValidTimes || config.Notifications.Any(rule => rule == null || rule.Channels == null || rule.Substrings == null))
@@ -308,6 +310,19 @@ namespace XIVChat_Desktop {
     }
 
     [JsonObject]
+    /// <summary>Optional translation and summaries through the user's own AI service. Keys are protected for the Windows user.</summary>
+    public class AiOptions {
+        public bool Enabled { get; set; }
+        public XIVChatAi.AiProviderKind Provider { get; set; } = XIVChatAi.AiProviderKind.Claude;
+        public string ClaudeModel { get; set; } = XIVChatAi.AiSettings.DefaultClaudeModel;
+        public string? ProtectedClaudeKey { get; set; }
+        public string CompatibleBaseUrl { get; set; } = "";
+        public string CompatibleModel { get; set; } = "";
+        public string? ProtectedCompatibleKey { get; set; }
+        /// <summary>Language for translations and summaries; empty follows the interface language.</summary>
+        public string TargetLanguage { get; set; } = "";
+    }
+
     public class TrustedKey {
         public string Name { get; set; }
         public byte[] Key { get; set; }
