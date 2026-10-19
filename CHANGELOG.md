@@ -1,6 +1,6 @@
 # Changelog / 更新说明
 
-## Unreleased
+## Desktop 1.6.2 — 2026-10-19
 
 - Desktop: **Free copy** for copying across messages. A toggle in conversation and channel headers (and popout menus) shows the chat as plain text, one line per loaded message, so any range can be selected and copied. Names are hidden in streamer mode as on screen, and changing streamer mode turns it off.
 - 客户端：新增“自由复制”，可以跨多条消息复制。会话和频道标题栏（以及小窗菜单）中的开关会把聊天改为纯文本显示，每条已加载的消息一行，可任意选择复制。主播模式下同样隐藏名字，切换主播模式会自动关闭自由复制。
