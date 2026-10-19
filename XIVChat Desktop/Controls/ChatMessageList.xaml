@@ -45,7 +45,11 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+        <!-- Free copy: the messages as one plain text, so a selection can span several of them. -->
+        <TextBox x:Name="CopyText" Visibility="Collapsed" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                 BorderThickness="0" Padding="12,8" ScrollViewer.VerticalScrollBarVisibility="Auto" />
         <Button x:Name="LatestButton" Grid.Row="1" HorizontalAlignment="Center"
                 Margin="4" Visibility="Collapsed" Click="LatestButton_Click" />
+        <TextBlock x:Name="CopyHint" Grid.Row="1" Visibility="Collapsed" Margin="12,4" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
     </Grid>
 </UserControl>

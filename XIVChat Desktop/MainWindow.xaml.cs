@@ -64,6 +64,8 @@ namespace XIVChat_Desktop {
             App.Config.Saved += ConfigSaved;
             App.Updates.Changed += UpdateReleaseBanner;
             App.Config.Saved += UpdateSummaryEntry;
+            ChatHost.RegisterPropertyChangedCallback(ContentControl.ContentProperty, (_, _) => SyncCopyMode());
+            SyncCopyMode();
             App.Presentation.Changed += UpdatePrivacyDisplay;
             App.PropertyChanged += AppChanged;
             App.Workbench.Changed += WorkbenchChanged;
@@ -122,6 +124,7 @@ namespace XIVChat_Desktop {
             ToolTipService.SetToolTip(PinConversationButton, L("Conversation.Pin"));
             ToolTipService.SetToolTip(ConversationNoteButton, L("Conversation.Note"));
             ToolTipService.SetToolTip(ExportButton, L("Menu.Export")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ExportButton, L("Menu.Export"));
+            ToolTipService.SetToolTip(CopyModeButton, L("Chat.CopyModeTip")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CopyModeButton, L("Chat.CopyMode"));
             ToolTipService.SetToolTip(SummaryButton, L("Ai.Summarize")); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SummaryButton, L("Ai.Summarize"));
             UpdateSummaryEntry();
             ToolTipService.SetToolTip(AvatarButton, L("Avatar.Title"));
@@ -462,6 +465,19 @@ namespace XIVChat_Desktop {
         private void EditChannel_Click(object sender, RoutedEventArgs e) { if (selectedChannel != null) new ManageTab(selectedChannel).Activate(); }
         private void Export_Click(object sender, RoutedEventArgs e) => OpenExport();
         private void Summary_Click(object sender, RoutedEventArgs e) => OpenExport(summaryOnly: true);
+        private Controls.ChatMessageList? copyModeView;
+        private void CopyMode_Click(object sender, RoutedEventArgs e) => (ChatHost.Content as Controls.ChatMessageList)?.SetCopyMode(CopyModeButton.IsChecked == true);
+        // The toggle follows whichever chat is shown; each chat keeps its own free-copy state.
+        private void SyncCopyMode() {
+            if (copyModeView != null) copyModeView.CopyModeChanged -= SyncCopyModeButton;
+            copyModeView = ChatHost.Content as Controls.ChatMessageList;
+            if (copyModeView != null) copyModeView.CopyModeChanged += SyncCopyModeButton;
+            SyncCopyModeButton();
+        }
+        private void SyncCopyModeButton() {
+            CopyModeButton.Visibility = copyModeView != null ? Visibility.Visible : Visibility.Collapsed;
+            CopyModeButton.IsChecked = copyModeView?.CopyMode == true;
+        }
         // Summaries are only offered once translation & AI is turned on in settings.
         private void UpdateSummaryEntry() =>
             SummaryButton.Visibility = MenuSummary.Visibility = App.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;

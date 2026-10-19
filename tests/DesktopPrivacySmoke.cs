@@ -648,6 +648,27 @@ internal sealed class DesktopPrivacySmokeApp : App {
             await Ai.TranslateAsync(message, Session.Source);
             Check(Ai.Translation(message)?.Text == "AI 译文" && fakeAi.Requests.Last().System.Contains("Simplified Chinese"), "Translation can use the AI service instead");
             Ai.ClearTranslation(message);
+            // Free copy: the shown chat becomes one plain text that can be selected across messages.
+            await Task.Delay(200);
+            var copyButton = Control<ToggleButton>(main, "CopyModeButton");
+            var copyView = (XIVChat_Desktop.Controls.ChatMessageList)Control<ContentControl>(main, "ChatHost").Content;
+            Check(copyButton.Visibility == Visibility.Visible && copyButton.IsChecked != true && !copyView.CopyMode, "Chats offer free copy, off by default");
+            ((IToggleProvider)new ToggleButtonAutomationPeer(copyButton).GetPattern(PatternInterface.Toggle)).Toggle(); await Task.Delay(300);
+            var copyText = (TextBox)((FrameworkElement)copyView.Content).FindName("CopyText");
+            Check(copyView.CopyMode && copyText.Visibility == Visibility.Visible && copyText.Text.Contains(peer.Name + ": " + message.ContentText) && copyText.Text.Contains("[Tell (Incoming)]")
+                &&((FrameworkElement)((FrameworkElement)copyView.Content).FindName("MessageList")).Visibility == Visibility.Collapsed,
+                "Free copy shows every loaded message as plain text in one selectable box");
+            copyText.SelectAll();
+            Check(copyText.SelectedText == copyText.Text, "Free copy can select across all messages at once");
+            await Capture(main, Path.Combine(AppContext.BaseDirectory, "free-copy.png"));
+            config.Privacy.Enabled = true; config.Save(); await Task.Delay(200);
+            Check(!copyView.CopyMode && copyButton.IsChecked != true && copyText.Text.Length == 0, "Changing streamer mode leaves free copy so unhidden text is not left on screen");
+            ((IToggleProvider)new ToggleButtonAutomationPeer(copyButton).GetPattern(PatternInterface.Toggle)).Toggle(); await Task.Delay(300);
+            Check(copyView.CopyMode && !copyText.Text.Contains(peer.Name) && !copyText.Text.Contains(owner.Name), "Free copy hides names in streamer mode");
+            ((IToggleProvider)new ToggleButtonAutomationPeer(copyButton).GetPattern(PatternInterface.Toggle)).Toggle(); await Task.Delay(200);
+            Check(!copyView.CopyMode && ((FrameworkElement)((FrameworkElement)copyView.Content).FindName("MessageList")).Visibility == Visibility.Visible,
+                "Turning free copy off returns to the normal message list");
+            config.Privacy.Enabled = false; config.Save(); await Task.Delay(100);
 
             fakeAi.Reply = request => "- Raid at nine with Maple Leaf";
             var summaryText = await Ai.SummarizeAsync(Session.Store!, new HistoryQuery(Source: Session.Source, OwnerKey: owner.Key, PeerKey: siteEn.Key), null, "Maple Leaf", CancellationToken.None);

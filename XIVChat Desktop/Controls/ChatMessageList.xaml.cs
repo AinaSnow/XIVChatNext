@@ -22,6 +22,9 @@ namespace XIVChat_Desktop.Controls {
         private bool disposed;
         private int unreadCount;
         public bool FollowingLatest => this.followLatest;
+        /// <summary>Free copy shows a plain-text snapshot of the messages in place of the list.</summary>
+        public bool CopyMode { get; private set; }
+        public event Action? CopyModeChanged;
         internal bool ScrollInProgress => scrollPending || pendingAnchor != null;
         public void ScrollToMessage(ServerMessage message) {
             var row = rows.FirstOrDefault(r => ReferenceEquals(r.Message, message) || message.MessageId != null && r.Message.MessageId == message.MessageId);
@@ -165,7 +168,42 @@ namespace XIVChat_Desktop.Controls {
             this.ReadingChanged?.Invoke();
         }
 
+        public void SetCopyMode(bool enabled) {
+            if (this.disposed || enabled == this.CopyMode) return;
+            this.CopyMode = enabled;
+            var presentation = ((App)Application.Current).Presentation;
+            if (enabled) {
+                presentation.PolicyChanged += this.LeaveCopyMode;
+                this.CopyText.FontSize = this.tab.FontSizeOverride > 0 ? this.tab.FontSizeOverride : this.CopyText.FontSize;
+                this.CopyText.Text = this.PlainText();
+                this.CopyText.Select(this.CopyText.Text.Length, 0);
+            } else {
+                presentation.PolicyChanged -= this.LeaveCopyMode;
+                this.CopyText.Text = "";
+            }
+            this.CopyText.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+            this.MessageList.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+            this.UpdateLocalizations();
+            if (enabled) this.CopyText.Focus(FocusState.Programmatic);
+            else this.QueueScrollToLatest();
+            this.CopyModeChanged?.Invoke();
+        }
+
+        // The snapshot was made under the old privacy settings; never keep showing it.
+        private void LeaveCopyMode() => this.SetCopyMode(false);
+
+        /// <summary>The loaded messages in export form, with names hidden as on screen in streamer mode.</summary>
+        internal string PlainText() {
+            var app = (App)Application.Current;
+            var display = app.Presentation.Engine.Snapshot();
+            return string.Join("\r\n", this.tab.Messages.Select(message =>
+                display.ExportLine(message.LocalSource ?? app.Session.Source, message, this.tab.ShowTimestamps, ChannelLabels.For(message, !display.Enabled))));
+        }
+
         public void UpdateLocalizations() {
+            this.CopyHint.Text = LocalizationHelper.GetString("Chat.CopyModeHint");
+            this.CopyHint.Visibility = this.CopyMode ? Visibility.Visible : Visibility.Collapsed;
+            if (this.CopyMode) { this.LatestButton.Visibility = Visibility.Collapsed; return; }
             if (this.MessageList.ItemsPanelRoot is ItemsStackPanel panel) {
                 panel.ItemsUpdatingScrollMode = this.followLatest ? ItemsUpdatingScrollMode.KeepLastItemInView : ItemsUpdatingScrollMode.KeepItemsInView;
             }
@@ -187,6 +225,7 @@ namespace XIVChat_Desktop.Controls {
 
         public void Dispose() {
             if (this.disposed) return;
+            if (this.CopyMode) ((App)Application.Current).Presentation.PolicyChanged -= this.LeaveCopyMode;
             this.disposed = true;
             this.tab.CollectionChanged -= this.OnMessagesChanged;
             this.Loaded -= this.OnLoaded;

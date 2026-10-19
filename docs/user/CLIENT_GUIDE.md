@@ -60,6 +60,10 @@ In **Settings → Window**, turn on **Keep running in the notification area** to
 
 Turn on **Global shortcut** and press a combination in the shortcut field (Ctrl+Alt+X by default). The shortcut shows the window with the message box focused, and hides it again when the window is already in front. It works while the game is focused, so pick a combination the game does not use. If another application already owns it, the settings page says so.
 
+### Copying several messages (Desktop 1.6.2)
+
+Text selection normally stays inside one message. To copy across messages, turn on **Free copy** (the copy icon in the conversation or channel header, or **Free copy** in a popout's menu). The chat is shown as plain text, one `time [channel] sender: message` line per loaded message, so you can drag across any range or press Ctrl+A, then Ctrl+C. New messages appear after you turn it off again. Streamer mode hides names here as on screen; changing streamer mode turns free copy off.
+
 ### Export chat history
 
 Open the export window from the export button in a conversation or channel header, from **Settings → History → Export chat history…**, or from the **XIVChat Next ▾** menu next to the logo. It exports what you are looking at: the open conversation, channel, history search or favorite. Narrow it by keyword and time, choose whether to include timestamps, preview the last 100 lines, then save.
@@ -164,6 +168,10 @@ Live sending, friends and screenshots require the game, logged-in character and 
 在“设置 → 窗口”中开启“关闭主窗口时保留在通知区域（托盘）”，关闭主窗口后程序继续运行。单击托盘图标显示或隐藏窗口，右键可退出；鼠标悬停可以看到未读私聊数。
 
 开启“使用全局快捷键”（默认 Ctrl+Alt+X），点一下快捷键框再按组合键就能修改。按下后显示窗口并聚焦输入框，窗口已在最前时再按一次会隐藏。快捷键在游戏中同样生效，请避开游戏里正在使用的按键；如果已被其他程序占用，设置页会提示。两项默认关闭。
+
+### 复制多条消息（客户端 1.6.2）
+
+平时选择文字只能在一条消息内。需要跨消息复制时，打开**自由复制**（会话或频道标题栏的复制图标，小窗菜单里也有“自由复制”）。聊天会改为纯文本显示，每条已加载的消息一行（`时间 [频道] 发送者: 内容`），可以任意拖选或 Ctrl+A 全选，再按 Ctrl+C 复制。新消息在关闭自由复制后显示。开启主播模式时这里同样隐藏名字；切换主播模式会自动关闭自由复制。
 
 ### 导出聊天记录
 

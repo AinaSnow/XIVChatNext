@@ -364,6 +364,9 @@
   <data name="Ai.SummaryOnlyHint" xml:space="preserve"><value>选择时间范围后点“生成总结”。只把这个范围内的消息发送给 AI 服务，不会保存文件。</value></data>
   <data name="Ai.Copied" xml:space="preserve"><value>已复制到剪贴板。</value></data>
   <data name="Ai.SummaryOnlyCaveat" xml:space="preserve"><value>由 {0} 生成，可能不完整或有误，重要内容请以原始消息为准。</value></data>
+  <data name="Chat.CopyMode" xml:space="preserve"><value>自由复制</value></data>
+  <data name="Chat.CopyModeTip" xml:space="preserve"><value>自由复制：以纯文本显示当前聊天，可以跨多条消息任意选择复制</value></data>
+  <data name="Chat.CopyModeHint" xml:space="preserve"><value>这是开启自由复制时已加载消息的纯文本。拖动选择或 Ctrl+A 全选后按 Ctrl+C 复制；关闭自由复制即可看到新消息。</value></data>
   <data name="Ai.Copy" xml:space="preserve"><value>复制</value></data>
   <data name="Ai.TranslationSection" xml:space="preserve"><value>翻译</value></data>
   <data name="Ai.Translator" xml:space="preserve"><value>翻译服务</value></data>

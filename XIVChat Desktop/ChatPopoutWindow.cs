@@ -146,6 +146,9 @@ public sealed class ChatPopoutWindow : Window {
         }
         var export = new MenuFlyoutItem { Text = L("Menu.Export") };
         export.Click += (_, _) => new Export(ExportQuery, State.Name, SnapshotChannelFilter()).Activate(); flyout.Items.Add(export);
+        var copyMode = new ToggleMenuFlyoutItem { Text = L("Chat.CopyMode") };
+        copyMode.Click += (_, _) => messages.SetCopyMode(copyMode.IsChecked); flyout.Items.Add(copyMode);
+        flyout.Opening += (_, _) => copyMode.IsChecked = messages.CopyMode;
         var summary = new MenuFlyoutItem { Text = L("Ai.Summarize") };
         summary.Click += (_, _) => new Export(ExportQuery, State.Name, SnapshotChannelFilter(), summaryOnly: true).Activate(); flyout.Items.Add(summary);
         flyout.Opening += (_, _) => summary.Visibility = app.Ai.Enabled ? Visibility.Visible : Visibility.Collapsed;
